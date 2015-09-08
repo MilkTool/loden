@@ -189,7 +189,6 @@ Oop sendBasicNew(Oop clazz)
 Oop sendBasicNewWithSize(Oop clazz, size_t size)
 {
 	Oop sizeOop = Oop::encodeSmallInteger(size);
-	printf("Size oop %d\n", (int)sizeOop.intValue);
 	return sendMessage(clazz, makeSelector("basicNew:"), 1, &sizeOop);
 }
 
