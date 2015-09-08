@@ -29,7 +29,7 @@
 \^                              { return RETURN; }
 
 [ \t\n]         ;
-\"[.^\"]*\"     ;
+\"[^\"]*\"     ;
 
 \{                              { return LCBRACKET; }
 \}                              { return RCBRACKET; }
