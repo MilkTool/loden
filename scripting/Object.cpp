@@ -22,7 +22,7 @@ LODTALK_END_CLASS_TABLE()
 static Metaclass ProtoObject_metaclass(SMCI_ProtoObject, Class::ClassObject, &ProtoObject_class_methodDict, 0);
 ClassDescription *ProtoObject::MetaclassObject = &ProtoObject_metaclass;
 
-static Class ProtoObject_class(SCI_ProtoObject, SMCI_ProtoObject, &ProtoObject_metaclass, (Behavior*)&NilObject, &ProtoObject_class_methodDict, OF_EMPTY, 0);
+static Class ProtoObject_class("ProtoObject", SCI_ProtoObject, SMCI_ProtoObject, &ProtoObject_metaclass, (Behavior*)&NilObject, &ProtoObject_class_methodDict, OF_EMPTY, 0);
 ClassDescription *ProtoObject::ClassObject = &ProtoObject_class;
 
 // Object methods
@@ -218,5 +218,58 @@ LODTALK_BEGIN_CLASS_TABLE(Character)
 LODTALK_END_CLASS_TABLE()
 
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(Character, Magnitude, OF_EMPTY, 0);
+
+// LookupKey
+LODTALK_BEGIN_CLASS_SIDE_TABLE(LookupKey)
+LODTALK_END_CLASS_SIDE_TABLE()
+
+LODTALK_BEGIN_CLASS_TABLE(LookupKey)
+LODTALK_END_CLASS_TABLE()
+
+LODTALK_SPECIAL_SUBCLASS_DEFINITION(LookupKey, Magnitude, OF_FIXED_SIZE, 1);
+
+// Association
+Association* Association::newNativeKeyValue(int classIndex, Oop key, Oop value)
+{
+	auto assoc = reinterpret_cast<Association*> (newObject(2, 0, OF_FIXED_SIZE, classIndex));
+	assoc->key = key;
+	assoc->value = value;
+	return assoc;
+}
+
+LODTALK_BEGIN_CLASS_SIDE_TABLE(Association)
+LODTALK_END_CLASS_SIDE_TABLE()
+
+LODTALK_BEGIN_CLASS_TABLE(Association)
+LODTALK_END_CLASS_TABLE()
+
+LODTALK_SPECIAL_SUBCLASS_DEFINITION(Association, LookupKey, OF_FIXED_SIZE, 2);
+
+// LiteralVariable
+LODTALK_BEGIN_CLASS_SIDE_TABLE(LiteralVariable)
+LODTALK_END_CLASS_SIDE_TABLE()
+
+LODTALK_BEGIN_CLASS_TABLE(LiteralVariable)
+LODTALK_END_CLASS_TABLE()
+
+LODTALK_SPECIAL_SUBCLASS_DEFINITION(LiteralVariable, Association, OF_FIXED_SIZE, 2);
+
+// GlobalVariable
+LODTALK_BEGIN_CLASS_SIDE_TABLE(GlobalVariable)
+LODTALK_END_CLASS_SIDE_TABLE()
+
+LODTALK_BEGIN_CLASS_TABLE(GlobalVariable)
+LODTALK_END_CLASS_TABLE()
+
+LODTALK_SPECIAL_SUBCLASS_DEFINITION(GlobalVariable, LiteralVariable, OF_FIXED_SIZE, 2);
+
+// ClassVariable
+LODTALK_BEGIN_CLASS_SIDE_TABLE(ClassVariable)
+LODTALK_END_CLASS_SIDE_TABLE()
+
+LODTALK_BEGIN_CLASS_TABLE(ClassVariable)
+LODTALK_END_CLASS_TABLE()
+
+LODTALK_SPECIAL_SUBCLASS_DEFINITION(ClassVariable, LiteralVariable, OF_FIXED_SIZE, 2);
 
 } // End of namespace Lodtalk

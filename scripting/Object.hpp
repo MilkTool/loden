@@ -35,7 +35,7 @@ public:
 	{
 		return sendMessage(selfOop(), selector, argumentCount, arguments);
 	}
-
+	
 	uint8_t *getFirstFieldPointer()
 	{
 		uint8_t *result = reinterpret_cast<uint8_t *> (&object_header_);
@@ -109,10 +109,11 @@ class Class: public ClassDescription
 {
 	LODTALK_NATIVE_CLASS();
 public:
-	Class(unsigned int classId, unsigned int metaclassId, ClassDescription *metaClass, Behavior* superclass, MethodDictionary *methodDict, ObjectFormat format, int fixedVariableCount)
+	Class(const char *className, unsigned int classId, unsigned int metaclassId, ClassDescription *metaClass, Behavior* superclass, MethodDictionary *methodDict, ObjectFormat format, int fixedVariableCount)
 		: ClassDescription(superclass, methodDict, format, fixedVariableCount)
 	{
 		object_header_ = ObjectHeader::specialNativeClass(classId, metaclassId, 5);
+		setGlobalVariable(className, Oop::fromPointer(this));
 	}
 };
 
@@ -145,8 +146,6 @@ public:
 	}
 };
 
-extern UndefinedObject NilObject;
-
 /**
  * Boolean
  */
@@ -167,8 +166,6 @@ public:
 		object_header_ = ObjectHeader::emptySpecialNativeClass(SOI_True, SCI_True);
 	}
 };
-
-extern True TrueObject;
 
 /**
  * False
@@ -239,7 +236,69 @@ class Character: public Magnitude
 	LODTALK_NATIVE_CLASS();
 };
 
-extern False FalseObject;
+/**
+ * Lookup key
+ */
+class LookupKey: public Magnitude
+{
+	LODTALK_NATIVE_CLASS();
+public:
+	Oop key;
+};
+
+inline Oop getLookupKeyKey(const Oop lookupKey)
+{
+	return reinterpret_cast<LookupKey*> (lookupKey.pointer)->key; 
+}
+
+/**
+ * Association
+ */
+class Association: public LookupKey
+{
+	LODTALK_NATIVE_CLASS();
+	Association() {}
+public:
+	static Association *newNativeKeyValue(int clazzId, Oop key, Oop value);
+
+	Oop value;
+};
+
+/**
+ * LiteralVariable
+ */
+class LiteralVariable: public Association
+{
+	LODTALK_NATIVE_CLASS();
+public:
+};
+
+/**
+ * GlobalVariable
+ */
+class GlobalVariable: public LiteralVariable
+{
+	LODTALK_NATIVE_CLASS();
+public:
+	static Association* make(Oop key, Oop value)
+	{
+		return newNativeKeyValue(SCI_GlobalVariable, key, value);
+	}
+};
+
+/**
+ * ClassVariable
+ */
+class ClassVariable: public LiteralVariable
+{
+	LODTALK_NATIVE_CLASS();
+public:
+	static Association* make(Oop key, Oop value)
+	{
+		return newNativeKeyValue(SCI_ClassVariable, key, value);
+	}
+
+};
 
 // Class method dictionary.
 #define LODTALK_BEGIN_CLASS_TABLE(className) \
@@ -262,7 +321,7 @@ static Metaclass className ## _metaclass (SMCI_ ##className, superName::Metaclas
 ClassDescription *className::MetaclassObject = &className ## _metaclass;
 
 #define LODTALK_SPECIAL_CLASS_DEFINITION(className, superName, format, fixedVariableCount) \
-static Class className ## _class (SCI_ ##className, SMCI_ ##className, className::MetaclassObject, superName::ClassObject, &className ## _class_methodDict, format, fixedVariableCount); \
+static Class className ## _class (#className, SCI_ ##className, SMCI_ ##className, className::MetaclassObject, superName::ClassObject, &className ## _class_methodDict, format, fixedVariableCount); \
 ClassDescription *className::ClassObject = &className ## _class;
 
 #define LODTALK_SPECIAL_SUBCLASS_DEFINITION(className, superName, format, fixedVariableCount) \
@@ -273,10 +332,6 @@ LODTALK_SPECIAL_CLASS_DEFINITION(className, superName, format, fixedVariableCoun
 #define LODTALK_NATIVE_METHOD(selector, cppImplementation)
 
 // The nil oop
-inline Oop nilOop()
-{
-	return Oop::fromPointer(&NilObject);
-}
 
 inline bool isNil(ProtoObject *obj)
 {
@@ -285,7 +340,7 @@ inline bool isNil(ProtoObject *obj)
 
 inline bool isNil(Oop obj)
 {
-	return (UndefinedObject*)obj.pointer == &NilObject;
+	return obj.isNil();
 }
 
 } // End of namespace Lodtalk

@@ -5,6 +5,8 @@
 #include "Collections.hpp"
 #include "Method.hpp"
 
+#include "InputOutput.hpp"
+
 namespace Lodtalk
 {
 
@@ -38,7 +40,7 @@ uint8_t *allocateObjectMemory(size_t objectSize)
 ObjectHeader *newObject(size_t fixedSlotCount, size_t indexableSize, ObjectFormat format, int classIndex, int identityHash)
 {
 	// Compute the header size.
-	auto indexableSlotCount = 0;
+	size_t indexableSlotCount = 0;
 	auto indexableSlotSize = variableSlotSizeFor(format);
 	auto indexableFormatExtraBits = 0;
 	bool hasPrimitiveData = false;
@@ -58,17 +60,12 @@ ObjectHeader *newObject(size_t fixedSlotCount, size_t indexableSize, ObjectForma
 		else
 		{
 			hasPrimitiveData = true;
-			auto divisor = variableSlotDivisor(format);
-			auto mask = divisor - 1;
-			if(divisor > 1)
-			{
-			 	indexableSlotCount = ((indexableSize + 1) & mask) / divisor;
-				indexableFormatExtraBits = indexableSize & mask;
-			}
-			else
-			{
-				indexableSlotCount = indexableSize;
-			}
+			size_t divisor = variableSlotDivisor(format);
+			size_t mask = (divisor - 1);
+
+		 	indexableSlotCount = ((indexableSize + divisor - 1) & (~mask)) / divisor;
+			indexableFormatExtraBits = indexableSize & mask;
+			assert(indexableSize <= indexableSlotCount*divisor);
 		}
 	}
 	
@@ -88,7 +85,7 @@ ObjectHeader *newObject(size_t fixedSlotCount, size_t indexableSize, ObjectForma
 
 	// Generate a hash if requested. 
 	if(identityHash < 0)
-		generateIdentityHash(data);
+		identityHash = generateIdentityHash(data);
 
 	// Set the object header.
 	*header = {0};
@@ -176,9 +173,19 @@ Oop sendMessage(Oop receiver, Oop selector, int argumentCount, Oop *arguments)
 	}
 }
 
-Oop makeSelector(const std::string &content)
+Oop makeByteString(const std::string &content)
+{
+	return ByteString::fromNative(content).getOop();
+}
+
+Oop makeByteSymbol(const std::string &content)
 {
 	return ByteSymbol::fromNative(content).getOop();
+}
+
+Oop makeSelector(const std::string &content)
+{
+	return makeByteSymbol(content);
 }
 
 Oop sendBasicNew(Oop clazz)
@@ -190,6 +197,56 @@ Oop sendBasicNewWithSize(Oop clazz, size_t size)
 {
 	Oop sizeOop = Oop::encodeSmallInteger(size);
 	return sendMessage(clazz, makeSelector("basicNew:"), 1, &sizeOop);
+}
+
+// Global dictionary
+static SystemDictionary *globalDictionary = nullptr;
+ 
+Oop setGlobalVariable(const char *name, Oop value)
+{
+	return setGlobalVariable(ByteSymbol::fromNative(name).getOop(), value);
+}
+
+Oop setGlobalVariable(Oop symbol, Oop value)
+{
+	if(!globalDictionary)
+		globalDictionary = new SystemDictionary();
+		
+	// Set the existing value.
+	auto globalVar = globalDictionary->getNativeAssociationOrNil(symbol);
+	if(classIndexOf(Oop::fromPointer(globalVar)) == SCI_GlobalVariable)
+	{
+		globalVar->value = value;
+		return Oop::fromPointer(globalVar);
+	}
+	
+	// Create the global variable
+	globalVar = GlobalVariable::make(symbol, value);
+	globalDictionary->putNativeAssociation(globalVar);
+	return Oop::fromPointer(globalVar);
+}
+
+Oop getGlobalFromName(const char *name)
+{
+	return getGlobalFromName(name);
+}
+
+Oop getGlobalFromSymbol(Oop symbol)
+{
+	return Oop::fromPointer(globalDictionary->getNativeAssociationOrNil(symbol));
+}
+
+Oop getGlobalValueFromName(const char *name)
+{
+	return getGlobalValueFromSymbol(ByteSymbol::fromNative(name).getOop());
+}
+
+Oop getGlobalValueFromSymbol(Oop symbol)
+{
+	auto globalVar = globalDictionary->getNativeAssociationOrNil(symbol);
+	if(classIndexOf(Oop::fromPointer(globalVar)) != SCI_GlobalVariable)
+		return nilOop();
+	return globalVar->value;
 }
 
 } // End of namespace Lodtalk

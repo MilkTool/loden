@@ -25,7 +25,7 @@ struct ObjectTag
 {
 #ifdef OBJECT_MODEL_SPUR_64
 	static const uintptr_t PointerMask = 7;
-	static const uintptr_t PointerValue = 0;
+	static const uintptr_t Pointer = 0;
 
 	static const uintptr_t SmallInteger = 1;
 	static const uintptr_t SmallIntegerMask = 1;
@@ -40,7 +40,7 @@ struct ObjectTag
 	static const uintptr_t SmallFloatShift = 3;
 #else
 	static const uintptr_t PointerMask = 3;
-	static const uintptr_t PointerValue = 0;
+	static const uintptr_t Pointer = 0;
 
 	static const uintptr_t SmallInteger = 1;
 	static const uintptr_t SmallIntegerMask = 1;
@@ -53,90 +53,6 @@ struct ObjectTag
 };
 
 static const uintptr_t IdentityHashMask = (1<<22) - 1;
-
-typedef intptr_t SmallIntegerValue;
-
-struct ObjectHeader;
-struct Oop
-{
-	static Oop fromPointer(void *pointer)
-	{
-		Oop oop;
-		oop.pointer = reinterpret_cast<uint8_t*> (pointer);
-		return oop;
-	}
-	
-	inline bool isSmallInteger() const
-	{
-		return (uintValue & ObjectTag::SmallIntegerMask) == ObjectTag::SmallInteger;
-	}
-	
-	inline bool isCharacter() const
-	{
-		return (uintValue & ObjectTag::CharacterMask) == ObjectTag::Character;
-	}
-	
-	inline bool isSmallFloat() const
-	{
-	#ifdef LODTALK_HAS_SMALLFLOAT
-		return (uintValue & ObjectTag::SmallFloatMask) == ObjectTag::SmallFloat;
-	#else
-		return false;
-	#endif
-	}
-	
-	inline SmallIntegerValue decodeSmallInteger() const
-	{
-		assert(isSmallInteger(oop));
-		return intValue >> ObjectTag::SmallIntegerShift;
-	}
-	
-	inline static Oop encodeSmallInteger(SmallIntegerValue integer)
-	{
-		Oop res;
-		res.intValue = (integer << ObjectTag::SmallIntegerShift) | ObjectTag::SmallInteger;
-		return res;
-	}
-	
-	inline int decodeCharacter() const
-	{
-		assert(isCharacter());
-		return intValue >> ObjectTag::CharacterShift;
-	}
-	
-	inline static Oop encodeCharacter(int character)
-	{
-		Oop res;
-		res.intValue = (character << ObjectTag::CharacterShift) | ObjectTag::Character;
-		return res; 
-	}
-
-	bool operator==(const Oop &o) const
-	{
-		return pointer == o.pointer;
-	}
-
-	bool operator!=(const Oop &o) const
-	{
-		return pointer != o.pointer;
-	}
-	
-	union
-	{
-		uint8_t *pointer;
-		ObjectHeader *header;
-		uintptr_t uintValue;
-		uintptr_t intValue;
-	};
-};
-
-// Ensure the object oriented pointer is a pointer.
-static_assert(sizeof(Oop) == sizeof(void*), "Oop structure has to be a pointer.");
-
-inline unsigned int generateIdentityHash(void *ptr)
-{
-	return (unsigned int)(reinterpret_cast<uintptr_t> (ptr) & IdentityHashMask);
-}
 
 enum ObjectFormat
 {
@@ -165,7 +81,7 @@ inline size_t variableSlotSizeFor(ObjectFormat format)
 	case OF_VARIABLE_SIZE_NO_IVARS:
 	case OF_VARIABLE_SIZE_IVARS:
 	case OF_WEAK_VARIABLE_SIZE:
-		return sizeof(Oop);
+		return sizeof(void*);
 	case OF_WEAK_FIXED_SIZE:
 		return 0;
 	case OF_INDEXABLE_64: return 8;
@@ -201,6 +117,11 @@ inline size_t variableSlotDivisor(ObjectFormat format)
 #endif
 };
 
+inline constexpr unsigned int generateIdentityHash(void *ptr)
+{
+	return (unsigned int)(reinterpret_cast<uintptr_t> (ptr) & IdentityHashMask);
+}
+
 struct ObjectHeader
 {
 	uint8_t slotCount;
@@ -212,21 +133,174 @@ struct ObjectHeader
 	unsigned int reserved : 2;
 	unsigned int classIndex : 22;
 
-	static ObjectHeader specialNativeClass(unsigned int identityHash, unsigned int classIndex, uint8_t slotCount, ObjectFormat format = OF_FIXED_SIZE)
+	static constexpr ObjectHeader specialNativeClass(unsigned int identityHash, unsigned int classIndex, uint8_t slotCount, ObjectFormat format = OF_FIXED_SIZE)
 	{
 		return {slotCount, true, true, identityHash, 0, (unsigned int)format, 0, classIndex};
 	}
 
-	static ObjectHeader emptySpecialNativeClass(unsigned int identityHash, unsigned int classIndex)
+	static constexpr ObjectHeader emptySpecialNativeClass(unsigned int identityHash, unsigned int classIndex)
 	{
 		return {0, true, true, identityHash, 0, OF_EMPTY, 0, classIndex};
 	}
 	
-	static ObjectHeader emptyNativeClass(void *self, unsigned int classIndex)
+	static constexpr ObjectHeader emptyNativeClass(void *self, unsigned int classIndex)
 	{
 		return {0, true, true, generateIdentityHash(self), 0, OF_EMPTY, 0, classIndex};
 	}
 };
+
+typedef intptr_t SmallIntegerValue;
+
+// Some special objects
+class UndefinedObject;
+class True;
+class False;
+
+extern UndefinedObject NilObject;
+extern True TrueObject;
+extern False FalseObject;
+
+struct Oop
+{
+private:
+	constexpr Oop(uint8_t *pointer) : pointer(pointer) {}
+	constexpr Oop(intptr_t intValue) : intValue(intValue) {}
+	constexpr Oop(int, uintptr_t uintValue) : uintValue(uintValue) {}
+	
+public:
+	constexpr Oop() : pointer(reinterpret_cast<uint8_t*> (&NilObject)) {}
+	
+	static constexpr Oop fromPointer(void *pointer)
+	{
+		return Oop(reinterpret_cast<uint8_t*> (pointer));
+	}
+	
+	inline bool isBoolean() const
+	{
+		return isTrue() || isFalse();
+	}
+	
+	inline bool isTrue() const
+	{
+		return pointer == reinterpret_cast<uint8_t*> (&TrueObject);
+	}
+
+	inline bool isFalse() const
+	{
+		return pointer == reinterpret_cast<uint8_t*> (&FalseObject);
+	}
+	
+	inline bool isNil() const
+	{
+		return pointer == reinterpret_cast<uint8_t*> (&NilObject);
+	}
+	
+	inline bool isSmallInteger() const
+	{
+		return (uintValue & ObjectTag::SmallIntegerMask) == ObjectTag::SmallInteger;
+	}
+	
+	inline bool isCharacter() const
+	{
+		return (uintValue & ObjectTag::CharacterMask) == ObjectTag::Character;
+	}
+	
+	inline bool isSmallFloat() const
+	{
+	#ifdef LODTALK_HAS_SMALLFLOAT
+		return (uintValue & ObjectTag::SmallFloatMask) == ObjectTag::SmallFloat;
+	#else
+		return false;
+	#endif
+	}
+	
+	inline bool isPointer() const
+	{
+		return (uintValue & ObjectTag::PointerMask) == ObjectTag::Pointer;
+	}
+	
+	inline bool isIndexableNativeData() const
+	{
+		return isPointer() && header->objectFormat >= OF_INDEXABLE_NATIVE_FIRST;
+	}
+	
+	void *getFirstFieldPointer() const
+	{
+		if(!isPointer())
+			return nullptr;
+		if(header->slotCount == 255)
+			return pointer + sizeof(ObjectHeader) + 8;
+		return pointer + sizeof(ObjectHeader);
+	}
+	
+	inline SmallIntegerValue decodeSmallInteger() const
+	{
+		assert(isSmallInteger());
+		return intValue >> ObjectTag::SmallIntegerShift;
+	}
+	
+	static constexpr Oop encodeSmallInteger(SmallIntegerValue integer)
+	{
+		return Oop((integer << ObjectTag::SmallIntegerShift) | ObjectTag::SmallInteger);
+	}
+	
+	inline int decodeCharacter() const
+	{
+		assert(isCharacter());
+		return intValue >> ObjectTag::CharacterShift;
+	}
+	
+	static constexpr Oop encodeCharacter(int character)
+	{
+		return Oop((character << ObjectTag::CharacterShift) | ObjectTag::Character);
+	}
+
+	bool operator==(const Oop &o) const
+	{
+		return pointer == o.pointer;
+	}
+
+	bool operator!=(const Oop &o) const
+	{
+		return pointer != o.pointer;
+	}
+	
+	static constexpr Oop trueObject()
+	{
+		return Oop(reinterpret_cast<uint8_t*> (&TrueObject));
+	}
+	
+	static constexpr Oop falseObject()
+	{
+		return Oop(reinterpret_cast<uint8_t*> (&FalseObject));
+	}
+	
+	union
+	{
+		uint8_t *pointer;
+		ObjectHeader *header;
+		uintptr_t uintValue;
+		intptr_t intValue;
+	};
+};
+
+inline constexpr Oop nilOop()
+{
+	return Oop();
+}
+
+inline constexpr Oop trueOop()
+{
+	return Oop::trueObject();
+}
+
+inline constexpr Oop falseOop()
+{
+	return Oop::falseObject();
+}
+
+// Ensure the object oriented pointer is a pointer.
+static_assert(sizeof(Oop) == sizeof(void*), "Oop structure has to be a pointer.");
 
 // Object memory
 uint8_t *allocateObjectMemory(size_t objectSize);
@@ -288,6 +362,12 @@ inline int classIndexOf(Oop obj)
 		return SCI_SmallFloat;
 
 	return obj.header->classIndex;
+}
+
+template<typename X>
+X identityFunction(const X &x)
+{
+	return x;
 }
 
 // Reference smart pointer
@@ -382,10 +462,31 @@ Oop getClassFromIndex(int classIndex);
 Oop sendDNUMessage(Oop receiver, Oop selector, int argumentCount, Oop *arguments);
 Oop sendMessage(Oop receiver, Oop selector, int argumentCount, Oop *arguments);
 
+Oop makeByteString(const std::string &content);
+Oop makeByteSymbol(const std::string &content);
 Oop makeSelector(const std::string &content);
+
 Oop sendBasicNew(Oop clazz);
 Oop sendBasicNewWithSize(Oop clazz, size_t size);
 
+// Global variables
+Oop setGlobalVariable(const char *name, Oop value);
+Oop setGlobalVariable(Oop name, Oop value);
+
+Oop getGlobalFromName(const char *name);
+Oop getGlobalFromSymbol(Oop symbol);
+
+Oop getGlobalValueFromName(const char *name);
+Oop getGlobalValueFromSymbol(Oop symbol);
+
+template<typename... Args>
+Oop sendMessageOopArgs(Oop receiver, Oop selector, Args... args)
+{
+	Oop argArray[] = {
+		args...
+	};
+	return sendMessage(receiver, selector, sizeof...(args), argArray);
+}
 
 } // End of namespace Lodtalk
 

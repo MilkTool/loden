@@ -133,7 +133,8 @@ LODTALK_END_CLASS_TABLE()
 
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(ByteSymbol, Symbol, OF_INDEXABLE_8, 0);
 
-static std::map<std::string, Ref<ByteSymbol> > byteSymbolDictionary;
+typedef std::map<std::string, Ref<ByteSymbol> > ByteSymbolDictionary;
+static ByteSymbolDictionary *byteSymbolDictionary;
 
 Object *ByteSymbol::basicNativeNew(size_t indexableSize)
 {
@@ -142,9 +143,12 @@ Object *ByteSymbol::basicNativeNew(size_t indexableSize)
 
 Ref<ByteSymbol> ByteSymbol::fromNative(const std::string &native)
 {
+	if(!byteSymbolDictionary)
+		byteSymbolDictionary = new ByteSymbolDictionary();
+		
 	// Find existing internation
-	auto it = byteSymbolDictionary.find(native);
-	if(it != byteSymbolDictionary.end())
+	auto it = byteSymbolDictionary->find(native);
+	if(it != byteSymbolDictionary->end())
 		return it->second;
 
 	// Create the byte symbol
@@ -153,7 +157,7 @@ Ref<ByteSymbol> ByteSymbol::fromNative(const std::string &native)
 	auto ref = Ref<ByteSymbol> (reinterpret_cast<ByteSymbol*> (result));
 	
 	// Store in the internation dictionary.
-	byteSymbolDictionary[native] = ref;
+	(*byteSymbolDictionary)[native] = ref;
 	return ref;
 }
 
@@ -200,7 +204,7 @@ LODTALK_END_CLASS_SIDE_TABLE()
 LODTALK_BEGIN_CLASS_TABLE(IdentityDictionary)
 LODTALK_END_CLASS_TABLE()
 
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(IdentityDictionary, Dictionary, OF_FIXED_SIZE, 4);
+LODTALK_SPECIAL_SUBCLASS_DEFINITION(IdentityDictionary, Dictionary, OF_FIXED_SIZE, 3);
 
 // SystemDictionary
 LODTALK_BEGIN_CLASS_SIDE_TABLE(SystemDictionary)
@@ -209,6 +213,6 @@ LODTALK_END_CLASS_SIDE_TABLE()
 LODTALK_BEGIN_CLASS_TABLE(SystemDictionary)
 LODTALK_END_CLASS_TABLE()
 
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(SystemDictionary, IdentityDictionary, OF_FIXED_SIZE, 4);
+LODTALK_SPECIAL_SUBCLASS_DEFINITION(SystemDictionary, IdentityDictionary, OF_FIXED_SIZE, 3);
 
 } // End of namespace Lodtalk

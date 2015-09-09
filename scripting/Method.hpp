@@ -123,7 +123,7 @@ public:
 	
 	virtual Oop execute(Oop receiver, int argumentCount, Oop *arguments) override
 	{
-		assert(argumentCount == MPL::size<FunctionArgumentTypes>::value);
+		assert(argumentCount + 1== MPL::size<FunctionArgumentTypes>::value);
 		return nativeResultMarshaller<R> (addReceiver(receiver, arguments));
 	}
 	
@@ -210,6 +210,17 @@ namespace detail
 	
 	template<typename R, typename... Args>
 	struct NativeMethodWrapperCreator<R (*) (Args...)>
+	{
+		typedef R (*FT) (Args...);
+		
+		static NativeMethodWrapper *apply(const FT &functionPointer)
+		{
+			return new GlobalNativeMethodWrapper<R, Args...> (functionPointer);
+		}
+	};
+	
+	template<typename R, typename... Args>
+	struct NativeMethodWrapperCreator<R (Args...)>
 	{
 		typedef R (*FT) (Args...);
 		
