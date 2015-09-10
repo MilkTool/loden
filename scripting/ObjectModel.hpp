@@ -174,6 +174,11 @@ public:
 	{
 		return Oop(reinterpret_cast<uint8_t*> (pointer));
 	}
+
+	static constexpr Oop fromRawUIntPtr(uintptr_t value)
+	{
+		return Oop(0, value);
+	}
 	
 	inline bool isBoolean() const
 	{
@@ -284,6 +289,9 @@ public:
 	};
 };
 
+// Ensure the object oriented pointer is a pointer.
+static_assert(sizeof(Oop) == sizeof(void*), "Oop structure has to be a pointer.");
+
 inline constexpr Oop nilOop()
 {
 	return Oop();
@@ -299,8 +307,57 @@ inline constexpr Oop falseOop()
 	return Oop::falseObject();
 }
 
-// Ensure the object oriented pointer is a pointer.
-static_assert(sizeof(Oop) == sizeof(void*), "Oop structure has to be a pointer.");
+//// The compiled method header format.
+// Smallinteger tag: 1 bit
+// Number of literals: 16 bits
+// Has primitive : 1 bit
+// Number of temporals: 6 bits
+// Number of arguments: 4 bits 
+struct CompiledMethodHeader
+{
+	static const size_t LiteralMask = (1<<16) -1;
+	static const size_t LiteralShift = 1;
+	static const size_t HasPrimitiveBit = (1<<17);
+	static const size_t NeedsLargeFrameBit = (1<<18);
+	static const size_t TemporalShift = 19;
+	static const size_t TemporalMask = (1<<6) - 1;
+	static const size_t ArgumentShift = 25;
+	static const size_t ArgumentMask = (1<<4) - 1;
+	static const size_t ReservedBit = 1<<29;
+	static const size_t FlagBit = 1<<30;
+	static const size_t AlternateBytecodeBit = 1<<31;
+	
+	constexpr CompiledMethodHeader(Oop oop) : oop(oop) {}
+	
+	static CompiledMethodHeader create(size_t literalCount, size_t temporalCount, size_t argumentCount)
+	{
+		assert(literalCount <= LiteralMask);
+		assert(temporalCount <= TemporalMask);
+		assert(argumentCount <= ArgumentMask);
+		
+		return Oop::fromRawUIntPtr(1 |
+		((literalCount & LiteralMask) << LiteralShift) |
+		((temporalCount & TemporalMask) << TemporalShift) |
+		((argumentCount & ArgumentMask) << ArgumentShift));
+	}
+	
+	size_t getLiteralCount() const
+	{
+		return (oop.uintValue >> LiteralShift) & LiteralMask;
+	}
+	
+	size_t getTemporalCount() const
+	{
+		return (oop.uintValue >> TemporalShift) & TemporalMask;
+	}
+	
+	size_t getArgumentCount() const
+	{
+		return (oop.uintValue >> ArgumentShift) & ArgumentMask;
+	}
+	
+	Oop oop;
+};
 
 // Object memory
 uint8_t *allocateObjectMemory(size_t objectSize);

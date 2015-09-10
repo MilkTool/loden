@@ -12,6 +12,16 @@ Node::~Node()
 {
 }
 
+bool Node::isIdentifierExpression() const
+{
+	return false;
+}
+
+bool Node::isReturnStatement() const
+{
+	return false;
+}
+
 // Identifier expression
 IdentifierExpression::IdentifierExpression(const std::string &identifier)
 	: identifier(identifier)
@@ -25,6 +35,11 @@ IdentifierExpression::~IdentifierExpression()
 Oop IdentifierExpression::acceptVisitor(ASTVisitor *visitor)
 {
 	return visitor->visitIdentifierExpression(this);
+}
+
+bool IdentifierExpression::isIdentifierExpression() const
+{
+	return true;	
 }
 
 const std::string &IdentifierExpression::getIdentifier() const
@@ -206,6 +221,11 @@ ReturnStatement::~ReturnStatement()
 Oop ReturnStatement::acceptVisitor(ASTVisitor *visitor)
 {
 	return visitor->visitReturnStatement(this);
+}
+
+bool ReturnStatement::isReturnStatement() const
+{
+	return true;
 }
 
 Node *ReturnStatement::getValue() const

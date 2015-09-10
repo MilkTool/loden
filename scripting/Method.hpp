@@ -2,6 +2,7 @@
 #define LODTALK_METHOD_HPP_
 
 #include <type_traits>
+#include <vector>
 #include "Object.hpp"
 #include "Collections.hpp"
 #include "MPL.hpp"
@@ -17,8 +18,39 @@ class CompiledMethod: public ByteArray
 {
 	LODTALK_NATIVE_CLASS();	
 public:
+	static CompiledMethod *newMethodWithHeader(size_t numberOfBytes, CompiledMethodHeader header);
 
 	Oop execute(Oop receiver, int argumentCount, Oop *arguments);
+	
+	CompiledMethodHeader *getHeader()
+	{
+		return reinterpret_cast<CompiledMethodHeader*> (getFirstFieldPointer());
+	}
+	
+	size_t getLiteralCount()
+	{
+		return getHeader()->getLiteralCount();
+	}
+	
+	size_t getTemporalCount()
+	{
+		return getHeader()->getTemporalCount();
+	}
+	
+	size_t getArgumentCount()
+	{
+		return getHeader()->getArgumentCount();
+	}
+	
+	size_t getFirstPC()
+	{
+		return (getHeader()->getLiteralCount() + 1)*sizeof(void*);
+	}
+	
+	uint8_t *getFirstBCPointer()
+	{
+		return reinterpret_cast<uint8_t*> (getFirstFieldPointer() + getFirstPC());
+	}
 };
 
 /**

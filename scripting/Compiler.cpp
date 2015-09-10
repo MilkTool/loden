@@ -3,6 +3,7 @@
 #include <stdarg.h>
 #include "Compiler.hpp"
 #include "Method.hpp"
+#include "MethodBuilder.hpp"
 #include "ParserScannerInterface.hpp"
 
 namespace Lodtalk
@@ -21,6 +22,8 @@ public:
 
 	virtual Oop getValue() = 0;
 	virtual void setValue(Oop newValue) = 0;
+	
+	virtual void generateLoad( MethodAssembler::Assembler &gen) const = 0;
 };
 
 typedef std::shared_ptr<VariableLookup> VariableLookupPtr;
@@ -88,6 +91,11 @@ public:
 		variable->value = newValue;
 	}
 
+	virtual void generateLoad(MethodAssembler::Assembler &gen) const
+	{
+		gen.pushLiteralVariable(Oop::fromPointer(variable));
+	}
+	
 	LiteralVariable *variable;
 };
 
@@ -316,7 +324,7 @@ class MethodCompiler: public ScopedInterpreter
 {
 public:
 	MethodCompiler(const EvaluationScopePtr &initialScope)
-		: ScopedInterpreter(initialScope) {}
+		: ScopedInterpreter(initialScope), temporalCount(0), argumentCount(0) {}
 
 	virtual Oop visitArgument(Argument *node);
 	virtual Oop visitArgumentList(ArgumentList *node);
@@ -334,6 +342,10 @@ public:
 	virtual Oop visitSelfReference(SelfReference *node);
 	virtual Oop visitSuperReference(SuperReference *node);
 	virtual Oop visitThisContextReference(ThisContextReference *node);
+
+	size_t temporalCount;
+	size_t argumentCount;
+	MethodAssembler::Assembler gen;
 };
 
 // Method compiler.
@@ -363,14 +375,26 @@ Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
 
 Oop MethodCompiler::visitIdentifierExpression(IdentifierExpression *node)
 {
-	assert(0 && "unimplemented");
-	abort();
+	VariableLookupPtr variable;
+	
+	// Find in the current scope.
+	if(currentScope)
+		variable = currentScope->lookSymbolRecursively(node->getSymbol());
+		
+	// Ensure it was found.
+	if(!variable)
+		error(node, "undeclared identifier '%s'.", node->getIdentifier().c_str());
+		
+	// Generate the load.
+	variable->generateLoad(gen);
+
+	return Oop();
 }
 
 Oop MethodCompiler::visitLiteralNode(LiteralNode *node)
 {
-	assert(0 && "unimplemented");
-	abort();
+	gen.pushLiteral(node->getValue().getOop());
+	return Oop();
 }
 
 Oop MethodCompiler::visitLocalDeclarations(LocalDeclarations *node)
@@ -387,8 +411,34 @@ Oop MethodCompiler::visitLocalDeclaration(LocalDeclaration *node)
 
 Oop MethodCompiler::visitMessageSendNode(MessageSendNode *node)
 {
-	assert(0 && "unimplemented");
-	abort();
+	// Visit the receiver.
+	node->getReceiver()->acceptVisitor(this);
+	
+	// Visit the arguments in reverse order.
+	auto &chained = node->getChainedMessages();
+	
+	// Send each message in the chain
+	bool first = true;
+	for(int i = -1; i < (int)chained.size(); ++i)
+	{
+		auto message = i < 0 ? node : chained[i];
+		auto selector = message->getSelectorOop();
+		
+		if(first)
+			first = false;
+		else
+			gen.popStackTop();
+		
+		// Evaluate the arguments.
+		auto &arguments = message->getArguments();
+		for(auto &arg : arguments)
+			arg->acceptVisitor(this);
+
+		// Send the message.
+		gen.send(selector, arguments.size());
+	}
+
+	return nilOop();
 }
 
 Oop MethodCompiler::visitMethodAST(MethodAST *node)
@@ -399,7 +449,7 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
 	// Visit the method body
 	node->getBody()->acceptVisitor(this);
 	
-	return nilOop();
+	return gen.generate(temporalCount, argumentCount);
 }
 
 Oop MethodCompiler::visitMethodHeader(MethodHeader *node)
@@ -415,8 +465,24 @@ Oop MethodCompiler::visitReturnStatement(ReturnStatement *node)
 
 Oop MethodCompiler::visitSequenceNode(SequenceNode *node)
 {
-	assert(0 && "unimplemented");
-	abort();
+	if(node->getLocalDeclarations())
+	{
+		assert(0 && "unimplemented");
+		abort();
+	}
+	
+	bool first = true;
+	for(auto &child : node->getChildren())
+	{
+		if(first)
+			first = false;
+		else
+			gen.popStackTop();
+			
+		child->acceptVisitor(this);
+	}
+	
+	return Oop();
 }
 
 Oop MethodCompiler::visitSelfReference(SelfReference *node)

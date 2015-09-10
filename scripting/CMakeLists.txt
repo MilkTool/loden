@@ -10,6 +10,7 @@ set(Lodtalk_SRC
      Compiler.cpp
      InputOutput.cpp
      Method.cpp
+     MethodBuilder.cpp
      Object.cpp
      ObjectModel.cpp
      ParserScannerInterface.cpp

@@ -63,6 +63,9 @@ public:
 	virtual ~Node();
 
 	virtual Oop acceptVisitor(ASTVisitor *visitor) = 0;
+	
+	virtual bool isIdentifierExpression() const;
+	virtual bool isReturnStatement() const;
 };
 
 /**
@@ -126,6 +129,8 @@ public:
 	
 	virtual Oop acceptVisitor(ASTVisitor *visitor);
 	
+	virtual bool isIdentifierExpression() const;
+	
 	const std::string &getIdentifier() const;
 	Oop getSymbol() const;
 	
@@ -185,6 +190,8 @@ public:
 	~ReturnStatement();
 	
 	virtual Oop acceptVisitor(ASTVisitor *visitor);
+	
+	virtual bool isReturnStatement() const;
 	
 	Node *getValue() const;
 	
