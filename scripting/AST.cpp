@@ -22,9 +22,19 @@ IdentifierExpression::~IdentifierExpression()
 {
 }
 
+Oop IdentifierExpression::acceptVisitor(ASTVisitor *visitor)
+{
+	return visitor->visitIdentifierExpression(this);
+}
+
 const std::string &IdentifierExpression::getIdentifier() const
 {
 	return identifier;
+}
+
+Oop IdentifierExpression::getSymbol() const
+{
+	return makeByteSymbol(identifier);
 }
 
 // Literal node
@@ -35,6 +45,11 @@ LiteralNode::LiteralNode(const Ref<ProtoObject> &value)
 
 LiteralNode::~LiteralNode()
 {
+}
+
+Oop LiteralNode::acceptVisitor(ASTVisitor *visitor)
+{
+	return visitor->visitLiteralNode(this);
 }
 
 const Ref<ProtoObject> &LiteralNode::getValue() const
@@ -61,9 +76,19 @@ MessageSendNode::~MessageSendNode()
 		delete arg;
 }
 
+Oop MessageSendNode::acceptVisitor(ASTVisitor *visitor)
+{
+	return visitor->visitMessageSendNode(this);
+}
+
 const std::string &MessageSendNode::getSelector() const
 {
 	return selector;
+}
+
+Oop MessageSendNode::getSelectorOop() const
+{
+	return makeSelector(selector);
 }
 
 Node *MessageSendNode::getReceiver() const
@@ -79,6 +104,11 @@ void MessageSendNode::setReceiver(Node *newReceiver)
 const std::vector<Node*> &MessageSendNode::getArguments() const
 {
 	return arguments;
+}
+
+const std::vector<MessageSendNode*> &MessageSendNode::getChainedMessages() const
+{
+	return chainedMessages;
 }
 
 void MessageSendNode::appendSelector(const std::string &selectorExtra)
@@ -108,6 +138,11 @@ AssignmentExpression::~AssignmentExpression()
 	delete value;
 }
 
+Oop AssignmentExpression::acceptVisitor(ASTVisitor *visitor)
+{
+	return visitor->visitAssignmentExpression(this);
+}
+
 Node *AssignmentExpression::getReference() const
 {
 	return reference;
@@ -131,9 +166,19 @@ SequenceNode::~SequenceNode()
 		delete child;
 }
 
+Oop SequenceNode::acceptVisitor(ASTVisitor *visitor)
+{
+	return visitor->visitSequenceNode(this);
+}
+
 void SequenceNode::addStatement(Node *node)
 {
 	children.push_back(node);
+}
+
+const std::vector<Node*> &SequenceNode::getChildren() const
+{
+	return children;
 }
 
 LocalDeclarations *SequenceNode::getLocalDeclarations() const
@@ -146,6 +191,7 @@ void SequenceNode::setLocalDeclarations(LocalDeclarations *newLocals)
 	localDeclarations = newLocals;
 }
 
+
 // Return statement
 ReturnStatement::ReturnStatement(Node *value)
 	: value(value)
@@ -155,6 +201,11 @@ ReturnStatement::ReturnStatement(Node *value)
 ReturnStatement::~ReturnStatement()
 {
 	delete value;
+}
+
+Oop ReturnStatement::acceptVisitor(ASTVisitor *visitor)
+{
+	return visitor->visitReturnStatement(this);
 }
 
 Node *ReturnStatement::getValue() const
@@ -172,6 +223,11 @@ LocalDeclaration::~LocalDeclaration()
 {
 }
 
+Oop LocalDeclaration::acceptVisitor(ASTVisitor *visitor)
+{
+	return visitor->visitLocalDeclaration(this);
+}
+
 const std::string &LocalDeclaration::getName() const
 {
 	return name;
@@ -184,6 +240,11 @@ LocalDeclarations::LocalDeclarations()
 
 LocalDeclarations::~LocalDeclarations()
 {
+}
+
+Oop LocalDeclarations::acceptVisitor(ASTVisitor *visitor)
+{
+	return visitor->visitLocalDeclarations(this);
 }
 
 const std::vector<LocalDeclaration*> &LocalDeclarations::getLocals() const
@@ -206,6 +267,11 @@ Argument::~Argument()
 {
 }
 
+Oop Argument::acceptVisitor(ASTVisitor *visitor)
+{
+	return visitor->visitArgument(this);
+}
+
 const std::string &Argument::getName()
 {
 	return name;
@@ -221,6 +287,11 @@ ArgumentList::~ArgumentList()
 {
 	for(auto &child : arguments)
 		delete child;
+}
+
+Oop ArgumentList::acceptVisitor(ASTVisitor *visitor)
+{
+	return visitor->visitArgumentList(this);
 }
 
 const std::vector<Argument*> &ArgumentList::getArguments()
@@ -245,6 +316,11 @@ BlockExpression::~BlockExpression()
 	delete body;
 }
 
+Oop BlockExpression::acceptVisitor(ASTVisitor *visitor)
+{
+	return visitor->visitBlockExpression(this);
+}
+
 ArgumentList *BlockExpression::getArgumentList() const
 {
 	return argumentList;
@@ -264,6 +340,11 @@ MethodHeader::MethodHeader(const std::string &selector, ArgumentList *arguments)
 MethodHeader::~MethodHeader()
 {
 	delete arguments;
+}
+
+Oop MethodHeader::acceptVisitor(ASTVisitor *visitor)
+{
+	return visitor->visitMethodHeader(this);
 }
 
 ArgumentList *MethodHeader::getArgumentList() const
@@ -289,6 +370,11 @@ MethodAST::~MethodAST()
 	delete body;
 }
 
+Oop MethodAST::acceptVisitor(ASTVisitor *visitor)
+{
+	return visitor->visitMethodAST(this);
+}
+
 MethodHeader *MethodAST::getHeader() const
 {
 	return header;
@@ -297,6 +383,24 @@ MethodHeader *MethodAST::getHeader() const
 SequenceNode *MethodAST::getBody() const
 {
 	return body;
+}
+
+// Self reference
+Oop SelfReference::acceptVisitor(ASTVisitor *visitor)
+{
+	return visitor->visitSelfReference(this);
+}
+
+// Super reference
+Oop SuperReference::acceptVisitor(ASTVisitor *visitor)
+{
+	return visitor->visitSuperReference(this);
+}
+
+// This context reference
+Oop ThisContextReference::acceptVisitor(ASTVisitor *visitor)
+{
+	return visitor->visitThisContextReference(this);
 }
 
 } // End of namespace AST	

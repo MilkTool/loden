@@ -429,6 +429,11 @@ public:
 		return oop.isCharacter();
 	}
 	
+	bool isNil() const
+	{
+		return oop.isNil();
+	}
+	
 private:
 	union
 	{

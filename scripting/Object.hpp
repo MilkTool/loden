@@ -1,6 +1,7 @@
 #ifndef LODTALK_OBJECT_HPP
 #define LODTALK_OBJECT_HPP
 
+#include <stdio.h>
 #include "ObjectModel.hpp"
 
 namespace Lodtalk
@@ -34,6 +35,12 @@ public:
 	Oop nativePerformWithArguments(Oop selector, int argumentCount, Oop *arguments)
 	{
 		return sendMessage(selfOop(), selector, argumentCount, arguments);
+	}
+	
+	void error(const std::string &message)
+	{
+		fprintf(stdout, "error: %s\n", message.c_str());
+		abort();
 	}
 	
 	uint8_t *getFirstFieldPointer()

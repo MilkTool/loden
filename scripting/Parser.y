@@ -107,7 +107,7 @@ sourceFileStatementList: sourceFileStatement                                {$$ 
                        ;
 
 sourceFileStatement: statement  { $$ = $1; }
-                   | unaryMessage IDENTIFIER LBRACKET method RBRACKET  { $$ = new MessageSendNode(readStringValue($2), $1, $4); }
+                   | unaryMessage IDENTIFIER LBRACKET method RBRACKET  { $$ = new MessageSendNode(readStringValue($2) + ":", $1, $4); }
                    ;
 
 method: methodHeader methodPragmas blockContent { $$ = new MethodAST($1, $2, $3); }

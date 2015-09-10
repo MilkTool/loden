@@ -5,6 +5,7 @@
 #include "Collections.hpp"
 #include "Method.hpp"
 
+#include "Compiler.hpp"
 #include "InputOutput.hpp"
 
 namespace Lodtalk
