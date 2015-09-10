@@ -14,6 +14,9 @@ Oop CompiledMethod::execute(Oop receiver, int argumentCount, Oop *arguments)
 
 CompiledMethod *CompiledMethod::newMethodWithHeader(size_t numberOfBytes, CompiledMethodHeader header)
 {
+	// Add the method header size
+	numberOfBytes += sizeof(void*);
+	
 	// Compute the some masks
 	const size_t wordSize = sizeof(void*);
 	const size_t wordMask = wordSize -1;

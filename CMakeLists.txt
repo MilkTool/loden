@@ -103,7 +103,7 @@ include_directories(
 add_subdirectory(scripting)
 
 # Build the core library
-add_subdirectory(core)
+#add_subdirectory(core)
 
 # Build the samples
-add_subdirectory(samples)
+#add_subdirectory(samples)

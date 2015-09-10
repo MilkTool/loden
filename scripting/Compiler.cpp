@@ -270,7 +270,7 @@ Oop ASTInterpreter::visitMessageSendNode(MessageSendNode *node)
 
 Oop ASTInterpreter::visitMethodAST(MethodAST *node)
 {
-	auto handle = reinterpret_cast<MethodASTHandle*> (MethodASTHandle::ClassObject->basicNativeNew());
+	auto handle = reinterpret_cast<MethodASTHandle*> (MethodASTHandle::ClassObject->basicNativeNew(sizeof(void*)));
 	if(!isNil(handle))
 		handle->ast = node;
 	return Oop::fromPointer(handle);

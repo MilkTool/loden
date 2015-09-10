@@ -170,6 +170,7 @@ Node *AssignmentExpression::getValue() const
 
 // Sequence node	
 SequenceNode::SequenceNode(Node *first)
+	: localDeclarations(nullptr)
 {
 	if(first)
 		children.push_back(first);

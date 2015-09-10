@@ -160,8 +160,18 @@ public:
 			*buffer++ = BytecodeSet::SendShortArgs2First + selectorIndex;
 			return buffer;
 		}
+
 		
-		assert(0 && "unimplemented");
+		if(argumentCount > BytecodeSet::Send_ArgumentCountMask)
+			assert(0 && "unimplemented");
+			
+		if(selectorIndex > BytecodeSet::Send_LiteralIndexMask)
+			assert(0 && "unimplemented");
+
+		*buffer++ = BytecodeSet::Send;
+		*buffer++ = (argumentCount & BytecodeSet::Send_ArgumentCountMask) ||
+			((selectorIndex & BytecodeSet::Send_LiteralIndexMask) << BytecodeSet::Send_LiteralIndexShift);
+		return buffer;
 	}
 	
 protected:
@@ -171,7 +181,15 @@ protected:
 			(argumentCount == 1 && selectorIndex < BytecodeSet::SendShortArgs1RangeSize) ||
 			(argumentCount == 2 && selectorIndex < BytecodeSet::SendShortArgs2RangeSize))
 			return 1;
-		assert(0 && "unimplemented");
+
+		size_t count = 2;
+		
+		if(argumentCount > BytecodeSet::Send_ArgumentCountMask)
+			assert(0 && "unimplemented");
+
+ 		if(selectorIndex > BytecodeSet::Send_LiteralIndexMask)
+			assert(0 && "unimplemented");
+		return count;		
 	}
 
 private:
@@ -273,7 +291,6 @@ Oop Assembler::generate(size_t temporalCount, size_t argumentCount, size_t extra
 	auto instructionsSize = computeInstructionsSize();
 	auto literalCount = literals.size();
 	auto methodSize = literalCount*sizeof(void*) + instructionsSize + extraSize;
-	printf("Method size: %zu\n", methodSize);
 	
 	// Create the method header
 	auto methodHeader = CompiledMethodHeader::create(literalCount, temporalCount, argumentCount);
@@ -282,7 +299,7 @@ Oop Assembler::generate(size_t temporalCount, size_t argumentCount, size_t extra
 	auto compiledMethod = CompiledMethod::newMethodWithHeader(methodSize, methodHeader);
 	
 	// Set the compiled method literals
-	auto literalData = reinterpret_cast<Oop*> (compiledMethod->getFirstFieldPointer());
+	auto literalData = compiledMethod->getFirstLiteralPointer();
 	for(size_t i = 0; i < literals.size(); ++i)
 		literalData[i] = literals[i];
 		

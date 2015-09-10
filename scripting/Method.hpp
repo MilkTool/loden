@@ -51,6 +51,11 @@ public:
 	{
 		return reinterpret_cast<uint8_t*> (getFirstFieldPointer() + getFirstPC());
 	}
+	
+	Oop *getFirstLiteralPointer()
+	{
+		return reinterpret_cast<Oop *> (getFirstFieldPointer() + sizeof(void*)); 
+	}
 };
 
 /**
