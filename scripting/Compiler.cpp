@@ -449,6 +449,10 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
 	// Visit the method body
 	node->getBody()->acceptVisitor(this);
 	
+	// Always return
+	// TODO: Check if this is needed.
+	gen.returnReceiver();
+	
 	return gen.generate(temporalCount, argumentCount);
 }
 

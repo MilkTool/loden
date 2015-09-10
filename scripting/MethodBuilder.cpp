@@ -321,32 +321,32 @@ Oop Assembler::generate(size_t temporalCount, size_t argumentCount, size_t extra
 
 void Assembler::returnReceiver()
 {
-	assert(0 && "unimplemented");
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnReceiver));
 }
 
 void Assembler::returnTrue()
 {
-	assert(0 && "unimplemented");
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnTrue));
 }
 
 void Assembler::returnFalse()
 {
-	assert(0 && "unimplemented");
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnFalse));
 }
 
 void Assembler::returnNil()
 {
-	assert(0 && "unimplemented");
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnNil));
 }
 
 void Assembler::popStackTop()
 {
-	assert(0 && "unimplemented");
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::PopStackTop));
 }
 
 void Assembler::duplicateStackTop()
 {
-	assert(0 && "unimplemented");
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::DuplicateStackTop));
 }
 
 void Assembler::pushLiteral(Oop literal)
