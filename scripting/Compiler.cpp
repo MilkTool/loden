@@ -664,7 +664,7 @@ Oop executeScriptFromFile(FILE *file, const std::string name)
 	context->globalContextClass = Oop::fromPointer(GlobalContext::MetaclassObject);
 		
 	// Parse the script.
-	auto ast = Lodtalk::AST::parseSourceFromFile(stdin);
+	auto ast = Lodtalk::AST::parseSourceFromFile(file);
 	
 	// Create the global scope
 	auto scope = std::make_shared<GlobalEvaluationScope> ();
