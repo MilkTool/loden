@@ -11,6 +11,10 @@ int main(int argc, const char *argv[])
     
     executeScriptFromFile(stdin, "stdin");
     
+    // Call the main function.
+    auto globalContext = getGlobalContext();
+    sendMessageOopArgs(globalContext, makeSelector("main"));
+    
     //auto ast = Lodtalk::AST::parseSourceFromFile(stdin);
     //Lodtalk::sendBasicNewWithSize(Lodtalk::Object::ClassObject->selfOop(), 4);
     return 0;

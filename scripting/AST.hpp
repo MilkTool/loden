@@ -248,6 +248,8 @@ public:
 	
 	const std::string &getName();
 	
+	Oop getSymbolOop();
+	
 private:
 	std::string name;
 };
@@ -300,6 +302,8 @@ public:
 	~MethodHeader();
 	
 	virtual Oop acceptVisitor(ASTVisitor *visitor);
+	
+	const std::string getSelector() const;
 	
 	ArgumentList *getArgumentList() const;
 

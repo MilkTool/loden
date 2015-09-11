@@ -1,6 +1,7 @@
 #include "Object.hpp"
 #include "Collections.hpp"
 #include "Method.hpp"
+#include "StackInterpreter.hpp"
 
 namespace Lodtalk
 {
@@ -8,8 +9,7 @@ namespace Lodtalk
 // CompiledMethod
 Oop CompiledMethod::execute(Oop receiver, int argumentCount, Oop *arguments)
 {
-	printf("TODO: Implement compiled method execution\n");
-	abort();
+	return interpretCompiledMethod(this, receiver, argumentCount, arguments);
 }
 
 CompiledMethod *CompiledMethod::newMethodWithHeader(size_t numberOfBytes, CompiledMethodHeader header)

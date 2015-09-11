@@ -92,6 +92,19 @@ Oop Behavior::lookupSelector(Oop selector)
 	return superclass->lookupSelector(selector);
 }
 
+Oop Behavior::getBinding()
+{
+	// Dispatch manually the message.
+	auto classIndex = classIndexOf(selfOop());
+	if(classIndex == SCI_Class)
+		return static_cast<Class*> (this)->getBinding();
+	else if(classIndex == SCI_Metaclass)
+		return static_cast<Metaclass*> (this)->getBinding();
+
+	// I need to send an actual message
+	abort();
+}
+
 LODTALK_BEGIN_CLASS_SIDE_TABLE(Behavior)
 LODTALK_END_CLASS_SIDE_TABLE()
 
@@ -102,7 +115,7 @@ LODTALK_END_CLASS_TABLE()
 
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(Behavior, Object, OF_FIXED_SIZE, 5);
 
-// ClassDescription 
+// ClassDescription
 LODTALK_BEGIN_CLASS_SIDE_TABLE(ClassDescription)
 LODTALK_END_CLASS_SIDE_TABLE()
 
@@ -112,19 +125,38 @@ LODTALK_END_CLASS_TABLE()
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(ClassDescription, Behavior, OF_FIXED_SIZE, 5);
 
 // Class
+Oop Class::getBinding()
+{
+	// Find myself in the global dictionary
+	auto result = getGlobalFromSymbol(name);
+	if(!isNil(result))
+		return result;
+
+	// TODO: Find an existing
+	return Oop::fromPointer(Association::make(nilOop(), selfOop())); 
+}
+
 LODTALK_BEGIN_CLASS_SIDE_TABLE(Class)
 LODTALK_END_CLASS_SIDE_TABLE()
 
 LODTALK_BEGIN_CLASS_TABLE(Class)
+	LODTALK_METHOD("binding", &Class::getBinding)
 LODTALK_END_CLASS_TABLE()
 
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(Class, ClassDescription, OF_FIXED_SIZE, 5);
 
 // Metaclass
+Oop Metaclass::getBinding()
+{
+	// TODO: Find an existing
+	return Oop::fromPointer(Association::make(nilOop(), selfOop()));
+}
+
 LODTALK_BEGIN_CLASS_SIDE_TABLE(Metaclass)
 LODTALK_END_CLASS_SIDE_TABLE()
 
 LODTALK_BEGIN_CLASS_TABLE(Metaclass)
+	LODTALK_METHOD("binding", &Metaclass::getBinding)
 LODTALK_END_CLASS_TABLE()
 
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(Metaclass, ClassDescription, OF_FIXED_SIZE, 5);
@@ -271,5 +303,14 @@ LODTALK_BEGIN_CLASS_TABLE(ClassVariable)
 LODTALK_END_CLASS_TABLE()
 
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(ClassVariable, LiteralVariable, OF_FIXED_SIZE, 2);
+
+// GlobalContext
+LODTALK_BEGIN_CLASS_SIDE_TABLE(GlobalContext)
+LODTALK_END_CLASS_SIDE_TABLE()
+
+LODTALK_BEGIN_CLASS_TABLE(GlobalContext)
+LODTALK_END_CLASS_TABLE()
+
+LODTALK_SPECIAL_SUBCLASS_DEFINITION(GlobalContext, Object, OF_EMPTY, 0);
 
 } // End of namespace Lodtalk

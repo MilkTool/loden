@@ -159,7 +159,7 @@ Oop sendMessage(Oop receiver, Oop selector, int argumentCount, Oop *arguments)
 	auto methodClassIndex = classIndexOf(method);
 	if(methodClassIndex == SCI_CompiledMethod)
 	{
-		auto compiledMethod = reinterpret_cast<NativeMethod*> (method.pointer);
+		auto compiledMethod = reinterpret_cast<CompiledMethod*> (method.pointer);
 		return compiledMethod->execute(receiver, argumentCount, arguments);
 	}
 	else if(methodClassIndex == SCI_NativeMethod)
@@ -248,6 +248,11 @@ Oop getGlobalValueFromSymbol(Oop symbol)
 	if(classIndexOf(Oop::fromPointer(globalVar)) != SCI_GlobalVariable)
 		return nilOop();
 	return globalVar->value;
+}
+
+Oop getGlobalContext()
+{
+	return Oop::fromPointer(GlobalContext::ClassObject);
 }
 
 } // End of namespace Lodtalk

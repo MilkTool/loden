@@ -18,6 +18,7 @@ public:
 
 	Oop currentCategory;
 	Oop currentClass;
+	Oop globalContextClass;
 
 };
 

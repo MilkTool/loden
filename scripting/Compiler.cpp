@@ -1,4 +1,5 @@
 #include <memory>
+#include <map>
 #include <stdio.h>
 #include <stdarg.h>
 #include "Compiler.hpp"
@@ -99,6 +100,44 @@ public:
 	LiteralVariable *variable;
 };
 
+// Temporal variable lookup
+class TemporalVariableLookup: public VariableLookup
+{
+public:
+	TemporalVariableLookup(int temporalIndex, bool isMutable_)
+		: temporalIndex(temporalIndex), isMutable_(isMutable_) {}
+	~TemporalVariableLookup() {}
+	
+	virtual bool isMutable() const
+	{
+		return true;
+	}
+
+	virtual Oop getValue()
+	{
+		abort();
+	}
+	
+	virtual void setValue(Oop newValue)
+	{
+		abort();
+	}
+
+	virtual void generateLoad(MethodAssembler::Assembler &gen) const
+	{
+		gen.pushTemporal(temporalIndex);
+	}
+
+	/*virtual void generateStore(MethodAssembler::Assembler &gen) const
+	{
+		assert(isMutable());
+		gen.storeTemporalVariable(temporalIndex);
+	}*/
+
+	int temporalIndex;
+	bool isMutable_;
+};
+
 // Global variable evaluation scope
 class GlobalEvaluationScope: public EvaluationScope
 {
@@ -116,6 +155,42 @@ VariableLookupPtr GlobalEvaluationScope::lookSymbol(Oop symbol)
 		return VariableLookupPtr();
 
 	return std::make_shared<LiteralVariableLookup> (globalVar);
+}
+
+// Local variable scope
+class LocalScope: public EvaluationScope
+{
+public:
+	LocalScope(const EvaluationScopePtr &parent)
+		: EvaluationScope(parent) {}
+	
+	bool addArgument(Oop symbol, int temporalIndex);
+	bool addTemporal(Oop symbol, int temporalIndex);
+		
+	virtual VariableLookupPtr lookSymbol(Oop symbol);
+	
+private:
+	std::map<Oop, VariableLookupPtr> variables;
+};
+
+bool LocalScope::addArgument(Oop symbol, int temporalIndex)
+{
+	auto variable = std::make_shared<TemporalVariableLookup> (temporalIndex, false);
+	return variables.insert(std::make_pair(symbol, variable)).second;
+}
+
+bool LocalScope::addTemporal(Oop symbol, int temporalIndex)
+{
+	auto variable = std::make_shared<TemporalVariableLookup> (temporalIndex, true);
+	return variables.insert(std::make_pair(symbol, variable)).second;
+}
+
+VariableLookupPtr LocalScope::lookSymbol(Oop symbol)
+{
+	auto it = variables.find(symbol);
+	if(it != variables.end())
+		return it->second;
+	return VariableLookupPtr();
 }
 
 // Scoped interpreter
@@ -323,8 +398,8 @@ Oop ASTInterpreter::visitThisContextReference(ThisContextReference *node)
 class MethodCompiler: public ScopedInterpreter
 {
 public:
-	MethodCompiler(const EvaluationScopePtr &initialScope)
-		: ScopedInterpreter(initialScope), temporalCount(0), argumentCount(0) {}
+	MethodCompiler(const EvaluationScopePtr &initialScope, Oop classBinding)
+		: ScopedInterpreter(initialScope), temporalCount(0), argumentCount(0), classBinding(classBinding) {}
 
 	virtual Oop visitArgument(Argument *node);
 	virtual Oop visitArgumentList(ArgumentList *node);
@@ -343,12 +418,34 @@ public:
 	virtual Oop visitSuperReference(SuperReference *node);
 	virtual Oop visitThisContextReference(ThisContextReference *node);
 
+private:
+	void pushTemporalScope();
+	void popTemporalScope();
+	size_t makeTemporalIndex();
+	
 	size_t temporalCount;
 	size_t argumentCount;
+	Oop selector;
+	Oop classBinding;
 	MethodAssembler::Assembler gen;
 };
 
 // Method compiler.
+
+void MethodCompiler::pushTemporalScope()
+{
+	// TODO
+}
+void MethodCompiler::popTemporalScope()
+{
+	// TODO
+}
+
+size_t MethodCompiler::makeTemporalIndex()
+{
+	return ++temporalCount;
+}
+
 Oop MethodCompiler::visitArgument(Argument *node)
 {
 	assert(0 && "unimplemented");
@@ -443,28 +540,66 @@ Oop MethodCompiler::visitMessageSendNode(MessageSendNode *node)
 
 Oop MethodCompiler::visitMethodAST(MethodAST *node)
 {
-	// Visit the method header.
-	node->getHeader()->acceptVisitor(this);
+	// Get the method selector.
+	auto header = node->getHeader();
+	selector = makeSelector(header->getSelector());
+	
+	// Process the arguments
+	auto argumentList = header->getArgumentList();
+	if(argumentList)
+	{
+		auto &arguments = argumentList->getArguments();
+		
+		// Store the argument count.
+		argumentCount = arguments.size();
+	
+		// Create the arguments scope.
+		auto argumentScope = std::make_shared<LocalScope> (currentScope);
+		for(size_t i = 0; i < argumentCount; ++i)
+		{
+			auto &arg = arguments[i];
+			auto argIndex= makeTemporalIndex();
+			auto res = argumentScope->addArgument(arg->getSymbolOop(), argIndex);
+			if(!res)
+				error(arg, "the argument has the same name as another argument.");
+		}
+		
+		pushScope(argumentScope);
+	}
 	
 	// Visit the method body
 	node->getBody()->acceptVisitor(this);
 	
-	// Always return
-	// TODO: Check if this is needed.
-	gen.returnReceiver();
+	if(argumentList)
+		popScope();
 	
-	return gen.generate(temporalCount, argumentCount);
+	// Always return
+	if(!gen.isLastReturn())
+		gen.returnReceiver();
+		
+	// Set the method selector
+	gen.addLiteral(selector);
+	
+	// Set the class binding.
+	gen.addLiteral(classBinding);
+	
+	return Oop::fromPointer(gen.generate(temporalCount, argumentCount));
 }
 
 Oop MethodCompiler::visitMethodHeader(MethodHeader *node)
 {
-	return Oop();
+	// Should not reach here.
+	abort();
 }
 
 Oop MethodCompiler::visitReturnStatement(ReturnStatement *node)
 {
-	assert(0 && "unimplemented");
-	abort();
+	// Visit the value.
+	node->getValue()->acceptVisitor(this);
+	
+	// Return it
+	gen.returnTop();
+	return Oop();
 }
 
 Oop MethodCompiler::visitSequenceNode(SequenceNode *node)
@@ -526,6 +661,7 @@ Oop executeScriptFromFile(FILE *file, const std::string name)
 	Ref<ScriptContext> context(reinterpret_cast<ScriptContext*> (ScriptContext::ClassObject->basicNativeNew()));
 	if(context.isNil())
 		return Oop();
+	context->globalContextClass = Oop::fromPointer(GlobalContext::MetaclassObject);
 		
 	// Parse the script.
 	auto ast = Lodtalk::AST::parseSourceFromFile(stdin);
@@ -559,6 +695,12 @@ Oop ScriptContext::addFunction(Oop methodAstHandle)
 		error("cannot add method with nil ast.");
 	if(classIndexOf(methodAstHandle) != SCI_MethodASTHandle)
 		error("expected a method AST handle.");
+		
+	// Check the class
+	if(classIndexOf(globalContextClass) != SCI_Class &&
+	   classIndexOf(globalContextClass) != SCI_Metaclass)
+		error("a global context class is needed");
+	auto clazz = reinterpret_cast<ClassDescription*> (globalContextClass.pointer);
 
 	// Get the ast
 	MethodASTHandle *handle = reinterpret_cast<MethodASTHandle*> (methodAstHandle.pointer);
@@ -567,11 +709,17 @@ Oop ScriptContext::addFunction(Oop methodAstHandle)
 	// Create the global scope
 	auto globalScope = std::make_shared<GlobalEvaluationScope> ();
 	
-	// Compile the method
-	MethodCompiler compiler(globalScope);
-	auto compiledMethod = ast->acceptVisitor(&compiler);
+	// TODO: Create the class global variables scope.
+	
+	// TODO: Create the class instance variables scope.
 
-	// Register the method
+	// Compile the method
+	MethodCompiler compiler(globalScope, clazz->getBinding());
+	auto compiledMethod = reinterpret_cast<CompiledMethod*> (ast->acceptVisitor(&compiler).pointer);
+
+	// Register the method in the global context class side
+	auto selector = compiledMethod->getSelector();
+	clazz->methodDict->atPut(selector, Oop::fromPointer(compiledMethod));
 
 	// Return self
 	return selfOop();
@@ -579,6 +727,37 @@ Oop ScriptContext::addFunction(Oop methodAstHandle)
 
 Oop ScriptContext::addMethod(Oop methodAstHandle)
 {
+	if(isNil(methodAstHandle))
+		error("cannot add method with nil ast.");
+	if(classIndexOf(methodAstHandle) != SCI_MethodASTHandle)
+		error("expected a method AST handle.");
+
+	// Check the class
+	if(classIndexOf(currentClass) != SCI_Class &&
+	   classIndexOf(currentClass) != SCI_Metaclass)
+		error("a class is needed for adding a method.");
+	auto clazz = reinterpret_cast<ClassDescription*> (currentClass.pointer);
+
+	// Get the ast
+	MethodASTHandle *handle = reinterpret_cast<MethodASTHandle*> (methodAstHandle.pointer);
+	auto ast = handle->ast;
+	
+	// Create the global scope
+	auto globalScope = std::make_shared<GlobalEvaluationScope> ();
+	
+	// TODO: Create the class global variables scope.
+	
+	// TODO: Create the class instance variables scope.
+	
+	// Compile the method
+	MethodCompiler compiler(globalScope, clazz->getBinding());
+	auto compiledMethod = reinterpret_cast<CompiledMethod*> (ast->acceptVisitor(&compiler).pointer);
+
+	// Register the method in the current class
+	auto selector = compiledMethod->getSelector();
+	clazz->methodDict->atPut(selector, Oop::fromPointer(compiledMethod));
+
+	// Return self
 	return selfOop();
 }
 
@@ -593,7 +772,7 @@ LODTALK_BEGIN_CLASS_TABLE(ScriptContext)
 	LODTALK_METHOD("method:", &ScriptContext::addMethod)
 LODTALK_END_CLASS_TABLE()
 
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(ScriptContext, Object, OF_FIXED_SIZE, 0);
+LODTALK_SPECIAL_SUBCLASS_DEFINITION(ScriptContext, Object, OF_FIXED_SIZE, 3);
 
 // The method ast handle
 LODTALK_BEGIN_CLASS_SIDE_TABLE(MethodASTHandle)

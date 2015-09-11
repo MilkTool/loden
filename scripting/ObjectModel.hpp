@@ -270,6 +270,11 @@ public:
 		return pointer != o.pointer;
 	}
 	
+	bool operator<(const Oop &o) const
+	{
+		return intValue < o.intValue;
+	}
+	
 	static constexpr Oop trueObject()
 	{
 		return Oop(reinterpret_cast<uint8_t*> (&TrueObject));
@@ -541,6 +546,10 @@ Oop getGlobalFromSymbol(Oop symbol);
 Oop getGlobalValueFromName(const char *name);
 Oop getGlobalValueFromSymbol(Oop symbol);
 
+// Global context.
+Oop getGlobalContext();
+
+// Message sending
 template<typename... Args>
 Oop sendMessageOopArgs(Oop receiver, Oop selector, Args... args)
 {

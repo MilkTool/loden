@@ -74,6 +74,8 @@ class Behavior: public Object
 {
 	LODTALK_NATIVE_CLASS();
 public:	
+	static constexpr int BehaviorVariableCount = 5;
+	
 	Behavior* superclass;
 	MethodDictionary *methodDict;
 	Oop format;
@@ -88,7 +90,9 @@ public:
 
 	Oop superLookupSelector(Oop selector);
 	Oop lookupSelector(Oop selector);
-			
+
+	Oop getBinding();
+				
 protected:
 	Behavior(Behavior* superclass, MethodDictionary *methodDict, ObjectFormat format, int fixedVariableCount)
 		: superclass(superclass), methodDict(methodDict), format(Oop::encodeSmallInteger((int)format)), fixedVariableCount(Oop::encodeSmallInteger(fixedVariableCount))
@@ -107,6 +111,12 @@ protected:
 		: Behavior(superclass, methodDict, format, fixedVariableCount)
 	{
 	}
+
+public:
+	static constexpr int ClassDescriptionVariableCount = BehaviorVariableCount + 2;
+	
+	Oop instanceVariables;
+	Oop organization;
 };
 
 /**
@@ -116,12 +126,26 @@ class Class: public ClassDescription
 {
 	LODTALK_NATIVE_CLASS();
 public:
+	static constexpr int ClassVariableCount = ClassDescriptionVariableCount + 8;
+
 	Class(const char *className, unsigned int classId, unsigned int metaclassId, ClassDescription *metaClass, Behavior* superclass, MethodDictionary *methodDict, ObjectFormat format, int fixedVariableCount)
 		: ClassDescription(superclass, methodDict, format, fixedVariableCount)
 	{
-		object_header_ = ObjectHeader::specialNativeClass(classId, metaclassId, 5);
-		setGlobalVariable(className, Oop::fromPointer(this));
+		object_header_ = ObjectHeader::specialNativeClass(classId, metaclassId, ClassVariableCount);
+		name = makeByteSymbol(className);
+		setGlobalVariable(name, Oop::fromPointer(this));
 	}
+	
+	Oop getBinding();
+	
+	Oop subclasses;
+	Oop name;
+	Oop classPool;
+	Oop sharedPools;
+	Oop category;
+	Oop environment;
+	Oop traitComposition;
+	Oop localSelectors;
 };
 
 /**
@@ -131,11 +155,19 @@ class Metaclass: public ClassDescription
 {
 	LODTALK_NATIVE_CLASS();
 public:
+	static constexpr int MetaclassVariableCount = ClassDescriptionVariableCount + 3;
+	
 	Metaclass(unsigned int classId, Behavior* superclass, MethodDictionary *methodDict, int fixedVariableCount)
-		: ClassDescription(superclass, methodDict, OF_FIXED_SIZE, 5 + fixedVariableCount)
+		: ClassDescription(superclass, methodDict, OF_FIXED_SIZE, Class::ClassVariableCount + fixedVariableCount)
 	{
-		object_header_ = ObjectHeader::specialNativeClass(classId, SCI_Metaclass, 5);
+		object_header_ = ObjectHeader::specialNativeClass(classId, SCI_Metaclass, MetaclassVariableCount);
 	}
+	
+	Oop getBinding();
+	
+	Oop thisClass;
+	Oop traitComposition;
+	Oop localSelectors;
 };
 
 class MethodDictionary;
@@ -267,7 +299,12 @@ class Association: public LookupKey
 	Association() {}
 public:
 	static Association *newNativeKeyValue(int clazzId, Oop key, Oop value);
-
+	
+	static Association* make(Oop key, Oop value)
+	{
+		return newNativeKeyValue(SCI_Association, key, value);
+	}
+	
 	Oop value;
 };
 
@@ -305,6 +342,14 @@ public:
 		return newNativeKeyValue(SCI_ClassVariable, key, value);
 	}
 
+};
+
+/**
+ * Global context class
+ */
+class GlobalContext: public Object
+{
+	LODTALK_NATIVE_CLASS();
 };
 
 // Class method dictionary.

@@ -167,6 +167,7 @@ statementListNonEmpty: statementList DOT statement {
     ;
 
 statementList: statementListNonEmpty { $$ = $1; }
+             | statementListNonEmpty DOT { $$ = $1; }
              |                       {$$ = new SequenceNode(); }
              ;
 

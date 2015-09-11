@@ -56,6 +56,20 @@ public:
 	{
 		return reinterpret_cast<Oop *> (getFirstFieldPointer() + sizeof(void*)); 
 	}
+	
+	Oop getSelector()
+	{
+		auto selectorIndex = getLiteralCount() - 2;
+		auto selectorOop = getFirstLiteralPointer()[selectorIndex];
+		// TODO: support method properties
+		return selectorOop;
+	}
+
+	Oop getClassBinding()
+	{
+		auto classBindingIndex = getLiteralCount() - 1;
+		return getFirstLiteralPointer()[classBindingIndex];
+	}
 };
 
 /**

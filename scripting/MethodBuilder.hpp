@@ -20,6 +20,11 @@ public:
 		: position(0) {}
 	virtual ~InstructionNode() {}
 	
+	virtual bool isReturnInstruction() const
+	{
+		return false;
+	} 
+	
 	size_t getPosition()
 	{
 		return position;
@@ -81,14 +86,17 @@ public:
 	Label *makeLabel();
 	Label *makeLabelHere();
 	void putLabel(Label *label);
+
+	bool isLastReturn();
 	
-	Oop generate(size_t temporalCount, size_t argumentCount, size_t extraSize = 0);
+	CompiledMethod *generate(size_t temporalCount, size_t argumentCount, size_t extraSize = 0);
 	
 public:
 	void returnReceiver();
 	void returnTrue();
 	void returnFalse();
 	void returnNil();
+	void returnTop();
 	
 	void popStackTop();
 	void duplicateStackTop();

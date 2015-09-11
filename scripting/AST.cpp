@@ -298,6 +298,11 @@ const std::string &Argument::getName()
 	return name;
 }
 
+Oop Argument::getSymbolOop()
+{
+	return makeByteSymbol(name);
+}
+
 // Argument list
 ArgumentList::ArgumentList(Argument *firstArgument)
 {
@@ -366,6 +371,11 @@ MethodHeader::~MethodHeader()
 Oop MethodHeader::acceptVisitor(ASTVisitor *visitor)
 {
 	return visitor->visitMethodHeader(this);
+}
+
+const std::string MethodHeader::getSelector() const
+{
+	return selector;
 }
 
 ArgumentList *MethodHeader::getArgumentList() const

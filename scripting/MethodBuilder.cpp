@@ -13,9 +13,14 @@ const size_t ExtensibleBytecodeSizeMax = 16;
 class SingleBytecodeInstruction: public InstructionNode
 {
 public:
-	SingleBytecodeInstruction(int bc)
-		: bytecode(bc) {}
+	SingleBytecodeInstruction(int bc, bool isReturn = false)
+		: bytecode(bc), isReturn(isReturn) {}
 
+	virtual bool isReturnInstruction() const
+	{
+		return isReturn;
+	} 
+	
 	virtual uint8_t *encode(uint8_t *buffer)
 	{
 		*buffer++ = bytecode;
@@ -29,7 +34,8 @@ protected:
 	}
 
 private:
-	int bytecode;	
+	int bytecode;
+	bool isReturn;
 };
 
 // PushReceiverVariable
@@ -169,7 +175,7 @@ public:
 			assert(0 && "unimplemented");
 
 		*buffer++ = BytecodeSet::Send;
-		*buffer++ = (argumentCount & BytecodeSet::Send_ArgumentCountMask) ||
+		*buffer++ = (argumentCount & BytecodeSet::Send_ArgumentCountMask) |
 			((selectorIndex & BytecodeSet::Send_LiteralIndexMask) << BytecodeSet::Send_LiteralIndexShift);
 		return buffer;
 	}
@@ -285,7 +291,7 @@ size_t Assembler::computeInstructionsSize()
 	return currentSize;
 }
 
-Oop Assembler::generate(size_t temporalCount, size_t argumentCount, size_t extraSize)
+CompiledMethod *Assembler::generate(size_t temporalCount, size_t argumentCount, size_t extraSize)
 {
 	// Compute the method sizes.
 	auto instructionsSize = computeInstructionsSize();
@@ -316,27 +322,37 @@ Oop Assembler::generate(size_t temporalCount, size_t argumentCount, size_t extra
 		}
 	}
 	
-	return Oop::fromPointer(compiledMethod);
+	return compiledMethod;
+}
+
+bool Assembler::isLastReturn()
+{
+	return !instructionStream.empty() && instructionStream.back()->isReturnInstruction();
 }
 
 void Assembler::returnReceiver()
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnReceiver));
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnReceiver, true));
 }
 
 void Assembler::returnTrue()
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnTrue));
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnTrue, true));
 }
 
 void Assembler::returnFalse()
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnFalse));
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnFalse, true));
 }
 
 void Assembler::returnNil()
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnNil));
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnNil, true));
+}
+
+void Assembler::returnTop()
+{
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnTop, true));
 }
 
 void Assembler::popStackTop()
