@@ -73,6 +73,11 @@ private:
 		return stackMemory.size();
 	}
 	
+	Oop currentReceiver() const
+	{
+		return methodReceiver;
+	}
+	
 	Oop pop()
 	{
 		if(!getCurrentStackSize())
@@ -114,7 +119,7 @@ private:
 	uint64_t extendA;
 	int64_t extendB;
 	
-	Oop receiver;
+	Oop methodReceiver;
 	Oop *arguments;
 	Oop *literalArray;
 	
@@ -270,32 +275,38 @@ private:
 	
 	void interpretPushReceiver()
 	{
-		LODTALK_UNIMPLEMENTED();
+		fetchNextInstructionOpcode();
+		push(currentReceiver());
 	}
 
 	void interpretPushTrue()
 	{
-		LODTALK_UNIMPLEMENTED();
+		fetchNextInstructionOpcode();
+		push(trueOop());
 	}
 
 	void interpretPushFalse()
 	{
-		LODTALK_UNIMPLEMENTED();
+		fetchNextInstructionOpcode();
+		push(falseOop());
 	}
 	
 	void interpretPushNil()
 	{
-		LODTALK_UNIMPLEMENTED();
+		fetchNextInstructionOpcode();
+		push(nilOop());
 	}
 	
 	void interpretPushZero()
 	{
-		LODTALK_UNIMPLEMENTED();
+		fetchNextInstructionOpcode();
+		push(Oop::encodeSmallInteger(0));
 	}
 	
 	void interpretPushOne()
 	{
-		LODTALK_UNIMPLEMENTED();
+		fetchNextInstructionOpcode();
+		push(Oop::encodeSmallInteger(1));
 	}
 
 	void interpretPushThisContext()
@@ -305,13 +316,14 @@ private:
 
 	void interpretDuplicateStackTop()
 	{
-		LODTALK_UNIMPLEMENTED();
+		fetchNextInstructionOpcode();
+		push(stackTop());
 	}
 
 	void interpretReturnReceiver()
 	{
 		isReturning = true;
-		methodReturnValue = receiver;
+		methodReturnValue = currentReceiver();
 	}
 
 	void interpretReturnTrue()
@@ -507,7 +519,7 @@ Oop StackInterpreter::interpretMethod(CompiledMethod *newMethod, Oop receiver, i
 	isReturning = false;
 	
 	// Store the receiver and the argument data
-	this->receiver = receiver;
+	this->methodReceiver = receiver;
 	this->arguments = arguments;
 	
 	// Fetch the method data
