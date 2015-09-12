@@ -322,6 +322,8 @@ public:
 private:
 	std::string selectorString;
 	NativeMethodWrapper *methodWrapper;
+	mutable OopRef selector;
+	mutable Ref<NativeMethod> nativeMethod;
 };
 
 template<typename FT>

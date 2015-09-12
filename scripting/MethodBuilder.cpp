@@ -307,7 +307,7 @@ CompiledMethod *Assembler::generate(size_t temporalCount, size_t argumentCount, 
 	// Set the compiled method literals
 	auto literalData = compiledMethod->getFirstLiteralPointer();
 	for(size_t i = 0; i < literals.size(); ++i)
-		literalData[i] = literals[i];
+		literalData[i] = literals[i].oop;
 		
 	// Encode the bytecode instructions.
 	auto instructionBuffer = compiledMethod->getFirstBCPointer();

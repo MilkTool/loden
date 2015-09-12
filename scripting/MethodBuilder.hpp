@@ -114,7 +114,7 @@ public:
 private:
 	size_t computeInstructionsSize();
 	
-	std::vector<Oop> literals;
+	std::vector<OopRef> literals;
 	std::vector<InstructionNode*> instructionStream;	
 };
 

@@ -93,14 +93,16 @@ LODTALK_SPECIAL_SUBCLASS_DEFINITION(NativeMethod, Object, OF_INDEXABLE_8, sizeof
 // Native method descriptor
 Oop NativeMethodDescriptor::getSelector() const
 {
-	return ByteSymbol::fromNative(selectorString).getOop();
+	selector = ByteSymbol::fromNative(selectorString).getOop();
+	return selector.oop;
 }
 
 Oop NativeMethodDescriptor::getMethod() const
 {
 	auto data = allocateObjectMemory(sizeof(NativeMethod));
-	auto method = new (data) NativeMethod(methodWrapper); 
-	return Oop::fromPointer(method);
+	nativeMethod.reset(new (data) NativeMethod(methodWrapper)); 
+	
+	return nativeMethod.getOop();
 }
 
 } // End of namespace Lodtalk

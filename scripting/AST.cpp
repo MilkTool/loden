@@ -1,4 +1,5 @@
 #include "AST.hpp"
+#include "Compiler.hpp"
 
 namespace Lodtalk
 {
@@ -414,6 +415,17 @@ MethodHeader *MethodAST::getHeader() const
 SequenceNode *MethodAST::getBody() const
 {
 	return body;
+}
+
+const Ref<MethodASTHandle> &MethodAST::getHandle()
+{
+	if(astHandle.isNil())
+	{
+		astHandle.reset(reinterpret_cast<MethodASTHandle*> (MethodASTHandle::ClassObject->basicNativeNew(sizeof(void*))));
+		if(!astHandle.isNil())
+			astHandle->ast = this;
+	}
+	return astHandle;
 }
 
 // Self reference

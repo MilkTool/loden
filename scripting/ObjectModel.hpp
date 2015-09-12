@@ -135,7 +135,7 @@ struct ObjectHeader
 
 	static constexpr ObjectHeader specialNativeClass(unsigned int identityHash, unsigned int classIndex, uint8_t slotCount, ObjectFormat format = OF_FIXED_SIZE)
 	{
-		return {slotCount, true, true, identityHash, 0, (unsigned int)format, 0, classIndex};
+		return {slotCount, false, true, identityHash, 0, (unsigned int)format, 0, classIndex};
 	}
 
 	static constexpr ObjectHeader emptySpecialNativeClass(unsigned int identityHash, unsigned int classIndex)
@@ -148,6 +148,7 @@ struct ObjectHeader
 		return {0, true, true, generateIdentityHash(self), 0, OF_EMPTY, 0, classIndex};
 	}
 };
+static_assert(sizeof(ObjectHeader) == 8, "Object header size must be 8");
 
 typedef intptr_t SmallIntegerValue;
 
@@ -394,8 +395,6 @@ enum SpecialClassesIndex
 };
 
 class ClassDescription;
-extern const Oop *specialObjectTable;
-extern ClassDescription ** const specialClassTable;
 
 // Gets the identity hash of an Object
 inline int identityHashOf(Oop obj)
@@ -432,76 +431,183 @@ X identityFunction(const X &x)
 	return x;
 }
 
-// Reference smart pointer
-template<typename T>
-class Ref
+// Oop reference that can be updated by the GC.
+class OopRef
 {
 public:
-	Ref()
-		: pointer(nullptr) {}
-	Ref(decltype(nullptr) ni)
-		: pointer(nullptr) {}
-	template<typename U>
-	Ref(const Ref<U> &o)
-		: pointer(o.get()) {}
-	explicit Ref(T* p)
-		: pointer(p) {}
-		
-	static Ref<T> fromOop(Oop oop)
+	OopRef()
 	{
-		Ref<T> result;
-		result.oop = oop;
-		return result;
+		registerSelf();
 	}
 
-	T *operator->() const
+
+	OopRef(const Oop &object)
+		: oop(object)
 	{
-		return pointer;
+		registerSelf();
 	}
 
-	T *get() const
+	OopRef(const OopRef &ref)
+		: oop(ref.oop)
 	{
-		return pointer;
+		registerSelf();
+	}
+
+	~OopRef()
+	{
+		unregisterSelf();
 	}
 	
-	Oop getOop() const
-	{
-		return oop;
-	}
-
-	template<typename U>
-	Ref<T> &operator=(const Ref<U> &o)
-	{
-		pointer = o.get();
-		return *this;
-	}
-	
-	bool isSmallInteger() const
-	{
-		return oop.isSmallInteger();
-	}
-
-	bool isSmallFloat() const
-	{
-		return oop.isSmallFloat();
-	}
-	
-	bool isCharacter() const
-	{
-		return oop.isCharacter();
-	}
+	Oop oop;
 	
 	bool isNil() const
 	{
 		return oop.isNil();
 	}
+
+	OopRef &operator=(const Oop &oop)
+	{
+		this->oop = oop;
+		return *this;
+	}
+		
+	OopRef &operator=(const OopRef &o)
+	{
+		oop = o.oop;
+		return *this;
+	}
+
+	bool operator<(const OopRef &o) const
+	{
+		return oop < o.oop;
+	}
+
+	bool operator<(const Oop &o) const
+	{
+		return oop < o;
+	}
+	
+	bool operator==(const OopRef &o) const
+	{
+		return oop == o.oop;
+	}
+
+	bool operator!=(const OopRef &o) const
+	{
+		return oop == o.oop;
+	}
+
+	bool operator==(const Oop &o) const
+	{
+		return oop == o;
+	}
+
+	bool operator!=(const Oop &o) const
+	{
+		return oop == o;
+	}
 	
 private:
-	union
+	friend class GarbageCollector;
+	
+	void registerSelf();
+	void unregisterSelf();
+	
+	// This is used by the GC
+	OopRef* prevReference_;
+	OopRef* nextReference_;
+};
+
+// Reference smart pointer
+template<typename T>
+class Ref
+{
+public:
+	Ref() {}
+	Ref(decltype(nullptr) ni) {}
+	Ref(const Ref<T> &o)
+		: reference(o.getOop()) {}
+	
+	template<typename U>
+	Ref(const Ref<U> &o)
 	{
-		T *pointer;
-		Oop oop;
-	};
+		reset(o.get());
+	}
+	
+	Ref(T* p)
+	{
+		reset(p);
+	}
+		
+	static Ref<T> fromOop(Oop oop)
+	{
+		Ref<T> result;
+		result.reference = oop;
+		return result;
+	}
+	
+	void reset(T *pointer=(T*)&NilObject)
+	{
+		internalSet(pointer);
+	}
+
+	T *operator->() const
+	{
+		assert(!isNil());
+		return reinterpret_cast<T*> (reference.oop.pointer);
+	}
+
+	T *get() const
+	{
+		return reinterpret_cast<T*> (reference.oop.pointer);
+	}
+	
+	Oop getOop() const
+	{
+		return reference.oop;
+	}
+
+	template<typename U>
+	Ref<T> &operator=(const Ref<U> &o)
+	{
+		internalSet(o.get());
+		return *this;
+	}
+	
+	template<typename U>
+	Ref<T> &operator=(U *o)
+	{
+		internalSet(o);
+		return *this;
+	}
+	
+	bool isSmallInteger() const
+	{
+		return getOop().isSmallInteger();
+	}
+
+	bool isSmallFloat() const
+	{
+		return getOop().isSmallFloat();
+	}
+	
+	bool isCharacter() const
+	{
+		return getOop().isCharacter();
+	}
+	
+	bool isNil() const
+	{
+		return getOop().isNil();
+	}
+	
+private:
+	void internalSet(T *pointer)
+	{
+		reference = Oop::fromPointer(pointer);
+	}
+	
+	OopRef reference;
 };
 
 template<typename T>
@@ -535,6 +641,10 @@ Oop makeSelector(const std::string &content);
 
 Oop sendBasicNew(Oop clazz);
 Oop sendBasicNewWithSize(Oop clazz, size_t size);
+
+// Garbage collection interface
+void registerGCRoot(Oop *gcroot, size_t size);
+void unregisterGCRoot(Oop *gcroot);
 
 // Global variables
 Oop setGlobalVariable(const char *name, Oop value);

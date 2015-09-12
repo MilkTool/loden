@@ -278,7 +278,7 @@ protected:
 	void setCapacity(size_t newCapacity, const KF &keyFunction, const HF &hashFunction, const EF &equalityFunction)
 	{
 		// Store temporarily the data.
-		auto oldKeyValues = keyValues;
+		Ref<Array> oldKeyValues(keyValues);
 		size_t oldCapacity = capacityObject.decodeSmallInteger();
 		
 		// Create the new capacity.
@@ -287,7 +287,7 @@ protected:
 		setKeyCapacity(newCapacity);
 		
 		// Add back the old objects.
-		if(!isNil(oldKeyValues))
+		if(!oldKeyValues.isNil())
 		{
 			Oop *oldKeyValuesOops = reinterpret_cast<Oop *> (oldKeyValues->getFirstFieldPointer());
 			for(size_t i = 0; i < oldCapacity; ++i)
@@ -326,6 +326,7 @@ public:
 	{
 		object_header_ = ObjectHeader::specialNativeClass(generateIdentityHash(this), SCI_MethodDictionary, 4);
 		values = (Array*)&NilObject;
+		Ref<MethodDictionary> self(this);
 		addMethods(args...);
 	}
 	
@@ -426,8 +427,8 @@ protected:
 	void setCapacity(size_t newCapacity)
 	{
 		// Store temporarily the data.
-		auto oldKeys = keyValues;
-		auto oldValues = values;
+		Ref<Array> oldKeys(keyValues);
+		Ref<Array> oldValues(values);
 		size_t oldCapacity = capacityObject.decodeSmallInteger();
 		
 		// Create the new capacity.
@@ -437,7 +438,7 @@ protected:
 		setValueCapacity(newCapacity);
 		
 		// Add back the old objects.
-		if(!isNil(oldKeys))
+		if(!oldKeys.isNil())
 		{
 			Oop *oldKeysOops = reinterpret_cast<Oop *> (oldKeys->getFirstFieldPointer());
 			Oop *oldValuesOops = reinterpret_cast<Oop *> (oldValues->getFirstFieldPointer());

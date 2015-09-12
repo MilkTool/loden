@@ -94,10 +94,10 @@ public:
 
 	virtual void generateLoad(MethodAssembler::Assembler &gen) const
 	{
-		gen.pushLiteralVariable(Oop::fromPointer(variable));
+		gen.pushLiteralVariable(variable.getOop());
 	}
 	
-	LiteralVariable *variable;
+	Ref<LiteralVariable> variable;
 };
 
 // Temporal variable lookup
@@ -170,7 +170,7 @@ public:
 	virtual VariableLookupPtr lookSymbol(Oop symbol);
 	
 private:
-	std::map<Oop, VariableLookupPtr> variables;
+	std::map<OopRef, VariableLookupPtr> variables;
 };
 
 bool LocalScope::addArgument(Oop symbol, int temporalIndex)
@@ -254,7 +254,7 @@ public:
 	virtual Oop visitThisContextReference(ThisContextReference *node);
 	
 private:
-	Oop currentSelf;
+	OopRef currentSelf;
 };
 
 Oop ASTInterpreter::visitArgument(Argument *node)
@@ -316,11 +316,12 @@ Oop ASTInterpreter::visitLocalDeclaration(LocalDeclaration *node)
 
 Oop ASTInterpreter::visitMessageSendNode(MessageSendNode *node)
 {
-	Oop result;
+	OopRef result;
+	std::vector<OopRef> argumentValueRefs;
 	std::vector<Oop> argumentValues;
 	
 	// Evaluate the receiver.
-	auto receiver = node->getReceiver()->acceptVisitor(this);
+	OopRef receiver = node->getReceiver()->acceptVisitor(this);
 	auto &chained = node->getChainedMessages();
 	
 	// Send each message in the chain
@@ -333,22 +334,22 @@ Oop ASTInterpreter::visitMessageSendNode(MessageSendNode *node)
 		auto &arguments = message->getArguments();
 		argumentValues.clear();
 		for(auto &arg : arguments)
-			argumentValues.push_back(arg->acceptVisitor(this));
+		{
+			argumentValueRefs.push_back(arg->acceptVisitor(this));
+			argumentValues.push_back(argumentValueRefs.back().oop);
+		}
 
 		// Send the message.
-		result = sendMessage(receiver, selector, argumentValues.size(), &argumentValues[0]);
+		result = sendMessage(receiver.oop, selector, argumentValues.size(), &argumentValues[0]);
 	}
 	
 	// Return the result.
-	return result;
+	return result.oop;
 }
 
 Oop ASTInterpreter::visitMethodAST(MethodAST *node)
 {
-	auto handle = reinterpret_cast<MethodASTHandle*> (MethodASTHandle::ClassObject->basicNativeNew(sizeof(void*)));
-	if(!isNil(handle))
-		handle->ast = node;
-	return Oop::fromPointer(handle);
+	return node->getHandle().getOop();
 }
 
 Oop ASTInterpreter::visitMethodHeader(MethodHeader *node)
@@ -380,12 +381,12 @@ Oop ASTInterpreter::visitSequenceNode(SequenceNode *node)
 
 Oop ASTInterpreter::visitSelfReference(SelfReference *node)
 {
-	return currentSelf;
+	return currentSelf.oop;
 }
 
 Oop ASTInterpreter::visitSuperReference(SuperReference *node)
 {
-	return currentSelf;
+	return currentSelf.oop;
 }
 
 Oop ASTInterpreter::visitThisContextReference(ThisContextReference *node)
@@ -715,11 +716,11 @@ Oop ScriptContext::addFunction(Oop methodAstHandle)
 
 	// Compile the method
 	MethodCompiler compiler(globalScope, clazz->getBinding());
-	auto compiledMethod = reinterpret_cast<CompiledMethod*> (ast->acceptVisitor(&compiler).pointer);
+	Ref<CompiledMethod> compiledMethod(reinterpret_cast<CompiledMethod*> (ast->acceptVisitor(&compiler).pointer));
 
 	// Register the method in the global context class side
 	auto selector = compiledMethod->getSelector();
-	clazz->methodDict->atPut(selector, Oop::fromPointer(compiledMethod));
+	clazz->methodDict->atPut(selector, compiledMethod.getOop());
 
 	// Return self
 	return selfOop();

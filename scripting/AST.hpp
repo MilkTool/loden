@@ -5,9 +5,12 @@
 #include <string>
 #include "Object.hpp"
 #include "Collections.hpp"
+#include "Collections.hpp"
 
 namespace Lodtalk
 {
+class MethodASTHandle;
+
 namespace AST
 {
 class Node;
@@ -328,9 +331,12 @@ public:
 	MethodHeader *getHeader() const;
 	SequenceNode *getBody() const;
 	
+	const Ref<MethodASTHandle> &getHandle();
+	
 private:
 	MethodHeader *header;
 	SequenceNode *body;
+	Ref<MethodASTHandle> astHandle; 
 };
 
 /**
