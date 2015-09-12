@@ -19,10 +19,10 @@ LODTALK_BEGIN_CLASS_TABLE(ProtoObject)
 LODTALK_END_CLASS_TABLE()
 
 // Proto object method dictionary.
-static Metaclass ProtoObject_metaclass(SMCI_ProtoObject, Class::ClassObject, &ProtoObject_class_methodDict, 0);
+static Metaclass ProtoObject_metaclass(SMCI_ProtoObject, Class::ClassObject, &ProtoObject_metaclass_methodDictBuilder, 0);
 ClassDescription *ProtoObject::MetaclassObject = &ProtoObject_metaclass;
 
-static Class ProtoObject_class("ProtoObject", SCI_ProtoObject, SMCI_ProtoObject, &ProtoObject_metaclass, (Behavior*)&NilObject, &ProtoObject_class_methodDict, OF_EMPTY, 0);
+static Class ProtoObject_class("ProtoObject", SCI_ProtoObject, SMCI_ProtoObject, &ProtoObject_metaclass, (Behavior*)&NilObject, &ProtoObject_class_methodDictBuilder, OF_EMPTY, 0);
 ClassDescription *ProtoObject::ClassObject = &ProtoObject_class;
 
 // Object methods

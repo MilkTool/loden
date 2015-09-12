@@ -201,6 +201,14 @@ LODTALK_END_CLASS_TABLE()
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(Dictionary, HashedCollection, OF_FIXED_SIZE, 4);
 
 // MethodDictionary
+MethodDictionary* MethodDictionary::basicNativeNew()
+{
+	auto res = reinterpret_cast<MethodDictionary*> (newObject(4, 0, OF_FIXED_SIZE, SCI_MethodDictionary));
+	res->capacityObject = Oop::encodeSmallInteger(0);
+	res->tallyObject = Oop::encodeSmallInteger(0);
+	return res;
+}
+
 LODTALK_BEGIN_CLASS_SIDE_TABLE(MethodDictionary)
 LODTALK_END_CLASS_SIDE_TABLE()
 

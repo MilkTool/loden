@@ -18,6 +18,8 @@ class MethodDictionary;
 class Class;
 class Metaclass;
 
+typedef MethodDictionary *(*MethodDictionaryBuilder)();
+
 /**
  * ProtoObject
  */
@@ -99,8 +101,8 @@ public:
 	Oop getBinding();
 				
 protected:
-	Behavior(Behavior* superclass, MethodDictionary *methodDict, ObjectFormat format, int fixedVariableCount)
-		: superclass(superclass), methodDict(methodDict), format(Oop::encodeSmallInteger((int)format)), fixedVariableCount(Oop::encodeSmallInteger(fixedVariableCount))
+	Behavior(Behavior* superclass, MethodDictionaryBuilder methodDictBuilder, ObjectFormat format, int fixedVariableCount)
+		: superclass(superclass), methodDict(methodDictBuilder()), format(Oop::encodeSmallInteger((int)format)), fixedVariableCount(Oop::encodeSmallInteger(fixedVariableCount))
 	{
 	}
 };
@@ -112,8 +114,8 @@ class ClassDescription: public Behavior
 {
 	LODTALK_NATIVE_CLASS();	
 protected:
-	ClassDescription(Behavior* superclass, MethodDictionary *methodDict, ObjectFormat format, int fixedVariableCount)
-		: Behavior(superclass, methodDict, format, fixedVariableCount)
+	ClassDescription(Behavior* superclass, MethodDictionaryBuilder methodDictBuilder, ObjectFormat format, int fixedVariableCount)
+		: Behavior(superclass, methodDictBuilder, format, fixedVariableCount)
 	{
 	}
 
@@ -133,8 +135,8 @@ class Class: public ClassDescription
 public:
 	static constexpr int ClassVariableCount = ClassDescriptionVariableCount + 8;
 
-	Class(const char *className, unsigned int classId, unsigned int metaclassId, ClassDescription *metaClass, Behavior* superclass, MethodDictionary *methodDict, ObjectFormat format, int fixedVariableCount)
-		: ClassDescription(superclass, methodDict, format, fixedVariableCount)
+	Class(const char *className, unsigned int classId, unsigned int metaclassId, ClassDescription *metaClass, Behavior* superclass, MethodDictionaryBuilder methodDictBuilder, ObjectFormat format, int fixedVariableCount)
+		: ClassDescription(superclass, methodDictBuilder, format, fixedVariableCount)
 	{
 		object_header_ = ObjectHeader::specialNativeClass(classId, metaclassId, ClassVariableCount);
 		name = makeByteSymbol(className);
@@ -164,8 +166,8 @@ class Metaclass: public ClassDescription
 public:
 	static constexpr int MetaclassVariableCount = ClassDescriptionVariableCount + 3;
 	
-	Metaclass(unsigned int classId, Behavior* superclass, MethodDictionary *methodDict, int fixedVariableCount)
-		: ClassDescription(superclass, methodDict, OF_FIXED_SIZE, Class::ClassVariableCount + fixedVariableCount)
+	Metaclass(unsigned int classId, Behavior* superclass, MethodDictionaryBuilder methodDictBuilder, int fixedVariableCount)
+		: ClassDescription(superclass, methodDictBuilder, OF_FIXED_SIZE, Class::ClassVariableCount + fixedVariableCount)
 	{
 		object_header_ = ObjectHeader::specialNativeClass(classId, SCI_Metaclass, MetaclassVariableCount);
 	}
@@ -361,26 +363,32 @@ class GlobalContext: public Object
 
 // Class method dictionary.
 #define LODTALK_BEGIN_CLASS_TABLE(className) \
-static MethodDictionary className ## _class_methodDict = MethodDictionary(
+static MethodDictionary *className ## _class_methodDictBuilder() { \
+	Ref<MethodDictionary> methodDict(MethodDictionary::basicNativeNew()); \
 
 #define LODTALK_METHOD(selector, methodImplementation) \
-	makeNativeMethodDescriptor(selector, methodImplementation),
+	methodDict->addMethod(makeNativeMethodDescriptor(selector, methodImplementation));	
  
-#define LODTALK_END_CLASS_TABLE() MethodDictionary::End() );
+#define LODTALK_END_CLASS_TABLE() \
+	return methodDict.get(); \
+}
 
 // Metaclass method dictionary.
 #define LODTALK_BEGIN_CLASS_SIDE_TABLE(className) \
-static MethodDictionary className ## _metaclass_methodDict = MethodDictionary( \
+static MethodDictionary *className ## _metaclass_methodDictBuilder() { \
+	Ref<MethodDictionary> methodDict(MethodDictionary::basicNativeNew()); \
 
-#define LODTALK_END_CLASS_SIDE_TABLE() MethodDictionary::End() );
+#define LODTALK_END_CLASS_SIDE_TABLE() \
+	return methodDict.get(); \
+}
 
 // Special class and meta class definition
 #define LODTALK_SPECIAL_METACLASS_DEFINITION(className, superName, fixedVariableCount) \
-static Metaclass className ## _metaclass (SMCI_ ##className, superName::MetaclassObject, &className ## _metaclass_methodDict, fixedVariableCount); \
+static Metaclass className ## _metaclass (SMCI_ ##className, superName::MetaclassObject, &className ## _metaclass_methodDictBuilder, fixedVariableCount); \
 ClassDescription *className::MetaclassObject = &className ## _metaclass;
 
 #define LODTALK_SPECIAL_CLASS_DEFINITION(className, superName, format, fixedVariableCount) \
-static Class className ## _class (#className, SCI_ ##className, SMCI_ ##className, className::MetaclassObject, superName::ClassObject, &className ## _class_methodDict, format, fixedVariableCount); \
+static Class className ## _class (#className, SCI_ ##className, SMCI_ ##className, className::MetaclassObject, superName::ClassObject, &className ## _class_methodDictBuilder, format, fixedVariableCount); \
 ClassDescription *className::ClassObject = &className ## _class;
 
 #define LODTALK_SPECIAL_SUBCLASS_DEFINITION(className, superName, format, fixedVariableCount) \

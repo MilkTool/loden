@@ -323,28 +323,8 @@ class MethodDictionary: public Dictionary
 {
 	LODTALK_NATIVE_CLASS();
 public:
-	struct End {};
+	static MethodDictionary* basicNativeNew();
 
-	template<typename ...Args>
-	MethodDictionary(Args ... args)
-	{
-		object_header_ = ObjectHeader::specialNativeClass(generateIdentityHash(this), SCI_MethodDictionary, 4);
-		values = (Array*)&NilObject;
-		Ref<MethodDictionary> self(this);
-		addMethods(args...);
-	}
-	
-	void addMethods(End null)
-	{
-	}
-	
-	template<typename T, typename ... Args>
-	void addMethods(const T &method, Args... args)
-	{
-		addMethod(method);
-		addMethods(args...);
-	}
-	
 	template<typename T>
 	void addMethod(const T &methodDescriptor)
 	{
@@ -375,6 +355,12 @@ public:
 	}
 	
 protected:
+	MethodDictionary()
+	{
+		object_header_ = ObjectHeader::specialNativeClass(generateIdentityHash(this), SCI_MethodDictionary, 4);
+		values = (Array*)&NilObject;
+	}
+	
 	void increaseSize()
 	{
 		tallyObject.intValue += 2;
