@@ -136,6 +136,17 @@ Oop Class::getBinding()
 	return Oop::fromPointer(Association::make(nilOop(), selfOop())); 
 }
 
+std::string Class::getNameString()
+{
+	if(!name.pointer)
+		return "uninitialized";
+	if(name.isNil())
+		return "UnknownClass";
+		
+	ByteSymbol *nameSymbol = reinterpret_cast<ByteSymbol *> (name.pointer);
+	return nameSymbol->getString();
+}
+
 LODTALK_BEGIN_CLASS_SIDE_TABLE(Class)
 LODTALK_END_CLASS_SIDE_TABLE()
 

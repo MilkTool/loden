@@ -98,6 +98,12 @@ Ref<ByteString> ByteString::fromNative(const std::string &native)
 	return Ref<ByteString> (reinterpret_cast<ByteString*> (result));
 }
 
+std::string ByteString::getString()
+{
+	auto begin = getFirstFieldPointer();
+	return std::string(begin, begin + getNumberOfElements());
+}
+
 LODTALK_BEGIN_CLASS_SIDE_TABLE(ByteString)
 LODTALK_END_CLASS_SIDE_TABLE()
 
@@ -116,6 +122,12 @@ LODTALK_END_CLASS_TABLE()
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(WideString, String, OF_INDEXABLE_32, 0);
 
 // Symbol
+std::string ByteSymbol::getString()
+{
+	auto begin = getFirstFieldPointer();
+	return std::string(begin, begin + getNumberOfElements());
+}
+
 LODTALK_BEGIN_CLASS_SIDE_TABLE(Symbol)
 LODTALK_END_CLASS_SIDE_TABLE()
 

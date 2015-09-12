@@ -287,7 +287,8 @@ void GarbageCollector::sweep()
 		if(header->gcColor == White)
 		{
 			// TODO: free the unreachable object.
-			printf("free garbage %p %d\n", header, header->classIndex);
+			auto clazz = reinterpret_cast<Class*> (getClassFromIndex(header->classIndex).pointer);
+			printf("free garbage %p %s\n", header, clazz->getNameString().c_str());
 			fflush(stdout);
 			//free(header);
 			allocatedObjects.erase(it++);

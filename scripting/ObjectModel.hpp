@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string>
+#include "Common.hpp"
 
 #if UINTPTR_MAX > UINT32_MAX
 #define OBJECT_MODEL_SPUR_64 1
@@ -147,6 +148,7 @@ struct ObjectHeader
 	{
 		return {0, true, true, generateIdentityHash(self), 0, OF_EMPTY, 0, classIndex};
 	}
+	
 };
 static_assert(sizeof(ObjectHeader) == 8, "Object header size must be 8");
 
@@ -285,7 +287,42 @@ public:
 	{
 		return Oop(reinterpret_cast<uint8_t*> (&FalseObject));
 	}
-	
+
+	inline size_t getSlotCount() const
+	{
+		if(header->slotCount == 255)
+		{
+			uint64_t *theSlotCount = reinterpret_cast<uint64_t*> (pointer + sizeof(ObjectHeader));
+			return *theSlotCount;
+		}
+		
+		return header->slotCount;
+	}
+
+	inline size_t getNumberOfElements() const
+	{
+		auto slotCount = getSlotCount();
+		auto format = header->objectFormat;
+		if(format == OF_EMPTY)
+			return 0;
+
+		if(format < OF_INDEXABLE_64)
+			return slotCount;
+			
+		if(format >= OF_INDEXABLE_8)
+		{
+			auto slotBytes = slotCount * sizeof(void*);
+			auto extraBits = format & 7;
+			if(extraBits)
+				return slotBytes - 1 + extraBits;
+			else
+				return slotBytes;
+		}
+		
+		LODTALK_UNIMPLEMENTED();
+		abort();
+	}
+		
 	union
 	{
 		uint8_t *pointer;

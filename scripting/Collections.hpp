@@ -99,6 +99,8 @@ class ByteString: public String
 public:
 
 	static Ref<ByteString> fromNative(const std::string &native);
+	
+	std::string getString();
 };
 
 /**
@@ -129,6 +131,8 @@ public:
 	static Object *basicNativeNew(size_t indexableSize);
 	
 	static Ref<ByteSymbol> fromNative(const std::string &native);
+	
+	std::string getString();
 };
 
 /**

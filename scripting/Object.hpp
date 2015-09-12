@@ -51,7 +51,12 @@ public:
 			result += 8;
 		return result;
 	}
-		
+
+	size_t getNumberOfElements()
+	{
+		return selfOop().getNumberOfElements();
+	}
+	
 	int identityHashValue() const
 	{
 		return object_header_.identityHash;
@@ -135,6 +140,8 @@ public:
 		name = makeByteSymbol(className);
 		setGlobalVariable(name, Oop::fromPointer(this));
 	}
+	
+	std::string getNameString();
 	
 	Oop getBinding();
 	
