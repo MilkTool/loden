@@ -253,6 +253,11 @@ size_t Assembler::addLiteral(Oop newLiteral)
 	return ret;
 }
 
+size_t Assembler::addLiteral(const OopRef &newLiteral)
+{
+	return addLiteral(newLiteral.oop);
+}
+
 Label *Assembler::makeLabel()
 {
 	return new Label();

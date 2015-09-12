@@ -150,8 +150,13 @@ GarbageCollector::~GarbageCollector()
 uint8_t *GarbageCollector::allocateObjectMemory(size_t objectSize)
 {
 	performCollection();
+	assert(objectSize >= sizeof(ObjectHeader));
+	
 	// TODO: use a proper GCed heap.
 	auto result = (uint8_t*)malloc(objectSize);
+	auto header = reinterpret_cast<ObjectHeader*> (result);
+	*header = {0};
+	
 	allocatedObjects.push_back(Oop::fromPointer(result));
 	return result;
 }
@@ -290,7 +295,7 @@ void GarbageCollector::sweep()
 			auto clazz = reinterpret_cast<Class*> (getClassFromIndex(header->classIndex).pointer);
 			printf("free garbage %p %s\n", header, clazz->getNameString().c_str());
 			fflush(stdout);
-			//free(header);
+			free(header);
 			allocatedObjects.erase(it++);
 		}
 		else

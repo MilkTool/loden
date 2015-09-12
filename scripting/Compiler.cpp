@@ -426,8 +426,8 @@ private:
 	
 	size_t temporalCount;
 	size_t argumentCount;
-	Oop selector;
-	Oop classBinding;
+	OopRef selector;
+	OopRef classBinding;
 	MethodAssembler::Assembler gen;
 };
 

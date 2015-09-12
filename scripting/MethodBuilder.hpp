@@ -82,6 +82,7 @@ public:
 
 	void addInstruction(InstructionNode *instruction);
 	size_t addLiteral(Oop newLiteral);
+	size_t addLiteral(const OopRef &newLiteral);
 
 	Label *makeLabel();
 	Label *makeLabelHere();
