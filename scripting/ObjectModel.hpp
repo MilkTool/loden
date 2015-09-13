@@ -314,7 +314,7 @@ public:
 			auto slotBytes = slotCount * sizeof(void*);
 			auto extraBits = format & 7;
 			if(extraBits)
-				return slotBytes - 1 + extraBits;
+				return slotBytes - sizeof(void*) + extraBits;
 			else
 				return slotBytes;
 		}
