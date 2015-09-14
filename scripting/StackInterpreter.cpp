@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include "StackMemory.hpp"
 #include "StackInterpreter.hpp"
 #include "PreprocessorHacks.hpp"
 #include "BytecodeSets.hpp"
@@ -14,7 +15,7 @@ namespace Lodtalk
 class StackInterpreter
 {
 public:
-	StackInterpreter();
+	StackInterpreter(StackMemory *stack);
 	~StackInterpreter();
 	
 	Oop interpretMethod(CompiledMethod *method, Oop receiver, int argumentCount, Oop *arguments);
@@ -63,14 +64,21 @@ private:
 		nextOpcode = fetchByte();
 	}
 
-	void push(Oop object)
+	size_t getStackSize() const
 	{
-		stackMemory.push_back(object);
+		return stack->getStackSize();
+	}
+
+	size_t getAvailableCapacity() const
+	{
+		return stack->getAvailableCapacity();
 	}
 	
-	size_t getCurrentStackSize() const
+	void push(Oop object)
 	{
-		return stackMemory.size();
+		if(!getAvailableCapacity())
+			error("Stack overflow");
+		stack->push(object);
 	}
 	
 	Oop currentReceiver() const
@@ -80,20 +88,16 @@ private:
 	
 	Oop pop()
 	{
-		if(!getCurrentStackSize())
+		if(!getStackSize())
 			error("Stack underflow");
-			
-		auto result = stackMemory.back();
-		stackMemory.pop_back();
-		return result;
+		return stack->pop();
 	}
 	
 	Oop stackTop()
 	{
-		if(!getCurrentStackSize())
+		if(!getStackSize())
 			error("Stack underflow");
-
-		return stackMemory.back();
+		return stack->stackTop();
 	}
 	
 	bool condJumpOnNotBoolean(bool jumpType)
@@ -102,8 +106,8 @@ private:
 	}
 	
 private:
-	// TODO: Use a proper downward growing stack
-	std::vector<Oop> stackMemory;
+	// Use the stack memory.
+	StackMemory *stack;
  
 	// Interpreter data
 	CompiledMethod *method;
@@ -502,7 +506,8 @@ private:
 
 };
 
-StackInterpreter::StackInterpreter()
+StackInterpreter::StackInterpreter(StackMemory *stack)
+	: stack(stack)
 {
 }
 
@@ -566,8 +571,12 @@ case opcode:\
 	
 Oop interpretCompiledMethod(CompiledMethod *method, Oop receiver, int argumentCount, Oop *arguments)
 {
-	StackInterpreter interpreter;
-	return interpreter.interpretMethod(method, receiver, argumentCount, arguments);
+	Oop result;
+	withStackMemory([&](StackMemory *stack) {
+		StackInterpreter interpreter(stack);
+		result = interpreter.interpretMethod(method, receiver, argumentCount, arguments); 
+	});
+	return result;
 }
 
 } // End of namespace Lodtalk

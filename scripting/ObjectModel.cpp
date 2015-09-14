@@ -11,6 +11,7 @@
 
 #include "Compiler.hpp"
 #include "InputOutput.hpp"
+#include "StackMemory.hpp"
 
 namespace Lodtalk
 {
@@ -102,6 +103,12 @@ private:
 			for(size_t i = 0; i < size; ++i)
 				f(roots[i]);
 		}
+
+		// Traverse the stacks
+		for(auto stack : currentStacks)
+		{
+			printf("TODO: traverse stack %p\n", stack);
+		}
 		
 		// Traverse the oop reference
 		OopRef *pos = firstReference;
@@ -118,6 +125,7 @@ private:
 	std::mutex controlMutex;
 	std::vector<std::pair<Oop*, size_t>> rootPointers;
 	std::list<Oop> allocatedObjects;
+	std::vector<StackMemory*> currentStacks;
 	OopRef *firstReference;
 	OopRef *lastReference;
 };
@@ -217,6 +225,9 @@ void GarbageCollector::unregisterGCRoot(Oop *gcroot)
 void GarbageCollector::performCollection()
 {
 	std::unique_lock<std::mutex> l(controlMutex);
+	// Get the current stacks
+	currentStacks = getAllStackMemories();
+	
 	// TODO: Suspend the other GC threads.
 	mark();
 	sweep();

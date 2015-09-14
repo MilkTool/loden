@@ -15,6 +15,7 @@ set(Lodtalk_SRC
      ObjectModel.cpp
      ParserScannerInterface.cpp
      StackInterpreter.cpp
+     StackMemory.cpp
      ${BISON_LodtalkParser_OUTPUTS}
      ${FLEX_LodtalkScanner_OUTPUTS}
 )
