@@ -101,13 +101,22 @@ public:
 	
 	void popStackTop();
 	void duplicateStackTop();
+	
 	void pushLiteral(Oop literal);
 	void pushLiteralVariable(Oop literalVariable);
-	
+		
 	void pushReceiverVariableIndex(int variableIndex);
 	void pushLiteralIndex(int literalIndex);
 	void pushLiteralVariableIndex(int literalVariableIndex);
 	void pushTemporal(int temporalIndex);
+	
+	void pushReceiver();
+	void pushThisContext();
+	void pushNil();
+	void pushTrue();
+	void pushFalse();
+	void pushOne();
+	void pushZero();
 
 	void send(Oop selector, int argumentCount);
 	void superSend(Oop selector, int argumentCount);

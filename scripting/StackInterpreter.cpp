@@ -169,7 +169,6 @@ private:
 	
 	void activateMethodFrame(CompiledMethod *method);
 	void fetchFrameData();
-	void methodContinued();
 	
 private:
 	// Use the stack memory.
@@ -203,6 +202,17 @@ private:
 		return literalArray[index];
 	}
 
+	Oop getTemporary(size_t index)
+	{
+		ptrdiff_t offset;
+		if(index < argumentCount)
+			offset = InterpreterStackFrame::LastArgumentOffset + (argumentCount - index - 1) *sizeof (Oop);
+		else
+			offset = InterpreterStackFrame::FirstTempOffset - (index - argumentCount) *sizeof (Oop);
+		return *reinterpret_cast<Oop*> (stack->getFramePointer() + offset);
+			
+	}
+	
 	void pushLiteralVariable(int literalVarIndex)
 	{
 		auto literal = getLiteral(literalVarIndex);
@@ -215,9 +225,13 @@ private:
 	void pushLiteral(int literalIndex)
 	{
 		auto literal = getLiteral(literalIndex);
-		
-		// Cast the literal variable and push the value
 		pushOop(literal);
+	}
+	
+	void pushTemporary(int temporaryIndex)
+	{
+		auto temporary = getTemporary(temporaryIndex);
+		pushOop(temporary);
 	}
 	
 	void sendLiteralIndexArgumentCount(int literalIndex, int argumentCount)
@@ -227,6 +241,7 @@ private:
 
 		// Get the receiver.
 		auto newReceiver = stack->stackOopAt(argumentCount * sizeof(Oop));
+		//printf("Send #%s [%s]%p\n", getByteSymbolData(selector).c_str(), getClassNameOfObject(newReceiver).c_str(), newReceiver.pointer);
 		
 		// Find the called method
 		auto calledMethodOop = lookupMessage(newReceiver, selector);
@@ -287,7 +302,7 @@ private:
 	{
 		fetchNextInstructionOpcode();
 		
-		// Fetch the literal inde 
+		// Fetch the literal index
 		auto literalVarIndex = currentOpcode & 0xF;
 		pushLiteralVariable(literalVarIndex);
 	}
@@ -296,14 +311,18 @@ private:
 	{
 		fetchNextInstructionOpcode();
 		
-		// Fetch the literal inded
+		// Fetch the literal index
 		auto literalIndex = currentOpcode & 0x1F; 
 		pushLiteral(literalIndex);
 	}
 	
 	void interpretPushTempShort()
 	{
-		LODTALK_UNIMPLEMENTED();
+		fetchNextInstructionOpcode();
+		
+		// Fetch the temporal index
+		auto tempIndex = currentOpcode - BytecodeSet::PushTempShortFirst;
+		pushTemporary(tempIndex);
 	}
 	
 	void interpretSendShortArgs0()
@@ -509,7 +528,10 @@ private:
 	
 	void interpretPushTemporary()
 	{
-		LODTALK_UNIMPLEMENTED();
+		auto tempIndex = fetchByte();
+		fetchNextInstructionOpcode();
+		
+		pushTemporary(tempIndex);
 	}
 	
 	void interpretPushNTemps()
@@ -687,12 +709,6 @@ void StackInterpreter::fetchFrameData()
 	// Get the method and the literal array	
 	method = stack->getMethod();
 	literalArray = method->getFirstLiteralPointer();
-}
-
-void StackInterpreter::methodContinued()
-{
-	// Fetch the frame data.
-	fetchFrameData();
 }
 
 void StackInterpreter::interpret()

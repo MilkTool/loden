@@ -16,10 +16,6 @@
 
 namespace Lodtalk
 {
-// Some special constants
-const size_t PageSize = 4096;
-const size_t PageSizeMask = PageSize - 1;
-const size_t PageSizeShift = 12;
 
 // Object constants
 struct ObjectTag
@@ -65,9 +61,27 @@ enum ObjectFormat
 	OF_WEAK_FIXED_SIZE = 5,
 	OF_INDEXABLE_64 = 9,
 	OF_INDEXABLE_32 = 10,
+	OF_INDEXABLE_32_1,
 	OF_INDEXABLE_16 = 12,
+	OF_INDEXABLE_16_1,
+	OF_INDEXABLE_16_2,
+	OF_INDEXABLE_16_3,
 	OF_INDEXABLE_8 = 16,
+	OF_INDEXABLE_8_1,
+	OF_INDEXABLE_8_2,
+	OF_INDEXABLE_8_3,
+	OF_INDEXABLE_8_4,
+	OF_INDEXABLE_8_5,
+	OF_INDEXABLE_8_6,
+	OF_INDEXABLE_8_7,
 	OF_COMPILED_METHOD = 24,
+	OF_COMPILED_METHOD_1,
+	OF_COMPILED_METHOD_2,
+	OF_COMPILED_METHOD_3,
+	OF_COMPILED_METHOD_4,
+	OF_COMPILED_METHOD_5,
+	OF_COMPILED_METHOD_6,
+	OF_COMPILED_METHOD_7,
 	
 	OF_INDEXABLE_NATIVE_FIRST = OF_INDEXABLE_64,
 };
@@ -85,11 +99,33 @@ inline size_t variableSlotSizeFor(ObjectFormat format)
 		return sizeof(void*);
 	case OF_WEAK_FIXED_SIZE:
 		return 0;
-	case OF_INDEXABLE_64: return 8;
-	case OF_INDEXABLE_32: return 4;
-	case OF_INDEXABLE_16: return 2;
-	case OF_INDEXABLE_8: return 1;
-	case OF_COMPILED_METHOD: return 1;
+	case OF_INDEXABLE_64:
+		return 8;
+	case OF_INDEXABLE_32:
+	case OF_INDEXABLE_32_1:
+		return 4;
+	case OF_INDEXABLE_16:
+	case OF_INDEXABLE_16_1:
+	case OF_INDEXABLE_16_2:
+	case OF_INDEXABLE_16_3:
+		return 2;
+	case OF_INDEXABLE_8:
+	case OF_INDEXABLE_8_1:
+	case OF_INDEXABLE_8_2:
+	case OF_INDEXABLE_8_3:
+	case OF_INDEXABLE_8_4:
+	case OF_INDEXABLE_8_5:
+	case OF_INDEXABLE_8_6:
+	case OF_INDEXABLE_8_7:
+	case OF_COMPILED_METHOD:
+	case OF_COMPILED_METHOD_1:
+	case OF_COMPILED_METHOD_2:
+	case OF_COMPILED_METHOD_3:
+	case OF_COMPILED_METHOD_4:
+	case OF_COMPILED_METHOD_5:
+	case OF_COMPILED_METHOD_6:
+	case OF_COMPILED_METHOD_7:
+		return 1;
 	default: abort();
 	}
 };
@@ -99,20 +135,63 @@ inline size_t variableSlotDivisor(ObjectFormat format)
 #ifdef OBJECT_MODEL_SPUR_64
 	switch(format)
 	{
-	case OF_INDEXABLE_64: return 1;
-	case OF_INDEXABLE_32: return 2;
-	case OF_INDEXABLE_16: return 4;
-	case OF_INDEXABLE_8: return 8;
-	case OF_COMPILED_METHOD: return 8;
+	case OF_INDEXABLE_64:
+		return 1;
+	case OF_INDEXABLE_32:
+	case OF_INDEXABLE_32_1:
+		return 2;
+	case OF_INDEXABLE_16:
+	case OF_INDEXABLE_16_1:
+	case OF_INDEXABLE_16_2:
+	case OF_INDEXABLE_16_3:
+		return 4;
+	case OF_INDEXABLE_8:
+	case OF_INDEXABLE_8_1:
+	case OF_INDEXABLE_8_2:
+	case OF_INDEXABLE_8_3:
+	case OF_INDEXABLE_8_4:
+	case OF_INDEXABLE_8_5:
+	case OF_INDEXABLE_8_6:
+	case OF_INDEXABLE_8_7:
+	case OF_COMPILED_METHOD:
+	case OF_COMPILED_METHOD_1:
+	case OF_COMPILED_METHOD_2:
+	case OF_COMPILED_METHOD_3:
+	case OF_COMPILED_METHOD_4:
+	case OF_COMPILED_METHOD_5:
+	case OF_COMPILED_METHOD_6:
+	case OF_COMPILED_METHOD_7:
+		return 8;
 	default: abort();
 	}
 #else
 	switch(format)
 	{
-	case OF_INDEXABLE_32: return 1;
-	case OF_INDEXABLE_16: return 2;
-	case OF_INDEXABLE_8: return 4;
-	case OF_COMPILED_METHOD: return 8;
+	case OF_INDEXABLE_32:
+	case OF_INDEXABLE_32_1:
+		return 1;
+	case OF_INDEXABLE_16:
+	case OF_INDEXABLE_16_1:
+	case OF_INDEXABLE_16_2:
+	case OF_INDEXABLE_16_3:
+		return 2;
+	case OF_INDEXABLE_8:
+	case OF_INDEXABLE_8_1:
+	case OF_INDEXABLE_8_2:
+	case OF_INDEXABLE_8_3:
+	case OF_INDEXABLE_8_4:
+	case OF_INDEXABLE_8_5:
+	case OF_INDEXABLE_8_6:
+	case OF_INDEXABLE_8_7:
+	case OF_COMPILED_METHOD:
+	case OF_COMPILED_METHOD_1:
+	case OF_COMPILED_METHOD_2:
+	case OF_COMPILED_METHOD_3:
+	case OF_COMPILED_METHOD_4:
+	case OF_COMPILED_METHOD_5:
+	case OF_COMPILED_METHOD_6:
+	case OF_COMPILED_METHOD_7:
+		return 1;
 	default: abort();
 	}
 #endif
@@ -297,6 +376,11 @@ public:
 		}
 		
 		return header->slotCount;
+	}
+	
+	inline bool isIndexable() const
+	{
+		return variableSlotSizeFor((ObjectFormat)header->objectFormat) != 0; 
 	}
 
 	inline size_t getNumberOfElements() const
@@ -680,6 +764,7 @@ double readDoubleObject(const Ref<Oop> &ref);
 
 // Class table
 Oop getClassFromIndex(int classIndex);
+Oop getClassFromOop(Oop oop);
 
 // Message send
 Oop sendDNUMessage(Oop receiver, Oop selector, int argumentCount, Oop *arguments);
@@ -709,6 +794,11 @@ Oop getGlobalValueFromSymbol(Oop symbol);
 
 // Global context.
 Oop getGlobalContext();
+
+// Object reading
+std::string getClassNameOfObject(Oop object);
+std::string getByteSymbolData(Oop object);
+std::string getByteStringData(Oop object);
 
 // Message sending
 template<typename... Args>

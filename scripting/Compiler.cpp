@@ -6,6 +6,7 @@
 #include "Method.hpp"
 #include "MethodBuilder.hpp"
 #include "ParserScannerInterface.hpp"
+#include "Exception.hpp"
 
 namespace Lodtalk
 {
@@ -444,7 +445,8 @@ void MethodCompiler::popTemporalScope()
 
 size_t MethodCompiler::makeTemporalIndex()
 {
-	return ++temporalCount;
+	auto tempIndex = temporalCount++;
+	return argumentCount + tempIndex;
 }
 
 Oop MethodCompiler::visitArgument(Argument *node)
@@ -559,8 +561,7 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
 		for(size_t i = 0; i < argumentCount; ++i)
 		{
 			auto &arg = arguments[i];
-			auto argIndex= makeTemporalIndex();
-			auto res = argumentScope->addArgument(arg->getSymbolOop(), argIndex);
+			auto res = argumentScope->addArgument(arg->getSymbolOop(), i);
 			if(!res)
 				error(arg, "the argument has the same name as another argument.");
 		}
@@ -627,8 +628,8 @@ Oop MethodCompiler::visitSequenceNode(SequenceNode *node)
 
 Oop MethodCompiler::visitSelfReference(SelfReference *node)
 {
-	assert(0 && "unimplemented");
-	abort();
+	gen.pushReceiver();
+	return Oop();
 }
 
 Oop MethodCompiler::visitSuperReference(SuperReference *node)
@@ -639,8 +640,8 @@ Oop MethodCompiler::visitSuperReference(SuperReference *node)
 
 Oop MethodCompiler::visitThisContextReference(ThisContextReference *node)
 {
-	assert(0 && "unimplemented");
-	abort();
+	gen.pushThisContext();
+	return Oop();
 }
 
 // Compiler interface
@@ -666,6 +667,8 @@ Oop executeScriptFromFile(FILE *file, const std::string name)
 		
 	// Parse the script.
 	auto ast = Lodtalk::AST::parseSourceFromFile(file);
+	if(!ast)
+		return Oop();
 	
 	// Create the global scope
 	auto scope = std::make_shared<GlobalEvaluationScope> ();
@@ -693,14 +696,14 @@ Oop ScriptContext::setCurrentClass(Oop classObject)
 Oop ScriptContext::addFunction(Oop methodAstHandle)
 {
 	if(isNil(methodAstHandle))
-		error("cannot add method with nil ast.");
+		nativeError("cannot add method with nil ast.");
 	if(classIndexOf(methodAstHandle) != SCI_MethodASTHandle)
-		error("expected a method AST handle.");
+		nativeError("expected a method AST handle.");
 		
 	// Check the class
 	if(classIndexOf(globalContextClass) != SCI_Class &&
 	   classIndexOf(globalContextClass) != SCI_Metaclass)
-		error("a global context class is needed");
+		nativeError("a global context class is needed");
 	auto clazz = reinterpret_cast<ClassDescription*> (globalContextClass.pointer);
 
 	// Get the ast
@@ -729,14 +732,14 @@ Oop ScriptContext::addFunction(Oop methodAstHandle)
 Oop ScriptContext::addMethod(Oop methodAstHandle)
 {
 	if(isNil(methodAstHandle))
-		error("cannot add method with nil ast.");
+		nativeError("cannot add method with nil ast.");
 	if(classIndexOf(methodAstHandle) != SCI_MethodASTHandle)
-		error("expected a method AST handle.");
+		nativeError("expected a method AST handle.");
 
 	// Check the class
 	if(classIndexOf(currentClass) != SCI_Class &&
 	   classIndexOf(currentClass) != SCI_Metaclass)
-		error("a class is needed for adding a method.");
+		nativeError("a class is needed for adding a method.");
 	auto clazz = reinterpret_cast<ClassDescription*> (currentClass.pointer);
 
 	// Get the ast

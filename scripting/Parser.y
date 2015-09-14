@@ -159,7 +159,7 @@ localList: localList IDENTIFIER {
          |  { $$ = new LocalDeclarations(); }
          ;
 
-statementListNonEmpty: statementList DOT statement {
+statementListNonEmpty: statementListNonEmpty DOT statement {
         $$ = $1;
         $1->addStatement($3);
     }

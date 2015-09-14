@@ -15,7 +15,7 @@ namespace InterpreterStackFrame
 {
 	static const int WordSize = sizeof(void*);
 	
-	static const int FirstArgumentOffset = 2*WordSize;
+	static const int LastArgumentOffset = 2*WordSize;
 	static const int ReturnInstructionPointerOffset = WordSize;
 	static const int PrevFramePointerOffset = 0;
 	static const int MethodOffset = -WordSize;

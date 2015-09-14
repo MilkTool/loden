@@ -2,6 +2,7 @@
 #include "Object.hpp"
 #include "Collections.hpp"
 #include "Method.hpp"
+#include "Exception.hpp"
 
 namespace Lodtalk
 {
@@ -26,10 +27,59 @@ static Class ProtoObject_class("ProtoObject", SCI_ProtoObject, SMCI_ProtoObject,
 ClassDescription *ProtoObject::ClassObject = &ProtoObject_class;
 
 // Object methods
+Oop Object::stClass(Oop self)
+{
+	return getClassFromOop(self);
+}
+
+Oop Object::stSize(Oop self)
+{
+	if(!self.isPointer())
+	{
+		if(self.isSmallInteger())
+			nativeError("instances of Smallinteger are not indexable.");
+		if(self.isCharacter())
+			nativeError("instances of Character are not indexable.");
+		if(self.isSmallFloat())
+			nativeError("instances of Smallfloat are not indexable.");
+		nativeError("not indexable instance.");
+	}
+	
+	if(!self.isIndexable())
+		nativeError("not indexable instance.");
+	
+	return Oop::encodeSmallInteger(self.getNumberOfElements());
+}
+
+Oop Object::stAt(Oop self, Oop indexOop)
+{
+	auto size = stSize(self).decodeSmallInteger();
+	auto index = indexOop.decodeSmallInteger() - 1;
+	if(index > size || index < 0)
+		nativeError("index out of bounds.");
+	nativeError("unimplemented");
+	return Oop();
+}
+
+Oop Object::stAtPut(Oop self, Oop indexOop, Oop value)
+{
+	auto size = stSize(self).decodeSmallInteger();
+	auto index = indexOop.decodeSmallInteger() - 1;
+	if(index > size || index < 0)
+		nativeError("index out of bounds.");
+
+	nativeError("unimplemented");
+	return Oop();
+}
+
 LODTALK_BEGIN_CLASS_SIDE_TABLE(Object)
 LODTALK_END_CLASS_SIDE_TABLE()
 
 LODTALK_BEGIN_CLASS_TABLE(Object)
+	LODTALK_METHOD("class", Object::stClass)
+	LODTALK_METHOD("size", Object::stSize)
+	LODTALK_METHOD("at:", Object::stAt)
+	LODTALK_METHOD("at:put:", Object::stAtPut)
 LODTALK_END_CLASS_TABLE()
 
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(Object, ProtoObject, OF_EMPTY, 0);

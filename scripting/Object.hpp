@@ -39,12 +39,6 @@ public:
 		return sendMessage(selfOop(), selector, argumentCount, arguments);
 	}
 	
-	void error(const std::string &message)
-	{
-		fprintf(stdout, "error: %s\n", message.c_str());
-		abort();
-	}
-	
 	uint8_t *getFirstFieldPointer()
 	{
 		uint8_t *result = reinterpret_cast<uint8_t *> (&object_header_);
@@ -63,6 +57,7 @@ public:
 	{
 		return object_header_.identityHash;
 	}
+	
 };
 
 /**
@@ -72,6 +67,11 @@ class Object: public ProtoObject
 {
 	LODTALK_NATIVE_CLASS();
 public:
+	static Oop stClass(Oop self);
+	static Oop stSize(Oop self);
+	static Oop stAt(Oop self, Oop indexOop);
+	static Oop stAtPut(Oop self, Oop index, Oop value);
+
 };
 
 /**

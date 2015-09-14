@@ -129,13 +129,21 @@ public:
 
 	virtual uint8_t *encode(uint8_t *buffer)
 	{
-		assert(0 && "unimplemented");
+		if(index < 12)
+		{
+			*buffer++ = BytecodeSet::PushTempShortFirst + index;
+			return buffer;
+		}
+
+		*buffer++ = BytecodeSet::PushTemporary;
+		*buffer++ = index;
+		return buffer;
 	}
 	
 protected:
 	virtual size_t computeMaxSize()
 	{
-		assert(0 && "unimplemented");
+		return index < 12 ? 1 : 2;
 	}
 
 private:
@@ -167,7 +175,6 @@ public:
 			return buffer;
 		}
 
-		
 		if(argumentCount > BytecodeSet::Send_ArgumentCountMask)
 			assert(0 && "unimplemented");
 			
@@ -398,6 +405,41 @@ void Assembler::pushLiteralVariableIndex(int literalVariableIndex)
 void Assembler::pushTemporal(int temporalIndex)
 {
 	addInstruction(new PushTemporal(temporalIndex));
+}
+
+void Assembler::pushReceiver()
+{
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushReceiver, false));
+}
+
+void Assembler::pushThisContext()
+{
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushThisContext, false));
+}
+
+void Assembler::pushNil()
+{
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushNil, false));
+}
+
+void Assembler::pushTrue()
+{
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushTrue, false));
+}
+
+void Assembler::pushFalse()
+{
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushFalse, false));
+}
+
+void Assembler::pushOne()
+{
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushOne, false));
+}
+
+void Assembler::pushZero()
+{
+	addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushZero, false));
 }
 
 void Assembler::send(Oop selector, int argumentCount)

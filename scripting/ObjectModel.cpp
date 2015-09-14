@@ -303,8 +303,7 @@ void GarbageCollector::sweep()
 		if(header->gcColor == White)
 		{
 			// TODO: free the unreachable object.
-			auto clazz = reinterpret_cast<Class*> (getClassFromIndex(header->classIndex).pointer);
-			printf("free garbage %p %s\n", header, clazz->getNameString().c_str());
+			printf("free garbage %p %s\n", header, getClassNameOfObject(obj).c_str());
 			fflush(stdout);
 			free(header);
 			allocatedObjects.erase(it++);
@@ -460,6 +459,11 @@ Oop getClassFromIndex(int classIndex)
 	return Oop::fromPointer(specialObjects->specialClassTable[classIndex]);
 }
 
+Oop getClassFromOop(Oop oop)
+{
+	return getClassFromIndex(classIndexOf(oop));
+}
+
 // Send the message
 Oop sendDNUMessage(Oop receiver, Oop selector, int argumentCount, Oop *arguments)
 {
@@ -592,6 +596,30 @@ Oop getGlobalValueFromSymbol(Oop symbol)
 Oop getGlobalContext()
 {
 	return Oop::fromPointer(GlobalContext::ClassObject);
+}
+
+// Object reading
+std::string getClassNameOfObject(Oop object)
+{
+	auto classIndex = classIndexOf(object);
+	auto classOop = getClassFromIndex(classIndex);
+	if(classOop.header->classIndex == SCI_Metaclass)
+		return "a Class";
+
+	auto clazz = reinterpret_cast<Class*> (classOop.pointer);
+	return clazz->getNameString();
+}
+
+std::string getByteSymbolData(Oop object)
+{
+	auto symbol = reinterpret_cast<ByteSymbol*> (object.pointer);
+	return symbol->getString();
+}
+
+std::string getByteStringData(Oop object)
+{
+	auto string = reinterpret_cast<ByteString*> (object.pointer);
+	return string->getString();
 }
 
 } // End of namespace Lodtalk
