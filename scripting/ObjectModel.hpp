@@ -399,6 +399,19 @@ struct CompiledMethodHeader
 		return (oop.uintValue >> ArgumentShift) & ArgumentMask;
 	}
 	
+	bool needsLargeFrame() const
+	{
+		return oop.uintValue | NeedsLargeFrameBit;
+	}
+
+	void setLargeFrame(bool value)
+	{
+		if(value)
+			oop.uintValue |= NeedsLargeFrameBit;
+		else
+			oop.uintValue &= ~NeedsLargeFrameBit;
+	}
+	
 	Oop oop;
 };
 
@@ -670,6 +683,7 @@ Oop getClassFromIndex(int classIndex);
 
 // Message send
 Oop sendDNUMessage(Oop receiver, Oop selector, int argumentCount, Oop *arguments);
+Oop lookupMessage(Oop receiver, Oop selector);
 Oop sendMessage(Oop receiver, Oop selector, int argumentCount, Oop *arguments);
 
 Oop makeByteString(const std::string &content);

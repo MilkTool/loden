@@ -19,7 +19,8 @@ public:
 	~StackInterpreter();
 	
 	Oop interpretMethod(CompiledMethod *method, Oop receiver, int argumentCount, Oop *arguments);
-	
+	void interpret();
+
 private:
 	void error(const char *message)
 	{
@@ -37,26 +38,14 @@ private:
 		abort();
 	}
 	
-	void fetchMethodData(CompiledMethod *newMethod)
-	{
-		method = newMethod;
-		literalCount = method->getLiteralCount();
-		argumentCount = method->getArgumentCount();
-		temporalCount = method->getTemporalCount();
-		firstInstructionPointer = method->getFirstBCPointer();
-		literalArray = method->getFirstLiteralPointer();
-	}
-	
 	int fetchByte()
 	{
-		return *instructionPointer++;
+		return getInstructionBasePointer()[pc++];
 	}
 
 	int fetchSByte()
 	{
-		auto sbyte = *reinterpret_cast<int8_t*> (instructionPointer);
-		instructionPointer++;
-		return sbyte;
+		return reinterpret_cast<int8_t*> (getInstructionBasePointer())[pc++];
 	}
 	
 	void fetchNextInstructionOpcode()
@@ -74,30 +63,63 @@ private:
 		return stack->getAvailableCapacity();
 	}
 	
-	void push(Oop object)
+	void pushOop(Oop object)
 	{
-		if(!getAvailableCapacity())
-			error("Stack overflow");
-		stack->push(object);
+		stack->pushOop(object);
+	}
+	
+	void pushPointer(uint8_t *pointer)
+	{
+		stack->pushPointer(pointer);
+	}
+	
+	void pushUInt(uintptr_t value)
+	{
+		stack->pushUInt(value);
+	}
+	
+	void pushPC()
+	{
+		pushUInt(pc);
+	}
+	
+	void popPC()
+	{
+		pc = popUInt();
+	}
+	uint8_t *getInstructionBasePointer()
+	{
+		return reinterpret_cast<uint8_t*> (method);
 	}
 	
 	Oop currentReceiver() const
 	{
-		return methodReceiver;
+		return stack->getReceiver();
 	}
 	
-	Oop pop()
+	Oop popOop()
 	{
-		if(!getStackSize())
-			error("Stack underflow");
-		return stack->pop();
+		return stack->popOop();
+	}
+
+	uint8_t *popPointer()
+	{
+		return stack->popPointer();
+	}
+	
+	uintptr_t popUInt()
+	{
+		return stack->popUInt();
 	}
 	
 	Oop stackTop()
 	{
-		if(!getStackSize())
-			error("Stack underflow");
 		return stack->stackTop();
+	}
+
+	Oop stackOopAt(size_t offset)
+	{
+		return stack->stackOopAt(offset);
 	}
 	
 	bool condJumpOnNotBoolean(bool jumpType)
@@ -105,64 +127,154 @@ private:
 		LODTALK_UNIMPLEMENTED();
 	}
 	
+	void nonLocalReturnValue(Oop value)
+	{
+		LODTALK_UNIMPLEMENTED();
+	}
+	
+	void returnValue(Oop value)
+	{
+		// Special handling for non-local returns. 
+		if(isBlock)
+			nonLocalReturnValue(value);
+			
+		// Restore the stack into beginning of the frame pointer.
+		stack->setStackPointer(stack->getFramePointer()); 
+		stack->setFramePointer(stack->popPointer());
+		
+		// Pop the return pc
+		popPC();
+		
+		// Pop the arguments and the receiver.
+		stack->popMultiplesOops(argumentCount + 1);
+		
+		// Push the return value.
+		pushOop(value);
+		
+		// If there is no, then it means that we are returning.
+		if(pc)
+		{
+			// Re fetch the frame data to continue.
+			fetchFrameData();
+			
+			// Fetch the next instruction
+			fetchNextInstructionOpcode();
+		}
+	}
+	
+	void blockReturnValue(Oop value)
+	{
+		LODTALK_UNIMPLEMENTED();
+	}
+	
+	void activateMethodFrame(CompiledMethod *method);
+	void fetchFrameData();
+	void methodContinued();
+	
 private:
 	// Use the stack memory.
 	StackMemory *stack;
  
-	// Interpreter data
-	CompiledMethod *method;
-	uint8_t *firstInstructionPointer;
-	uint8_t *instructionPointer;
+	// Interpreter data.
+	size_t pc;
 	int nextOpcode;
 	int currentOpcode;
-	
-	size_t argumentCount;
-	size_t literalCount;
-	size_t temporalCount;
-	
+
+	// Instruction decoding.
 	uint64_t extendA;
 	int64_t extendB;
-	
-	Oop methodReceiver;
-	Oop *arguments;
+
+	// Frame meta data.
 	Oop *literalArray;
+	CompiledMethod *method;
+	bool hasContext;
+	bool isBlock;
+	size_t argumentCount;
 	
-	bool isReturning;
-	Oop methodReturnValue;
 
 private:
+	CompiledMethod *getMethod()
+	{
+		return method;
+	}
+	
+	Oop getLiteral(int index)
+	{
+		return literalArray[index];
+	}
+
 	void pushLiteralVariable(int literalVarIndex)
 	{
-		auto literal = literalArray[literalVarIndex];
+		auto literal = getLiteral(literalVarIndex);
 		
 		// Cast the literal variable and push the value
 		auto literalVar = reinterpret_cast<LiteralVariable*> (literal.pointer);
-		push(literalVar->value);
+		pushOop(literalVar->value);
 	}
 
 	void pushLiteral(int literalIndex)
 	{
-		auto literal = literalArray[literalIndex];
+		auto literal = getLiteral(literalIndex);
 		
 		// Cast the literal variable and push the value
-		push(literal);
+		pushOop(literal);
 	}
 	
 	void sendLiteralIndexArgumentCount(int literalIndex, int argumentCount)
 	{
-		auto selector = literalArray[literalIndex];
-		
-		// TODO: Make this more efficient.
-		Oop arguments[argumentCount];
-		for(int i = 0; i < argumentCount; ++i)
-			arguments[argumentCount - i - 1] = pop();
+		auto selector = getLiteral(literalIndex);
+		assert((size_t)argumentCount <= CompiledMethodHeader::ArgumentMask);
 
 		// Get the receiver.
-		Oop newReceiver = pop();
+		auto newReceiver = stack->stackOopAt(argumentCount * sizeof(Oop));
 		
-		// Perform the message send.
-		Oop result = sendMessage(newReceiver, selector, argumentCount, arguments);
-		push(result);
+		// Find the called method
+		auto calledMethodOop = lookupMessage(newReceiver, selector);
+		if(calledMethodOop.isNil())
+		{
+			// TODO: Send a DNU
+			LODTALK_UNIMPLEMENTED();
+		}
+		
+		// Get the called method type
+		auto methodClassIndex = classIndexOf(calledMethodOop);
+		if(methodClassIndex == SCI_CompiledMethod)
+		{
+			// Push the return PC.
+			pushPC();
+			
+			// Activate the new compiled method.
+			auto compiledMethod = reinterpret_cast<CompiledMethod*> (calledMethodOop.pointer);
+			activateMethodFrame(compiledMethod);
+		}
+		else if(methodClassIndex == SCI_NativeMethod)
+		{
+			// Reverse the argument order.
+			Oop nativeMethodArgs[CompiledMethodHeader::ArgumentMask];
+			for(int i = 0; i < argumentCount; ++i)
+				nativeMethodArgs[argumentCount - i - 1] = stack->stackOopAt(i*sizeof(Oop));
+			
+			// Call the native method
+			auto nativeMethod = reinterpret_cast<NativeMethod*> (calledMethodOop.pointer);
+			Oop result = nativeMethod->execute(newReceiver, argumentCount, nativeMethodArgs);
+			
+			// Pop the arguments and the receiver.
+			stack->popMultiplesOops(argumentCount + 1);
+			
+			// Push the result in the stack.
+			pushOop(result);
+			
+			// Re fetch the frame data to continue.
+			fetchFrameData();
+			
+			// Fetch the next instruction
+			fetchNextInstructionOpcode();
+		}
+		else
+		{
+			// TODO: Send Send run:with:in:
+			LODTALK_UNIMPLEMENTED();
+		}
 	}
 	
 	// Bytecode instructions
@@ -196,8 +308,6 @@ private:
 	
 	void interpretSendShortArgs0()
 	{
-		fetchNextInstructionOpcode();
-		
 		// Fetch the literal index
 		auto literalIndex = currentOpcode & 0x0F;
 		sendLiteralIndexArgumentCount(literalIndex, 0);
@@ -205,8 +315,6 @@ private:
 	
 	void interpretSendShortArgs1()
 	{
-		fetchNextInstructionOpcode();
-		
 		// Fetch the literal index
 		auto literalIndex = currentOpcode & 0x0F;
 		sendLiteralIndexArgumentCount(literalIndex, 1);
@@ -214,8 +322,6 @@ private:
 	
 	void interpretSendShortArgs2()
 	{
-		fetchNextInstructionOpcode();
-		
 		// Fetch the literal index
 		auto literalIndex = currentOpcode & 0x0F;
 		sendLiteralIndexArgumentCount(literalIndex, 2);
@@ -224,20 +330,20 @@ private:
 	void interpretJumpShort()
 	{
 		auto delta = (currentOpcode & 7) + 1;
-		instructionPointer += delta;
+		pc += delta;
 	}
 	
 	void interpretJumpOnTrueShort()
 	{
 		// Fetch the condition and the next instruction opcode
 		fetchNextInstructionOpcode();
-		auto condition = pop();
+		auto condition = popOop();
 		
 		// Perform the branch when requested.
 		if(condition == trueOop())
 		{
 			auto delta = (currentOpcode & 7);
-			instructionPointer += delta;
+			pc += delta;
 			fetchNextInstructionOpcode();
 		}
 		else if(condition != falseOop())
@@ -251,13 +357,13 @@ private:
 	{
 		// Fetch the condition and the next instruction opcode
 		fetchNextInstructionOpcode();
-		auto condition = pop();
+		auto condition = popOop();
 		
 		// Perform the branch when requested.
 		if(condition == falseOop())
 		{
 			auto delta = (currentOpcode & 7);
-			instructionPointer += delta;
+			pc += delta;
 			fetchNextInstructionOpcode();
 		}
 		else if(condition != trueOop())
@@ -280,37 +386,37 @@ private:
 	void interpretPushReceiver()
 	{
 		fetchNextInstructionOpcode();
-		push(currentReceiver());
+		pushOop(currentReceiver());
 	}
 
 	void interpretPushTrue()
 	{
 		fetchNextInstructionOpcode();
-		push(trueOop());
+		pushOop(trueOop());
 	}
 
 	void interpretPushFalse()
 	{
 		fetchNextInstructionOpcode();
-		push(falseOop());
+		pushOop(falseOop());
 	}
 	
 	void interpretPushNil()
 	{
 		fetchNextInstructionOpcode();
-		push(nilOop());
+		pushOop(nilOop());
 	}
 	
 	void interpretPushZero()
 	{
 		fetchNextInstructionOpcode();
-		push(Oop::encodeSmallInteger(0));
+		pushOop(Oop::encodeSmallInteger(0));
 	}
 	
 	void interpretPushOne()
 	{
 		fetchNextInstructionOpcode();
-		push(Oop::encodeSmallInteger(1));
+		pushOop(Oop::encodeSmallInteger(1));
 	}
 
 	void interpretPushThisContext()
@@ -321,47 +427,42 @@ private:
 	void interpretDuplicateStackTop()
 	{
 		fetchNextInstructionOpcode();
-		push(stackTop());
+		pushOop(stackTop());
 	}
 
 	void interpretReturnReceiver()
 	{
-		isReturning = true;
-		methodReturnValue = currentReceiver();
+		returnValue(currentReceiver());
 	}
 
 	void interpretReturnTrue()
 	{
-		isReturning = true;
-		methodReturnValue = trueOop();
+		returnValue(trueOop());
 	}
 	
 	void interpretReturnFalse()
 	{
-		isReturning = true;
-		methodReturnValue = falseOop();
+		returnValue(falseOop());
 	}
 	
 	void interpretReturnNil()
 	{
-		isReturning = true;
-		methodReturnValue = nilOop();
+		returnValue(nilOop());
 	}
 
 	void interpretReturnTop()
 	{
-		isReturning = true;
-		methodReturnValue = pop();
+		returnValue(popOop());
 	}
 
 	void interpretBlockReturnNil()
 	{
-		LODTALK_UNIMPLEMENTED();
+		blockReturnValue(nilOop());
 	}
 
 	void interpretBlockReturnTop()
 	{
-		LODTALK_UNIMPLEMENTED();
+		blockReturnValue(popOop());
 	}
 	
 	void interpretNop()
@@ -376,7 +477,7 @@ private:
 		fetchNextInstructionOpcode();
 		
 		// Pop the element from the stack.
-		pop();
+		popOop();
 	}
 
 	void interpretExtendA()
@@ -435,7 +536,6 @@ private:
 	{
 		// Fetch the data.
 		int data = fetchByte();
-		fetchNextInstructionOpcode();
 		
 		// Decode the literal index and argument index
 		auto argumentCount = (data & BytecodeSet::Send_ArgumentCountMask) + extendB * BytecodeSet::Send_ArgumentCountCount;
@@ -521,24 +621,86 @@ Oop StackInterpreter::interpretMethod(CompiledMethod *newMethod, Oop receiver, i
 	if(argumentCount != (int)newMethod->getArgumentCount())
 		error("invalid suplied argument count.");
 
-	isReturning = false;
+	// Push the receiver and the arguments
+	pushOop(receiver);
+	for(int i = 0; i < argumentCount; ++i)
+		pushOop(arguments[i]);
+
+	// Make the method frame.
+	pushUInt(0); // Return instruction PC.
+	activateMethodFrame(newMethod);
 	
-	// Store the receiver and the argument data
-	this->methodReceiver = receiver;
-	this->arguments = arguments;
+	interpret();
 	
-	// Fetch the method data
-	fetchMethodData(newMethod);
-	instructionPointer = firstInstructionPointer;
+	auto returnValue = popOop();
+	return returnValue;
+}
+
+void StackInterpreter::activateMethodFrame(CompiledMethod *newMethod)
+{
+	// Get the method header
+	auto header = *newMethod->getHeader();
+	auto numArguments = header.getArgumentCount();
+	auto numTemporals = header.getTemporalCount();
+	
+	// Get the receiver
+	auto receiver = stackOopAt((1 + numArguments)*sizeof(Oop));
+
+	// Push the frame pointer.
+	pushPointer(stack->getFramePointer()); // Return frame pointer.
+
+	// Set the new frame pointer.	
+	stack->setFramePointer(stack->getStackPointer());
+	
+	// Push the method object.
+	pushOop(Oop::fromPointer(newMethod));
+	this->method = newMethod;
+	
+	// Encode frame metadata
+	pushUInt(encodeFrameMetaData(false, false, numArguments));
+	
+	// Push the nil this context.
+	pushOop(Oop()); 
+
+	// Push the oop.
+	pushOop(receiver);
+	
+	// Push the nil temporals.
+	for(size_t i = 0; i < numTemporals; ++i)
+		pushOop(Oop());
+
+	// Fetch the frame data.
+	fetchFrameData();
+	
+	// Set the instruction pointer. 
+	pc = newMethod->getFirstPCOffset();
 	
 	// Fetch the first instruction opcode
 	fetchNextInstructionOpcode();
-	
+}
+
+void StackInterpreter::fetchFrameData()
+{
+	// Decode the frame metadata.
+	decodeFrameMetaData(stack->getMetadata(), this->hasContext, this->isBlock, argumentCount);
+
+	// Get the method and the literal array	
+	method = stack->getMethod();
+	literalArray = method->getFirstLiteralPointer();
+}
+
+void StackInterpreter::methodContinued()
+{
+	// Fetch the frame data.
+	fetchFrameData();
+}
+
+void StackInterpreter::interpret()
+{
 	// Reset the extensions values
 	extendA = 0;
 	extendB = 0;
-	
-	while(!isReturning)
+	while(pc != 0)
 	{
 		currentOpcode = nextOpcode;
 		
@@ -565,10 +727,8 @@ case opcode:\
 			errorFormat("unsupported bytecode %d", currentOpcode);
 		}
 	}
-	
-	return methodReturnValue;
 }
-	
+
 Oop interpretCompiledMethod(CompiledMethod *method, Oop receiver, int argumentCount, Oop *arguments)
 {
 	Oop result;

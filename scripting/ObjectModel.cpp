@@ -467,7 +467,7 @@ Oop sendDNUMessage(Oop receiver, Oop selector, int argumentCount, Oop *arguments
 	abort();
 }
 
-Oop sendMessage(Oop receiver, Oop selector, int argumentCount, Oop *arguments)
+Oop lookupMessage(Oop receiver, Oop selector)
 {
 	auto classIndex = classIndexOf(receiver);
 	auto classOop = getClassFromIndex(classIndex);
@@ -475,7 +475,12 @@ Oop sendMessage(Oop receiver, Oop selector, int argumentCount, Oop *arguments)
 	
 	// Lookup the method
 	auto behavior = reinterpret_cast<Behavior*> (classOop.pointer);
-	auto method = behavior->lookupSelector(selector);
+	return behavior->lookupSelector(selector);
+}
+
+Oop sendMessage(Oop receiver, Oop selector, int argumentCount, Oop *arguments)
+{
+	auto method = lookupMessage(receiver, selector);
 	if(isNil(method))
 		return sendDNUMessage(receiver, selector, argumentCount, arguments);
 		

@@ -46,10 +46,15 @@ public:
 	{
 		return (getHeader()->getLiteralCount() + 1)*sizeof(void*);
 	}
-	
+
 	uint8_t *getFirstBCPointer()
 	{
 		return reinterpret_cast<uint8_t*> (getFirstFieldPointer() + getFirstPC());
+	}
+
+	size_t getFirstPCOffset()
+	{
+		return getFirstBCPointer() - reinterpret_cast<uint8_t*> (this);
 	}
 	
 	Oop *getFirstLiteralPointer()
