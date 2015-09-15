@@ -20,10 +20,10 @@ LODTALK_BEGIN_CLASS_TABLE(ProtoObject)
 LODTALK_END_CLASS_TABLE()
 
 // Proto object method dictionary.
-static Metaclass ProtoObject_metaclass(SMCI_ProtoObject, Class::ClassObject, &ProtoObject_metaclass_methodDictBuilder, 0);
+static Metaclass ProtoObject_metaclass(SMCI_ProtoObject, Class::ClassObject, &ProtoObject_metaclass_methodDictBuilder, 0, "", ProtoObject::ClassObject);
 ClassDescription *ProtoObject::MetaclassObject = &ProtoObject_metaclass;
 
-static Class ProtoObject_class("ProtoObject", SCI_ProtoObject, SMCI_ProtoObject, &ProtoObject_metaclass, (Behavior*)&NilObject, &ProtoObject_class_methodDictBuilder, OF_EMPTY, 0);
+static Class ProtoObject_class("ProtoObject", SCI_ProtoObject, SMCI_ProtoObject, &ProtoObject_metaclass, (Behavior*)&NilObject, &ProtoObject_class_methodDictBuilder, OF_EMPTY, 0, "");
 ClassDescription *ProtoObject::ClassObject = &ProtoObject_class;
 
 // Object methods
@@ -163,16 +163,21 @@ LODTALK_BEGIN_CLASS_TABLE(Behavior)
 	LODTALK_METHOD("basicNew:", static_cast<Oop (Behavior::*)(Oop)> (&Behavior::basicNew))
 LODTALK_END_CLASS_TABLE()
 
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(Behavior, Object, OF_FIXED_SIZE, 5);
+LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(Behavior, Object, OF_FIXED_SIZE, Behavior::BehaviorVariableCount, "superclass methodDict format fixedVariableCount layout");
 
 // ClassDescription
+Oop ClassDescription::splitVariableNames(const char *instanceVariableNames)
+{
+	return ByteString::splitVariableNames(instanceVariableNames).getOop();
+}
+
 LODTALK_BEGIN_CLASS_SIDE_TABLE(ClassDescription)
 LODTALK_END_CLASS_SIDE_TABLE()
 
 LODTALK_BEGIN_CLASS_TABLE(ClassDescription)
 LODTALK_END_CLASS_TABLE()
 
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(ClassDescription, Behavior, OF_FIXED_SIZE, 5);
+LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(ClassDescription, Behavior, OF_FIXED_SIZE, ClassDescription::ClassDescriptionVariableCount, "instanceVariables organization");
 
 // Class
 Oop Class::getBinding()
@@ -204,7 +209,8 @@ LODTALK_BEGIN_CLASS_TABLE(Class)
 	LODTALK_METHOD("binding", &Class::getBinding)
 LODTALK_END_CLASS_TABLE()
 
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(Class, ClassDescription, OF_FIXED_SIZE, 5);
+LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(Class, ClassDescription, OF_FIXED_SIZE, Class::ClassVariableCount,
+"subclasses name classPool sharedPools category environment traitComposition localSelectors");
 
 // Metaclass
 Oop Metaclass::getBinding()
@@ -220,7 +226,8 @@ LODTALK_BEGIN_CLASS_TABLE(Metaclass)
 	LODTALK_METHOD("binding", &Metaclass::getBinding)
 LODTALK_END_CLASS_TABLE()
 
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(Metaclass, ClassDescription, OF_FIXED_SIZE, 5);
+LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(Metaclass, ClassDescription, OF_FIXED_SIZE, Metaclass::MetaclassVariableCount,
+"thisClass traitComposition localSelectors");
 
 // Boolean
 LODTALK_BEGIN_CLASS_SIDE_TABLE(Boolean)
@@ -319,7 +326,7 @@ LODTALK_END_CLASS_SIDE_TABLE()
 LODTALK_BEGIN_CLASS_TABLE(LookupKey)
 LODTALK_END_CLASS_TABLE()
 
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(LookupKey, Magnitude, OF_FIXED_SIZE, 1);
+LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(LookupKey, Magnitude, OF_FIXED_SIZE, 1, "key");
 
 // Association
 Association* Association::newNativeKeyValue(int classIndex, Oop key, Oop value)
@@ -336,7 +343,7 @@ LODTALK_END_CLASS_SIDE_TABLE()
 LODTALK_BEGIN_CLASS_TABLE(Association)
 LODTALK_END_CLASS_TABLE()
 
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(Association, LookupKey, OF_FIXED_SIZE, 2);
+LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(Association, LookupKey, OF_FIXED_SIZE, 2, "value");
 
 // LiteralVariable
 LODTALK_BEGIN_CLASS_SIDE_TABLE(LiteralVariable)

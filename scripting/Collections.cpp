@@ -1,5 +1,6 @@
 #include <string.h>
 #include <map>
+#include <vector>
 #include "Collections.hpp"
 
 namespace Lodtalk
@@ -91,17 +92,79 @@ LODTALK_END_CLASS_TABLE()
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(String, ArrayedCollection, OF_EMPTY, 0);
 
 // ByteString
+ByteString *ByteString::basicNativeNew(size_t indexableSize)
+{
+	return reinterpret_cast<ByteString*> (newObject(0, indexableSize, OF_INDEXABLE_8, SCI_ByteString));
+}
+
 Ref<ByteString> ByteString::fromNative(const std::string &native)
 {
-	auto result = ClassObject->basicNativeNew(native.size());
+	auto result = basicNativeNew(native.size());
 	memcpy(result->getFirstFieldPointer(), native.data(), native.size());
 	return Ref<ByteString> (reinterpret_cast<ByteString*> (result));
+}
+
+ByteString *ByteString::fromNativeRange(const char *start, size_t size)
+{
+	auto result = basicNativeNew(size);
+	memcpy(result->getFirstFieldPointer(), start, size);
+	return reinterpret_cast<ByteString*> (result);
 }
 
 std::string ByteString::getString()
 {
 	auto begin = getFirstFieldPointer();
 	return std::string(begin, begin + getNumberOfElements());
+}
+
+Ref<Array> ByteString::splitVariableNames(const std::string &string)
+{
+	std::vector<std::pair<int, int>> varNameIndices;
+
+	auto data = string.data();
+	auto size = string.size();
+	int tokenStart = -1;
+	
+	for(size_t i = 0; i < size; ++i)
+	{
+		auto c = data[i];
+		if(tokenStart < 0)
+		{
+			// I am not in a token.
+			if(c > ' ')
+				tokenStart = i;
+		}
+		else
+		{
+			// Inside token.
+			if(c <= ' ')
+			{
+				varNameIndices.push_back(std::make_pair(tokenStart, i - tokenStart + 1));
+				tokenStart = -1;
+			}
+		}
+	}
+	
+	// Push the last token.
+	if(tokenStart >= 0)
+		varNameIndices.push_back(std::make_pair(tokenStart, size - tokenStart + 1));
+		
+	// Allocate the result.
+	Ref<Array> result = Array::basicNativeNew(varNameIndices.size());
+	for(size_t i = 0; i < varNameIndices.size(); ++i)
+	{
+		auto &startSize = varNameIndices[i];
+		auto subString = fromNativeRange((char*)data + startSize.first, startSize.second);
+		auto resultData = reinterpret_cast<Oop*> (result->getFirstFieldPointer());
+		resultData[i] = Oop::fromPointer(subString);
+	}
+	
+	return result;
+} 
+
+Ref<Array> ByteString::splitVariableNames()
+{
+	return splitVariableNames(getString());
 }
 
 LODTALK_BEGIN_CLASS_SIDE_TABLE(ByteString)

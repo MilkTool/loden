@@ -97,8 +97,13 @@ class ByteString: public String
 {
 	LODTALK_NATIVE_CLASS();
 public:
-
+	static ByteString *basicNativeNew(size_t indexableSize);
+	
+	static ByteString *fromNativeRange(const char *star, size_t size);
 	static Ref<ByteString> fromNative(const std::string &native);
+	
+	static Ref<Array> splitVariableNames(const std::string &string); 
+	Ref<Array> splitVariableNames();
 	
 	std::string getString();
 };
