@@ -19,7 +19,6 @@ public:
 	Oop currentCategory;
 	Oop currentClass;
 	Oop globalContextClass;
-
 };
 
 // Method AST handle

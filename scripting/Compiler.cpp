@@ -101,6 +101,37 @@ public:
 	Ref<LiteralVariable> variable;
 };
 
+// Instance variable lookup
+class InstanceVariableLookup: public VariableLookup
+{
+public:
+	InstanceVariableLookup(int instanceVariableIndex)
+		: instanceVariableIndex(instanceVariableIndex) {}
+	~InstanceVariableLookup() {}
+
+	virtual bool isMutable() const
+	{
+		return true;
+	}
+
+	virtual Oop getValue()
+	{
+		abort();
+	}
+	
+	virtual void setValue(Oop newValue)
+	{
+		abort();
+	}
+
+	virtual void generateLoad(MethodAssembler::Assembler &gen) const
+	{
+		gen.pushReceiverVariableIndex(instanceVariableIndex);
+	}
+	
+	int instanceVariableIndex;
+};
+
 // Temporal variable lookup
 class TemporalVariableLookup: public VariableLookup
 {
@@ -156,6 +187,71 @@ VariableLookupPtr GlobalEvaluationScope::lookSymbol(Oop symbol)
 		return VariableLookupPtr();
 
 	return std::make_shared<LiteralVariableLookup> (globalVar);
+}
+
+// Instance variable scope
+class InstanceVariableScope: public EvaluationScope
+{
+public:	
+	InstanceVariableScope(const EvaluationScopePtr &parent, ClassDescription *classDesc)
+		: EvaluationScope(parent), classDesc(classDesc) {}
+	
+	virtual VariableLookupPtr lookSymbol(Oop symbol);
+	
+private:
+	std::pair<int, int> findInstanceVariable(ClassDescription *pos, Oop symbol);
+	
+	Ref<ClassDescription> classDesc;
+	std::map<OopRef, VariableLookupPtr> lookupCache;
+};
+
+VariableLookupPtr InstanceVariableScope::lookSymbol(Oop symbol)
+{
+	auto it = lookupCache.find(symbol);
+	if(it != lookupCache.end())
+		return it->second;
+		
+	auto res = findInstanceVariable(classDesc.get(), symbol);
+	if(res.first < 0)
+		return VariableLookupPtr();
+		
+	auto instanceVariable = std::make_shared<InstanceVariableLookup> (res.first);
+	lookupCache[symbol] = instanceVariable;
+	return instanceVariable;
+}
+
+std::pair<int, int> InstanceVariableScope::findInstanceVariable(ClassDescription *pos, Oop symbol)
+{
+	// Find the superclass first
+	auto instanceCount = 0;
+	auto super = pos->superclass;
+	if(!isNil(super))
+	{
+		auto superInstance = findInstanceVariable(reinterpret_cast<ClassDescription*> (super), symbol);
+		if(superInstance.first >= 0)
+			return superInstance;
+		instanceCount = superInstance.second;
+	}
+	
+	// Find the symbol here
+	auto instanceVarNames = pos->instanceVariables;
+	auto instanceVarIndex = -1;
+	if(!instanceVarNames.isNil())
+	{
+		size_t count = instanceVarNames.getNumberOfElements();
+		auto nameArray = reinterpret_cast<Oop*> (instanceVarNames.getFirstFieldPointer());
+		for(size_t i = 0; i < count; ++i)
+		{
+			if(nameArray[i] == symbol)
+			{
+				instanceVarIndex = i + instanceCount;
+				break;
+			}
+		}
+		instanceCount += count;
+	}
+	
+	return std::make_pair(instanceVarIndex, instanceCount);
 }
 
 // Local variable scope
@@ -701,8 +797,7 @@ Oop ScriptContext::addFunction(Oop methodAstHandle)
 		nativeError("expected a method AST handle.");
 		
 	// Check the class
-	if(classIndexOf(globalContextClass) != SCI_Class &&
-	   classIndexOf(globalContextClass) != SCI_Metaclass)
+	if(!isClassOrMetaclass(globalContextClass))
 		nativeError("a global context class is needed");
 	auto clazz = reinterpret_cast<ClassDescription*> (globalContextClass.pointer);
 
@@ -715,10 +810,11 @@ Oop ScriptContext::addFunction(Oop methodAstHandle)
 	
 	// TODO: Create the class global variables scope.
 	
-	// TODO: Create the class instance variables scope.
+	// Create the class instance variables scope.
+	auto instanceVarScope = std::make_shared<InstanceVariableScope> (globalScope, clazz);
 
 	// Compile the method
-	MethodCompiler compiler(globalScope, clazz->getBinding());
+	MethodCompiler compiler(instanceVarScope, clazz->getBinding());
 	Ref<CompiledMethod> compiledMethod(reinterpret_cast<CompiledMethod*> (ast->acceptVisitor(&compiler).pointer));
 
 	// Register the method in the global context class side
@@ -737,8 +833,7 @@ Oop ScriptContext::addMethod(Oop methodAstHandle)
 		nativeError("expected a method AST handle.");
 
 	// Check the class
-	if(classIndexOf(currentClass) != SCI_Class &&
-	   classIndexOf(currentClass) != SCI_Metaclass)
+	if(!isClassOrMetaclass(globalContextClass))
 		nativeError("a class is needed for adding a method.");
 	auto clazz = reinterpret_cast<ClassDescription*> (currentClass.pointer);
 
@@ -749,12 +844,13 @@ Oop ScriptContext::addMethod(Oop methodAstHandle)
 	// Create the global scope
 	auto globalScope = std::make_shared<GlobalEvaluationScope> ();
 	
-	// TODO: Create the class global variables scope.
+	// TODO: Create the class variables scope.
 	
-	// TODO: Create the class instance variables scope.
+	// Create the class instance variables scope.
+	auto instanceVarScope = std::make_shared<InstanceVariableScope> (globalScope, clazz);
 	
 	// Compile the method
-	MethodCompiler compiler(globalScope, clazz->getBinding());
+	MethodCompiler compiler(instanceVarScope, clazz->getBinding());
 	auto compiledMethod = reinterpret_cast<CompiledMethod*> (ast->acceptVisitor(&compiler).pointer);
 
 	// Register the method in the current class
@@ -776,7 +872,8 @@ LODTALK_BEGIN_CLASS_TABLE(ScriptContext)
 	LODTALK_METHOD("method:", &ScriptContext::addMethod)
 LODTALK_END_CLASS_TABLE()
 
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(ScriptContext, Object, OF_FIXED_SIZE, 3);
+LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(ScriptContext, Object, OF_FIXED_SIZE, 3,
+"currentCategory currentClass globalContextClass");
 
 // The method ast handle
 LODTALK_BEGIN_CLASS_SIDE_TABLE(MethodASTHandle)

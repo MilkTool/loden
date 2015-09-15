@@ -101,9 +101,9 @@ public:
 	
 	static ByteString *fromNativeRange(const char *star, size_t size);
 	static Ref<ByteString> fromNative(const std::string &native);
-	
-	static Ref<Array> splitVariableNames(const std::string &string); 
+
 	Ref<Array> splitVariableNames();
+	static Ref<Array> splitVariableNames(const std::string &string);
 	
 	std::string getString();
 };
@@ -136,6 +136,7 @@ public:
 	static Object *basicNativeNew(size_t indexableSize);
 	
 	static Ref<ByteSymbol> fromNative(const std::string &native);
+	static Ref<ByteSymbol> fromNativeRange(const char *star, size_t size);
 	
 	std::string getString();
 };

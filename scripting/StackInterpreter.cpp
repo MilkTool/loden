@@ -197,20 +197,43 @@ private:
 		return method;
 	}
 	
+	Oop getInstanceVariable(int index)
+	{
+		return reinterpret_cast<Oop*> (currentReceiver().getFirstFieldPointer())[index];
+	}
+	
+	void setInstanceVariable(int index, Oop value)
+	{
+		reinterpret_cast<Oop*> (currentReceiver().getFirstFieldPointer())[index] = value;
+	}
+	
 	Oop getLiteral(int index)
 	{
 		return literalArray[index];
 	}
 
+	ptrdiff_t getTemporaryOffset(size_t index)
+	{
+		if(index < argumentCount)
+			return InterpreterStackFrame::LastArgumentOffset + ptrdiff_t(argumentCount - index - 1) *sizeof (Oop);
+		else
+			return InterpreterStackFrame::FirstTempOffset - ptrdiff_t(index - argumentCount) *sizeof (Oop);
+	}
+	
 	Oop getTemporary(size_t index)
 	{
-		ptrdiff_t offset;
-		if(index < argumentCount)
-			offset = InterpreterStackFrame::LastArgumentOffset + (argumentCount - index - 1) *sizeof (Oop);
-		else
-			offset = InterpreterStackFrame::FirstTempOffset - (index - argumentCount) *sizeof (Oop);
-		return *reinterpret_cast<Oop*> (stack->getFramePointer() + offset);
-			
+		return *reinterpret_cast<Oop*> (stack->getFramePointer() + getTemporaryOffset(index));
+	}
+
+	void setTemporary(size_t index, Oop value)
+	{
+		*reinterpret_cast<Oop*> (stack->getFramePointer() + getTemporaryOffset(index)) = value;
+	}
+	
+	void pushReceiverVariable(int receiverVarIndex)
+	{
+		auto localVar = getInstanceVariable(receiverVarIndex);
+		pushOop(localVar);
 	}
 	
 	void pushLiteralVariable(int literalVarIndex)
@@ -295,7 +318,11 @@ private:
 	// Bytecode instructions
 	void interpretPushReceiverVariableShort()
 	{
-		LODTALK_UNIMPLEMENTED();
+		fetchNextInstructionOpcode();
+		
+		// Fetch the variable index.
+		auto variableIndex = currentOpcode & 0xF;
+		pushReceiverVariable(variableIndex);
 	}
 	
 	void interpretPushLiteralVariableShort()

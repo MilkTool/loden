@@ -464,6 +464,27 @@ Oop getClassFromOop(Oop oop)
 	return getClassFromIndex(classIndexOf(oop));
 }
 
+
+bool isClassOrMetaclass(Oop oop)
+{
+	auto classIndex = classIndexOf(oop);
+	if(classIndex == SCI_Metaclass)
+		return true;
+	
+	auto clazz = getClassFromIndex(classIndexOf(oop));
+	return classIndexOf(clazz) == SCI_Metaclass;
+}
+
+bool isMetaclass(Oop oop)
+{
+	return classIndexOf(oop) == SCI_Metaclass;
+}
+
+bool isClass(Oop oop)
+{
+	return isClassOrMetaclass(oop) && !isMetaclass(oop);
+}
+
 // Send the message
 Oop sendDNUMessage(Oop receiver, Oop selector, int argumentCount, Oop *arguments)
 {

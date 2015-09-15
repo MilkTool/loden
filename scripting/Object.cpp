@@ -146,13 +146,17 @@ Oop Behavior::getBinding()
 {
 	// Dispatch manually the message.
 	auto classIndex = classIndexOf(selfOop());
-	if(classIndex == SCI_Class)
-		return static_cast<Class*> (this)->getBinding();
-	else if(classIndex == SCI_Metaclass)
+	// Am I a metaclass?
+	if(classIndex == SCI_Metaclass)
 		return static_cast<Metaclass*> (this)->getBinding();
 
+	// Am I a class?
+	auto myClass = getClassFromIndex(classIndex);
+	if(classIndexOf(myClass) == SCI_Metaclass)
+		return static_cast<Class*> (this)->getBinding();
+
 	// I need to send an actual message
-	abort();
+	LODTALK_UNIMPLEMENTED();
 }
 
 LODTALK_BEGIN_CLASS_SIDE_TABLE(Behavior)

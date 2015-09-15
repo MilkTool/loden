@@ -47,13 +47,30 @@ public:
 
 	virtual uint8_t *encode(uint8_t *buffer)
 	{
-		assert(0 && "unimplemented");
+		if(index < BytecodeSet::PushReceiverVariableShortRangeSize)
+		{
+			*buffer++ = BytecodeSet::PushReceiverVariableShortFirst + index;
+			return buffer;
+		}
+		if(index < 256)
+		{
+			*buffer++ = BytecodeSet::PushReceiverVariable;
+			*buffer++ = index;
+			return buffer;
+		}
+			
+		LODTALK_UNIMPLEMENTED();
 	}
 	
 protected:
 	virtual size_t computeMaxSize()
 	{
-		assert(0 && "unimplemented");
+		if(index < BytecodeSet::PushReceiverVariableShortRangeSize)
+			return 1;
+		if(index < 256)
+			return 2;
+			
+		LODTALK_UNIMPLEMENTED();
 	}
 
 private:
@@ -75,7 +92,7 @@ public:
 			return buffer;
 		}
 			
-		assert(0 && "unimplemented");
+		LODTALK_UNIMPLEMENTED();
 	}
 	
 protected:
@@ -83,7 +100,7 @@ protected:
 	{
 		if(index < BytecodeSet::PushLiteralShortRangeSize)
 			return 1;
-		assert(0 && "unimplemented");
+		LODTALK_UNIMPLEMENTED();
 	}
 
 private:

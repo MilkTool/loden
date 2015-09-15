@@ -139,7 +139,7 @@ Ref<Array> ByteString::splitVariableNames(const std::string &string)
 			// Inside token.
 			if(c <= ' ')
 			{
-				varNameIndices.push_back(std::make_pair(tokenStart, i - tokenStart + 1));
+				varNameIndices.push_back(std::make_pair(tokenStart, i - tokenStart));
 				tokenStart = -1;
 			}
 		}
@@ -147,16 +147,16 @@ Ref<Array> ByteString::splitVariableNames(const std::string &string)
 	
 	// Push the last token.
 	if(tokenStart >= 0)
-		varNameIndices.push_back(std::make_pair(tokenStart, size - tokenStart + 1));
+		varNameIndices.push_back(std::make_pair(tokenStart, size - tokenStart));
 		
 	// Allocate the result.
 	Ref<Array> result = Array::basicNativeNew(varNameIndices.size());
 	for(size_t i = 0; i < varNameIndices.size(); ++i)
 	{
 		auto &startSize = varNameIndices[i];
-		auto subString = fromNativeRange((char*)data + startSize.first, startSize.second);
+		auto subString = ByteSymbol::fromNativeRange((char*)data + startSize.first, startSize.second);
 		auto resultData = reinterpret_cast<Oop*> (result->getFirstFieldPointer());
-		resultData[i] = Oop::fromPointer(subString);
+		resultData[i] = subString.getOop();
 	}
 	
 	return result;
@@ -234,6 +234,11 @@ Ref<ByteSymbol> ByteSymbol::fromNative(const std::string &native)
 	// Store in the internation dictionary.
 	(*byteSymbolDictionary)[native] = ref;
 	return ref;
+}
+
+Ref<ByteSymbol> ByteSymbol::fromNativeRange(const char *start, size_t size)
+{
+	return fromNative(std::string(start, start + size));
 }
 
 // WideSymbol

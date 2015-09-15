@@ -765,6 +765,9 @@ double readDoubleObject(const Ref<Oop> &ref);
 // Class table
 Oop getClassFromIndex(int classIndex);
 Oop getClassFromOop(Oop oop);
+bool isClassOrMetaclass(Oop oop);
+bool isMetaclass(Oop oop);
+bool isClass(Oop oop);
 
 // Message send
 Oop sendDNUMessage(Oop receiver, Oop selector, int argumentCount, Oop *arguments);
