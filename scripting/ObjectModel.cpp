@@ -107,7 +107,9 @@ private:
 		// Traverse the stacks
 		for(auto stack : currentStacks)
 		{
-			printf("TODO: traverse stack %p\n", stack);
+			stack->stackFramesDo([&](StackFrame &stackFrame) {
+				stackFrame.oopElementsDo(f);
+			});
 		}
 		
 		// Traverse the oop reference
@@ -303,7 +305,7 @@ void GarbageCollector::sweep()
 		if(header->gcColor == White)
 		{
 			// TODO: free the unreachable object.
-			printf("free garbage %p %s\n", header, getClassNameOfObject(obj).c_str());
+			//printf("free garbage %p %s\n", header, getClassNameOfObject(obj).c_str());
 			fflush(stdout);
 			free(header);
 			allocatedObjects.erase(it++);

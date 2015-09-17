@@ -29,8 +29,7 @@ void StackMemory::setStorage(uint8_t *storage, size_t storageSize)
 	stackPageSize = storageSize;
 	stackPageHighest = storage + storageSize;
 	stackPageLowest = storage;
-	framePointer = nullptr;
-	stackPointer = stackPageHighest;	
+	stackFrame = StackFrame(nullptr, stackPageHighest);	
 }
 
 // Stack memories interface used by the GC

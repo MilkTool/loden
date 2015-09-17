@@ -50,116 +50,14 @@ public:
 };
 
 /**
- * Stack memory for a single thread.
+ * Stack frame
  */
-class StackMemory
+class StackFrame
 {
 public:
-	StackMemory();
-	~StackMemory();
-	
-	void setStorage(uint8_t *storage, size_t storageSize);
-
-public:	
-	inline size_t getStackSize() const
-	{
-		return stackPageHighest - stackPointer;
-	}
-
-	inline size_t getAvailableCapacity() const
-	{
-		return stackPointer - stackPageLowest;
-	}
-	
-	inline void pushOop(Oop oop)
-	{
-		stackPointer -= sizeof(Oop);
-		*reinterpret_cast<Oop*> (stackPointer) = oop;
-	}
-	
-	inline void pushPointer(uint8_t *pointer)
-	{
-		stackPointer -= sizeof(pointer);
-		*reinterpret_cast<uint8_t**> (stackPointer) = pointer;
-	}
-
-	inline void pushUInt(uintptr_t value)
-	{
-		stackPointer -= sizeof(value);
-		*reinterpret_cast<uintptr_t*> (stackPointer) = value;
-	}
-
-	inline void pushInt(intptr_t value)
-	{
-		stackPointer -= sizeof(value);
-		*reinterpret_cast<intptr_t*> (stackPointer) = value;
-	}
-	
-	inline uint8_t *stackPointerAt(size_t offset)
-	{
-		return *reinterpret_cast<uint8_t**> (stackPointer + offset);
-	}
-
-	inline Oop stackOopAt(size_t offset)
-	{
-		return *reinterpret_cast<Oop*> (stackPointer + offset);
-	}
-	
-	inline Oop stackTop()
-	{
-		return *reinterpret_cast<Oop*> (stackPointer);
-	}
-
-	inline uintptr_t stackUIntTop(size_t offset)
-	{
-		return *reinterpret_cast<uintptr_t*> (stackPointer + offset);
-	}
-	
-	inline Oop popOop()
-	{
-		auto res = stackOopAt(0);
-		stackPointer += sizeof(Oop);
-		return res;
-	}
-	
-	inline uintptr_t popUInt()
-	{
-		auto res = stackUIntTop(0);
-		stackPointer += sizeof(uintptr_t);
-		return res;
-	}
-
-	inline void popMultiplesOops(int count)
-	{
-		stackPointer += count * sizeof(Oop);
-	}
-	
-	inline uint8_t *popPointer()
-	{
-		auto result = stackPointerAt(0);
-		stackPointer += sizeof(uint8_t*);
-		return result;
-	}
-	
-	inline uint8_t *getStackPointer()
-	{
-		return stackPointer;
-	}
-
-	inline uint8_t *getFramePointer()
-	{
-		return framePointer;
-	}
-
-	inline void setFramePointer(uint8_t *newPointer)
-	{
-		framePointer = newPointer;
-	}
-	
-	inline void setStackPointer(uint8_t *newPointer)
-	{
-		stackPointer = newPointer;
-	}
+	StackFrame(uint8_t *framePointer = nullptr, uint8_t *stackPointer = nullptr)
+		: framePointer(framePointer), stackPointer(stackPointer) {}
+	~StackFrame() {}
 	
 	inline uint8_t *getPrevFramePointer()
 	{
@@ -185,14 +83,201 @@ public:
 	{
 		return *reinterpret_cast<uintptr_t*> (framePointer + InterpreterStackFrame::MetadataOffset);
 	}
+	
+	inline StackFrame getPreviousFrame()
+	{
+		return StackFrame(getPrevFramePointer(), framePointer + InterpreterStackFrame::LastArgumentOffset);
+	}
+	
+	inline Oop stackOopAt(size_t offset)
+	{
+		return *reinterpret_cast<Oop*> (stackPointer + offset);
+	}
+	
+	inline Oop stackTop()
+	{
+		return *reinterpret_cast<Oop*> (stackPointer);
+	}
+	
+	template<typename FT>
+	inline void oopElementsDo(const FT &f)
+	{
+		// This method
+		f(Oop::fromPointer(getMethod()));
 
+		// This context
+		f(getThisContext());
+		
+		// Frame elements
+		Oop *frameElementsStart = reinterpret_cast<Oop*> (stackPointer);
+		Oop *frameElementsEnd = reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::FirstTempOffset);
+		for(Oop *pos = frameElementsStart; pos <= frameElementsEnd; ++pos)
+			f(*pos);
+	}
+	
+	uint8_t *framePointer;
+	uint8_t *stackPointer;
+};
+
+/**
+ * Stack memory for a single thread.
+ */
+class StackMemory
+{
+public:
+	StackMemory();
+	~StackMemory();
+	
+	void setStorage(uint8_t *storage, size_t storageSize);
+
+public:	
+	inline size_t getStackSize() const
+	{
+		return stackPageHighest - stackFrame.stackPointer;
+	}
+
+	inline size_t getAvailableCapacity() const
+	{
+		return stackFrame.stackPointer - stackPageLowest;
+	}
+	
+	inline void pushOop(Oop oop)
+	{
+		stackFrame.stackPointer -= sizeof(Oop);
+		*reinterpret_cast<Oop*> (stackFrame.stackPointer) = oop;
+	}
+	
+	inline void pushPointer(uint8_t *pointer)
+	{
+		stackFrame.stackPointer -= sizeof(pointer);
+		*reinterpret_cast<uint8_t**> (stackFrame.stackPointer) = pointer;
+	}
+
+	inline void pushUInt(uintptr_t value)
+	{
+		stackFrame.stackPointer -= sizeof(value);
+		*reinterpret_cast<uintptr_t*> (stackFrame.stackPointer) = value;
+	}
+
+	inline void pushInt(intptr_t value)
+	{
+		stackFrame.stackPointer -= sizeof(value);
+		*reinterpret_cast<intptr_t*> (stackFrame.stackPointer) = value;
+	}
+	
+	inline uint8_t *stackPointerAt(size_t offset)
+	{
+		return *reinterpret_cast<uint8_t**> (stackFrame.stackPointer + offset);
+	}
+
+	inline Oop stackOopAt(size_t offset)
+	{
+		return stackFrame.stackOopAt(offset);
+	}
+	
+	inline Oop stackTop()
+	{
+		return stackFrame.stackTop();
+	}
+
+	inline uintptr_t stackUIntTop(size_t offset)
+	{
+		return *reinterpret_cast<uintptr_t*> (stackFrame.stackPointer + offset);
+	}
+	
+	inline Oop popOop()
+	{
+		auto res = stackOopAt(0);
+		stackFrame.stackPointer += sizeof(Oop);
+		return res;
+	}
+	
+	inline uintptr_t popUInt()
+	{
+		auto res = stackUIntTop(0);
+		stackFrame.stackPointer += sizeof(uintptr_t);
+		return res;
+	}
+
+	inline void popMultiplesOops(int count)
+	{
+		stackFrame.stackPointer += count * sizeof(Oop);
+	}
+	
+	inline uint8_t *popPointer()
+	{
+		auto result = stackPointerAt(0);
+		stackFrame.stackPointer += sizeof(uint8_t*);
+		return result;
+	}
+	
+	inline uint8_t *getStackPointer()
+	{
+		return stackFrame.stackPointer;
+	}
+
+	inline uint8_t *getFramePointer()
+	{
+		return stackFrame.framePointer;
+	}
+
+	inline void setFramePointer(uint8_t *newPointer)
+	{
+		stackFrame.framePointer = newPointer;
+	}
+	
+	inline void setStackPointer(uint8_t *newPointer)
+	{
+		stackFrame.stackPointer = newPointer;
+	}
+	
+	inline uint8_t *getPrevFramePointer()
+	{
+		return stackFrame.getPrevFramePointer();
+	}
+	
+	inline StackFrame getCurrentFrame()
+	{
+		return stackFrame;
+	}
+	
+	inline CompiledMethod *getMethod()
+	{
+		return stackFrame.getMethod();
+	}
+
+	inline Oop getReceiver()
+	{
+		return stackFrame.getReceiver();
+	}
+
+	inline Oop getThisContext()
+	{
+		return stackFrame.getThisContext();
+	}
+
+	inline uintptr_t getMetadata()
+	{
+		return stackFrame.getMetadata();;
+	}
+
+	template<typename FT>
+	inline void stackFramesDo(const FT &function)
+	{
+		auto currentFrame = stackFrame;
+	
+		while(currentFrame.framePointer)
+		{
+			function(currentFrame);
+			currentFrame = currentFrame.getPreviousFrame();
+		}
+	}
 private:
 	uint8_t *stackPageLowest;
 	uint8_t *stackPageHighest;
 	size_t stackPageSize;
 	
-	uint8_t *framePointer;
-	uint8_t *stackPointer;
+	StackFrame stackFrame;
 	
 };
 
