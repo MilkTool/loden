@@ -107,12 +107,12 @@ LODTALK_END_CLASS_SIDE_TABLE()
 LODTALK_BEGIN_CLASS_TABLE(Context)
 LODTALK_END_CLASS_TABLE()
 
-LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(Context, InstructionStream, OF_FIXED_SIZE, Context::ContextVariableCount,
+LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(Context, InstructionStream, OF_VARIABLE_SIZE_IVARS, Context::ContextVariableCount,
 "stackp method closureOrNil receiver");
 
-Context *Context::create()
+Context *Context::create(size_t slotCount)
 {
-    return reinterpret_cast<Context*> (newObject(ContextVariableCount, 0, OF_FIXED_SIZE, SCI_Context));
+    return reinterpret_cast<Context*> (newObject(ContextVariableCount, slotCount, OF_VARIABLE_SIZE_IVARS, SCI_Context));
 }
 
 // BlockClosure

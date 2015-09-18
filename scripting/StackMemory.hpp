@@ -79,10 +79,25 @@ public:
 		return *reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::ThisContextOffset);
 	}
 
+    inline void setThisContext(Oop newContext)
+    {
+        *reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::ThisContextOffset) = newContext;
+    }
+
+    inline Oop getArgumentAtReverseIndex(size_t index)
+    {
+        return reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::LastArgumentOffset)[index];
+    }
+
 	inline uintptr_t getMetadata()
 	{
 		return *reinterpret_cast<uintptr_t*> (framePointer + InterpreterStackFrame::MetadataOffset);
 	}
+
+    inline void setMetadata(uintptr_t newMetadata)
+    {
+        *reinterpret_cast<uintptr_t*> (framePointer + InterpreterStackFrame::MetadataOffset) = newMetadata; 
+    }
 
 	inline StackFrame getPreviousFrame()
 	{
@@ -117,7 +132,12 @@ public:
 
     void marryFrame();
 
-    inline bool isBlock()
+    inline int getArgumentCount()
+    {
+        return getMetadata() & 0xFF;
+    }
+
+    inline bool isBlockActivation()
     {
         return getMetadata() & 0xFF00;
     }

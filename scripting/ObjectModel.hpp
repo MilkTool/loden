@@ -82,7 +82,7 @@ enum ObjectFormat
 	OF_COMPILED_METHOD_5,
 	OF_COMPILED_METHOD_6,
 	OF_COMPILED_METHOD_7,
-	
+
 	OF_INDEXABLE_NATIVE_FIRST = OF_INDEXABLE_64,
 };
 
@@ -222,12 +222,12 @@ struct ObjectHeader
 	{
 		return {0, true, true, identityHash, 0, OF_EMPTY, 0, classIndex};
 	}
-	
+
 	static constexpr ObjectHeader emptyNativeClass(void *self, unsigned int classIndex)
 	{
 		return {0, true, true, generateIdentityHash(self), 0, OF_EMPTY, 0, classIndex};
 	}
-	
+
 };
 static_assert(sizeof(ObjectHeader) == 8, "Object header size must be 8");
 
@@ -248,10 +248,10 @@ private:
 	constexpr Oop(uint8_t *pointer) : pointer(pointer) {}
 	constexpr Oop(intptr_t intValue) : intValue(intValue) {}
 	constexpr Oop(int, uintptr_t uintValue) : uintValue(uintValue) {}
-	
+
 public:
 	constexpr Oop() : pointer(reinterpret_cast<uint8_t*> (&NilObject)) {}
-	
+
 	static constexpr Oop fromPointer(void *pointer)
 	{
 		return Oop(reinterpret_cast<uint8_t*> (pointer));
@@ -261,12 +261,12 @@ public:
 	{
 		return Oop(0, value);
 	}
-	
+
 	inline bool isBoolean() const
 	{
 		return isTrue() || isFalse();
 	}
-	
+
 	inline bool isTrue() const
 	{
 		return pointer == reinterpret_cast<uint8_t*> (&TrueObject);
@@ -276,22 +276,22 @@ public:
 	{
 		return pointer == reinterpret_cast<uint8_t*> (&FalseObject);
 	}
-	
+
 	inline bool isNil() const
 	{
 		return pointer == reinterpret_cast<uint8_t*> (&NilObject);
 	}
-	
+
 	inline bool isSmallInteger() const
 	{
 		return (uintValue & ObjectTag::SmallIntegerMask) == ObjectTag::SmallInteger;
 	}
-	
+
 	inline bool isCharacter() const
 	{
 		return (uintValue & ObjectTag::CharacterMask) == ObjectTag::Character;
 	}
-	
+
 	inline bool isSmallFloat() const
 	{
 	#ifdef LODTALK_HAS_SMALLFLOAT
@@ -300,17 +300,17 @@ public:
 		return false;
 	#endif
 	}
-	
+
 	inline bool isPointer() const
 	{
 		return (uintValue & ObjectTag::PointerMask) == ObjectTag::Pointer;
 	}
-	
+
 	inline bool isIndexableNativeData() const
 	{
 		return isPointer() && header->objectFormat >= OF_INDEXABLE_NATIVE_FIRST;
 	}
-	
+
 	void *getFirstFieldPointer() const
 	{
 		if(!isPointer())
@@ -319,24 +319,24 @@ public:
 			return pointer + sizeof(ObjectHeader) + 8;
 		return pointer + sizeof(ObjectHeader);
 	}
-	
+
 	inline SmallIntegerValue decodeSmallInteger() const
 	{
 		assert(isSmallInteger());
 		return intValue >> ObjectTag::SmallIntegerShift;
 	}
-	
+
 	static constexpr Oop encodeSmallInteger(SmallIntegerValue integer)
 	{
 		return Oop((integer << ObjectTag::SmallIntegerShift) | ObjectTag::SmallInteger);
 	}
-	
+
 	inline int decodeCharacter() const
 	{
 		assert(isCharacter());
 		return intValue >> ObjectTag::CharacterShift;
 	}
-	
+
 	static constexpr Oop encodeCharacter(int character)
 	{
 		return Oop((character << ObjectTag::CharacterShift) | ObjectTag::Character);
@@ -351,17 +351,17 @@ public:
 	{
 		return pointer != o.pointer;
 	}
-	
+
 	bool operator<(const Oop &o) const
 	{
 		return intValue < o.intValue;
 	}
-	
+
 	static constexpr Oop trueObject()
 	{
 		return Oop(reinterpret_cast<uint8_t*> (&TrueObject));
 	}
-	
+
 	static constexpr Oop falseObject()
 	{
 		return Oop(reinterpret_cast<uint8_t*> (&FalseObject));
@@ -374,13 +374,13 @@ public:
 			uint64_t *theSlotCount = reinterpret_cast<uint64_t*> (pointer + sizeof(ObjectHeader));
 			return *theSlotCount;
 		}
-		
+
 		return header->slotCount;
 	}
-	
+
 	inline bool isIndexable() const
 	{
-		return variableSlotSizeFor((ObjectFormat)header->objectFormat) != 0; 
+		return variableSlotSizeFor((ObjectFormat)header->objectFormat) != 0;
 	}
 
 	inline size_t getNumberOfElements() const
@@ -392,7 +392,7 @@ public:
 
 		if(format < OF_INDEXABLE_64)
 			return slotCount;
-			
+
 		if(format >= OF_INDEXABLE_8)
 		{
 			auto slotBytes = slotCount * sizeof(void*);
@@ -402,11 +402,11 @@ public:
 			else
 				return slotBytes;
 		}
-		
+
 		LODTALK_UNIMPLEMENTED();
 		abort();
 	}
-		
+
 	union
 	{
 		uint8_t *pointer;
@@ -439,7 +439,7 @@ inline constexpr Oop falseOop()
 // Number of literals: 16 bits
 // Has primitive : 1 bit
 // Number of temporals: 6 bits
-// Number of arguments: 4 bits 
+// Number of arguments: 4 bits
 struct CompiledMethodHeader
 {
 	static const size_t LiteralMask = (1<<16) -1;
@@ -453,36 +453,36 @@ struct CompiledMethodHeader
 	static const size_t ReservedBit = 1<<29;
 	static const size_t FlagBit = 1<<30;
 	static const size_t AlternateBytecodeBit = 1<<31;
-	
+
 	constexpr CompiledMethodHeader(Oop oop) : oop(oop) {}
-	
+
 	static CompiledMethodHeader create(size_t literalCount, size_t temporalCount, size_t argumentCount)
 	{
 		assert(literalCount <= LiteralMask);
 		assert(temporalCount <= TemporalMask);
 		assert(argumentCount <= ArgumentMask);
-		
+
 		return Oop::fromRawUIntPtr(1 |
 		((literalCount & LiteralMask) << LiteralShift) |
 		((temporalCount & TemporalMask) << TemporalShift) |
 		((argumentCount & ArgumentMask) << ArgumentShift));
 	}
-	
+
 	size_t getLiteralCount() const
 	{
 		return (oop.uintValue >> LiteralShift) & LiteralMask;
 	}
-	
+
 	size_t getTemporalCount() const
 	{
 		return (oop.uintValue >> TemporalShift) & TemporalMask;
 	}
-	
+
 	size_t getArgumentCount() const
 	{
 		return (oop.uintValue >> ArgumentShift) & ArgumentMask;
 	}
-	
+
 	bool needsLargeFrame() const
 	{
 		return oop.uintValue | NeedsLargeFrameBit;
@@ -495,7 +495,7 @@ struct CompiledMethodHeader
 		else
 			oop.uintValue &= ~NeedsLargeFrameBit;
 	}
-	
+
 	Oop oop;
 };
 
@@ -504,7 +504,7 @@ uint8_t *allocateObjectMemory(size_t objectSize);
 ObjectHeader *newObject(size_t fixedSlotCount, size_t indexableSize, ObjectFormat format, int classIndex, int identityHash = -1);
 
 /**
- * Object header when the slot count is greater or equal to 255. 
+ * Object header when the slot count is greater or equal to 255.
  */
 struct BigObjectHeader
 {
@@ -591,9 +591,9 @@ public:
 	{
 		unregisterSelf();
 	}
-	
+
 	Oop oop;
-	
+
 	bool isNil() const
 	{
 		return oop.isNil();
@@ -604,7 +604,7 @@ public:
 		this->oop = oop;
 		return *this;
 	}
-		
+
 	OopRef &operator=(const OopRef &o)
 	{
 		oop = o.oop;
@@ -620,7 +620,7 @@ public:
 	{
 		return oop < o;
 	}
-	
+
 	bool operator==(const OopRef &o) const
 	{
 		return oop == o.oop;
@@ -640,13 +640,13 @@ public:
 	{
 		return oop == o;
 	}
-	
+
 private:
 	friend class GarbageCollector;
-	
+
 	void registerSelf();
 	void unregisterSelf();
-	
+
 	// This is used by the GC
 	OopRef* prevReference_;
 	OopRef* nextReference_;
@@ -661,25 +661,25 @@ public:
 	Ref(decltype(nullptr) ni) {}
 	Ref(const Ref<T> &o)
 		: reference(o.getOop()) {}
-	
+
 	template<typename U>
 	Ref(const Ref<U> &o)
 	{
 		reset(o.get());
 	}
-	
+
 	Ref(T* p)
 	{
 		reset(p);
 	}
-		
+
 	static Ref<T> fromOop(Oop oop)
 	{
 		Ref<T> result;
 		result.reference = oop;
 		return result;
 	}
-	
+
 	void reset(T *pointer=(T*)&NilObject)
 	{
 		internalSet(pointer);
@@ -695,7 +695,7 @@ public:
 	{
 		return reinterpret_cast<T*> (reference.oop.pointer);
 	}
-	
+
 	Oop getOop() const
 	{
 		return reference.oop;
@@ -707,14 +707,14 @@ public:
 		internalSet(o.get());
 		return *this;
 	}
-	
+
 	template<typename U>
 	Ref<T> &operator=(U *o)
 	{
 		internalSet(o);
 		return *this;
 	}
-	
+
 	bool isSmallInteger() const
 	{
 		return getOop().isSmallInteger();
@@ -724,23 +724,23 @@ public:
 	{
 		return getOop().isSmallFloat();
 	}
-	
+
 	bool isCharacter() const
 	{
 		return getOop().isCharacter();
 	}
-	
+
 	bool isNil() const
 	{
 		return getOop().isNil();
 	}
-	
+
 private:
 	void internalSet(T *pointer)
 	{
 		reference = Oop::fromPointer(pointer);
 	}
-	
+
 	OopRef reference;
 };
 

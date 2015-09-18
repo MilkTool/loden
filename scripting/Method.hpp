@@ -116,13 +116,21 @@ class Context: public InstructionStream
     LODTALK_NATIVE_CLASS();
 public:
     static const int ContextVariableCount = InstructionStreamVariableCount + 4;
+    static const size_t LargeContextSlots = 62;
+    static const size_t SmallContextSlots = 22;
 
-    static Context *create();
+    static Context *create(size_t slotCount);
+
+    Oop getReceiver()
+    {
+        return receiver;
+    }
 
     Oop stackp;
     Oop method;
     Oop closureOrNil;
     Oop receiver;
+    Oop data[];
 };
 
 /**
@@ -136,9 +144,25 @@ public:
 
     static BlockClosure *create(int numcopied);
 
+    inline Oop *getData()
+    {
+        return reinterpret_cast<Oop*> (getFirstFieldPointer());
+    }
+
+    inline Context *getOuterContext()
+    {
+        return reinterpret_cast<Context*> (getData()[0].pointer);
+    }
+
+    inline Oop getReceiver()
+    {
+        return getOuterContext()->getReceiver();
+    }
+
     Oop outerContext;
     Oop startpc;
     Oop numArgs;
+    Oop copiedData[];
 };
 
 /**

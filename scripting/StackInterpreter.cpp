@@ -677,7 +677,7 @@ private:
         blockClosure->numArgs = Oop::encodeSmallInteger(numArgs);
 
         // Copy some elements into the closure.
-        Oop *closureCopiedElements = reinterpret_cast<Oop*> (blockClosure->getFirstFieldPointer());
+        auto closureCopiedElements = blockClosure->copiedData;
         for(size_t i = 0; i < numCopied; ++i)
             closureCopiedElements[numCopied - i - 1] = popOop();
 

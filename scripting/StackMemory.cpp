@@ -18,7 +18,37 @@ LODTALK_SPECIAL_SUBCLASS_DEFINITION(StackMemoryCommitedPage, Object, OF_INDEXABL
 // Stack frame
 void StackFrame::marryFrame()
 {
-    // TODO: Implement me
+    assert(!hasContext());
+
+    auto method = getMethod();
+
+    // Get the closure
+    Oop closure;
+    if(isBlockActivation())
+    {
+        auto blockArgCount = getArgumentCount();
+        closure = getArgumentAtReverseIndex(blockArgCount);
+    }
+
+    // Instantiate the context.
+    auto slotCount = method->getHeader()->needsLargeFrame() ? Context::LargeContextSlots : Context::SmallContextSlots;
+    auto context = Context::create(slotCount);
+
+    // Set the context parameters.
+    context->sender = Oop::fromPointer(framePointer + 1);
+    context->pc = Oop::fromPointer(getPrevFramePointer() + 1);
+    context->stackp = Oop::fromPointer(stackPointer + 1);
+    context->method = Oop::fromPointer(method);
+    context->closureOrNil = closure;
+    context->receiver = getReceiver();
+
+    // Store the context in this frame.
+    setThisContext(Oop::fromPointer(context));
+    setMetadata(getMetadata() | (1<<16));
+
+    // Ensure the have context flag is set.
+    assert(hasContext());
+
 }
 
 // Stack memory for a single thread.
