@@ -871,8 +871,19 @@ Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
 
     // TODO: Generate the inner temporal vector.
 
+    auto closureBeginInstruction = gen.getLastInstruction();
+
     // Generate the block body.
     node->getBody()->acceptVisitor(this);
+
+    // Always return
+	if(!gen.isLastReturn())
+    {
+        if(gen.getLastInstruction() == closureBeginInstruction)
+            gen.blockReturnNil();
+        else
+            gen.blockReturnTop();
+    }
 
     // Finish the block.
     gen.putLabel(blockEnd);

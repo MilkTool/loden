@@ -230,6 +230,7 @@ specialIdentifiers: KSELF           { $$ = new SelfReference(); }
                   | KSUPER          { $$ = new SuperReference(); }
                   | KTRUE           { $$ = new LiteralNode(makeRef(&TrueObject)); }
                   | KFALSE          { $$ = new LiteralNode(makeRef(&FalseObject)); }
+                  | KNIL            { $$ = new LiteralNode(makeRef(&NilObject)); }
                   | KTHIS_CONTEXT   { $$ = new ThisContextReference(); }
                   ;
 
@@ -249,6 +250,5 @@ binarySelector: BINARY_SELECTOR { $$ = $1; }
 void yyerror(LODTALK_LTYPE *yylloc_param , yyscan_t scanner, ParserScannerExtraData *extraData, const char *message)
 {
     ++extraData->errorCount;
-    fprintf(stderr, "%d: %s\n", yylloc_param->first_line, message);
+    fprintf(stderr, "%d.%d-%d.%d: %s\n", yylloc_param->first_line, yylloc_param->first_column, yylloc_param->last_line, yylloc_param->last_column, message);
 }
-

@@ -102,7 +102,7 @@ public:
 	Assembler();
 	~Assembler();
 
-	void addInstruction(InstructionNode *instruction);
+	InstructionNode *addInstruction(InstructionNode *instruction);
 	size_t addLiteral(Oop newLiteral);
 	size_t addLiteral(const OopRef &newLiteral);
 
@@ -110,40 +110,43 @@ public:
 	Label *makeLabelHere();
 	void putLabel(Label *label);
 
+    InstructionNode *getLastInstruction();
 	bool isLastReturn();
 
 	CompiledMethod *generate(size_t temporalCount, size_t argumentCount, size_t extraSize = 0);
 
 public:
-	void returnReceiver();
-	void returnTrue();
-	void returnFalse();
-	void returnNil();
-	void returnTop();
+	InstructionNode *returnReceiver();
+	InstructionNode *returnTrue();
+	InstructionNode *returnFalse();
+	InstructionNode *returnNil();
+	InstructionNode *returnTop();
+    InstructionNode *blockReturnNil();
+    InstructionNode *blockReturnTop();
 
-	void popStackTop();
-	void duplicateStackTop();
+	InstructionNode *popStackTop();
+	InstructionNode *duplicateStackTop();
 
-	void pushLiteral(Oop literal);
-	void pushLiteralVariable(Oop literalVariable);
+	InstructionNode *pushLiteral(Oop literal);
+	InstructionNode *pushLiteralVariable(Oop literalVariable);
 
-	void pushReceiverVariableIndex(int variableIndex);
-	void pushLiteralIndex(int literalIndex);
-	void pushLiteralVariableIndex(int literalVariableIndex);
-	void pushTemporal(int temporalIndex);
+	InstructionNode *pushReceiverVariableIndex(int variableIndex);
+	InstructionNode *pushLiteralIndex(int literalIndex);
+	InstructionNode *pushLiteralVariableIndex(int literalVariableIndex);
+	InstructionNode *pushTemporal(int temporalIndex);
 
-    void pushClosure(int numCopied, int numArgs, Label *blockEnd, int numExtensions);
+    InstructionNode *pushClosure(int numCopied, int numArgs, Label *blockEnd, int numExtensions);
 
-	void pushReceiver();
-	void pushThisContext();
-	void pushNil();
-	void pushTrue();
-	void pushFalse();
-	void pushOne();
-	void pushZero();
+	InstructionNode *pushReceiver();
+	InstructionNode *pushThisContext();
+	InstructionNode *pushNil();
+	InstructionNode *pushTrue();
+	InstructionNode *pushFalse();
+	InstructionNode *pushOne();
+	InstructionNode *pushZero();
 
-	void send(Oop selector, int argumentCount);
-	void superSend(Oop selector, int argumentCount);
+	InstructionNode *send(Oop selector, int argumentCount);
+	InstructionNode *superSend(Oop selector, int argumentCount);
 
 private:
 	size_t computeInstructionsSize();

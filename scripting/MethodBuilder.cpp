@@ -349,9 +349,10 @@ Assembler::~Assembler()
 {
 }
 
-void Assembler::addInstruction(InstructionNode *instruction)
+InstructionNode *Assembler::addInstruction(InstructionNode *instruction)
 {
 	instructionStream.push_back(instruction);
+    return instruction;
 }
 
 size_t Assembler::addLiteral(Oop newLiteral)
@@ -449,124 +450,141 @@ CompiledMethod *Assembler::generate(size_t temporalCount, size_t argumentCount, 
 	return compiledMethod;
 }
 
+InstructionNode *Assembler::getLastInstruction()
+{
+    if(instructionStream.empty())
+        return nullptr;
+    return instructionStream.back();
+}
+
 bool Assembler::isLastReturn()
 {
 	return !instructionStream.empty() && instructionStream.back()->isReturnInstruction();
 }
 
-void Assembler::returnReceiver()
+InstructionNode *Assembler::returnReceiver()
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnReceiver, true));
+	return addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnReceiver, true));
 }
 
-void Assembler::returnTrue()
+InstructionNode *Assembler::returnTrue()
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnTrue, true));
+	return addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnTrue, true));
 }
 
-void Assembler::returnFalse()
+InstructionNode *Assembler::returnFalse()
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnFalse, true));
+	return addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnFalse, true));
 }
 
-void Assembler::returnNil()
+InstructionNode *Assembler::returnNil()
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnNil, true));
+	return addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnNil, true));
 }
 
-void Assembler::returnTop()
+InstructionNode *Assembler::returnTop()
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnTop, true));
+	return addInstruction(new SingleBytecodeInstruction(BytecodeSet::ReturnTop, true));
 }
 
-void Assembler::popStackTop()
+InstructionNode *Assembler::blockReturnNil()
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::PopStackTop));
+    return addInstruction(new SingleBytecodeInstruction(BytecodeSet::BlockReturnNil, true));
 }
 
-void Assembler::duplicateStackTop()
+InstructionNode *Assembler::blockReturnTop()
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::DuplicateStackTop));
+	return addInstruction(new SingleBytecodeInstruction(BytecodeSet::BlockReturnTop, true));
 }
 
-void Assembler::pushLiteral(Oop literal)
+InstructionNode *Assembler::popStackTop()
 {
-	pushLiteralIndex(addLiteral(literal));
+	return addInstruction(new SingleBytecodeInstruction(BytecodeSet::PopStackTop));
 }
 
-void Assembler::pushLiteralVariable(Oop literalVariable)
+InstructionNode *Assembler::duplicateStackTop()
 {
-	pushLiteralVariableIndex(addLiteral(literalVariable));
+	return addInstruction(new SingleBytecodeInstruction(BytecodeSet::DuplicateStackTop));
 }
 
-void Assembler::pushReceiverVariableIndex(int variableIndex)
+InstructionNode *Assembler::pushLiteral(Oop literal)
 {
-	addInstruction(new PushReceiverVariable(variableIndex));
+	return pushLiteralIndex(addLiteral(literal));
 }
 
-void Assembler::pushLiteralIndex(int literalIndex)
+InstructionNode *Assembler::pushLiteralVariable(Oop literalVariable)
 {
-	addInstruction(new PushLiteral(literalIndex));
+	return pushLiteralVariableIndex(addLiteral(literalVariable));
 }
 
-void Assembler::pushLiteralVariableIndex(int literalVariableIndex)
+InstructionNode *Assembler::pushReceiverVariableIndex(int variableIndex)
 {
-	addInstruction(new PushLiteralVariable(literalVariableIndex));
+	return addInstruction(new PushReceiverVariable(variableIndex));
 }
 
-void Assembler::pushTemporal(int temporalIndex)
+InstructionNode *Assembler::pushLiteralIndex(int literalIndex)
 {
-	addInstruction(new PushTemporal(temporalIndex));
+	return addInstruction(new PushLiteral(literalIndex));
 }
 
-void Assembler::pushClosure(int numCopied, int numArgs, Label *blockEnd, int numExtensions)
+InstructionNode *Assembler::pushLiteralVariableIndex(int literalVariableIndex)
 {
-    addInstruction(new PushClosure(numCopied, numArgs, blockEnd, numExtensions));
+	return addInstruction(new PushLiteralVariable(literalVariableIndex));
 }
 
-void Assembler::pushReceiver()
+InstructionNode *Assembler::pushTemporal(int temporalIndex)
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushReceiver, false));
+	return addInstruction(new PushTemporal(temporalIndex));
 }
 
-void Assembler::pushThisContext()
+InstructionNode *Assembler::pushClosure(int numCopied, int numArgs, Label *blockEnd, int numExtensions)
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushThisContext, false));
+    return addInstruction(new PushClosure(numCopied, numArgs, blockEnd, numExtensions));
 }
 
-void Assembler::pushNil()
+InstructionNode *Assembler::pushReceiver()
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushNil, false));
+	return addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushReceiver, false));
 }
 
-void Assembler::pushTrue()
+InstructionNode *Assembler::pushThisContext()
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushTrue, false));
+	return addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushThisContext, false));
 }
 
-void Assembler::pushFalse()
+InstructionNode *Assembler::pushNil()
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushFalse, false));
+	return addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushNil, false));
 }
 
-void Assembler::pushOne()
+InstructionNode *Assembler::pushTrue()
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushOne, false));
+	return addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushTrue, false));
 }
 
-void Assembler::pushZero()
+InstructionNode *Assembler::pushFalse()
 {
-	addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushZero, false));
+	return addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushFalse, false));
 }
 
-void Assembler::send(Oop selector, int argumentCount)
+InstructionNode *Assembler::pushOne()
 {
-	addInstruction(new SendMessage(addLiteral(selector), argumentCount));
+	return addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushOne, false));
 }
 
-void Assembler::superSend(Oop selector, int argumentCount)
+InstructionNode *Assembler::pushZero()
 {
-	addInstruction(new SuperSendMessage(addLiteral(selector), argumentCount));
+	return addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushZero, false));
+}
+
+InstructionNode *Assembler::send(Oop selector, int argumentCount)
+{
+	return addInstruction(new SendMessage(addLiteral(selector), argumentCount));
+}
+
+InstructionNode *Assembler::superSend(Oop selector, int argumentCount)
+{
+	return addInstruction(new SuperSendMessage(addLiteral(selector), argumentCount));
 }
 
 } // End of namespace MethodAssembler

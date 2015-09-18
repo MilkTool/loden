@@ -2,7 +2,6 @@
 self class: Object.
 
 self category: 'accessing'.
-
 self method [
 name
     ^ self class name
@@ -12,3 +11,14 @@ self method [
 yourself
     ^ self
 ].
+
+self category: 'evaluating'.
+self method [
+value
+    ^ self
+].
+
+self method [
+valueWithArguments
+    ^ self
+]

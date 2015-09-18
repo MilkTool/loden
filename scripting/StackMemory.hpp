@@ -96,7 +96,7 @@ public:
 
     inline void setMetadata(uintptr_t newMetadata)
     {
-        *reinterpret_cast<uintptr_t*> (framePointer + InterpreterStackFrame::MetadataOffset) = newMetadata; 
+        *reinterpret_cast<uintptr_t*> (framePointer + InterpreterStackFrame::MetadataOffset) = newMetadata;
     }
 
 	inline StackFrame getPreviousFrame()
@@ -125,7 +125,7 @@ public:
 
 		// Frame elements
 		Oop *frameElementsStart = reinterpret_cast<Oop*> (stackPointer);
-		Oop *frameElementsEnd = reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::FirstTempOffset);
+		Oop *frameElementsEnd = reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::ThisContextOffset);
 		for(Oop *pos = frameElementsStart; pos <= frameElementsEnd; ++pos)
 			f(*pos);
 	}

@@ -168,6 +168,7 @@ private:
 	}
 
 	void activateMethodFrame(CompiledMethod *method);
+    void activateBlockClosure(BlockClosure *closure);
 	void fetchFrameData();
 
 private:
@@ -746,7 +747,7 @@ void StackInterpreter::activateMethodFrame(CompiledMethod *newMethod)
 	// Push the nil this context.
 	pushOop(Oop());
 
-	// Push the oop.
+	// Push the receiver oop.
 	pushOop(receiver);
 
 	// Push the nil temporals.
@@ -761,6 +762,43 @@ void StackInterpreter::activateMethodFrame(CompiledMethod *newMethod)
 
 	// Fetch the first instruction opcode
 	fetchNextInstructionOpcode();
+}
+
+void StackInterpreter::activateBlockClosure(BlockClosure *closure)
+{
+    int numArguments = closure->numArgs.decodeSmallInteger();
+
+    // Get the receiver and the method.
+    auto outerContext = closure->getOuterContext();
+    auto newMethod = outerContext->method;
+    auto receiver = outerContext->receiver;
+
+    // Push the frame pointer.
+	pushPointer(stack->getFramePointer()); // Return frame pointer.
+
+	// Set the new frame pointer.
+	stack->setFramePointer(stack->getStackPointer());
+
+	// Push the method object.
+	pushOop(Oop::fromPointer(newMethod));
+	this->method = newMethod;
+
+    // Encode frame metadata
+	pushUInt(encodeFrameMetaData(false, true, numArguments));
+
+	// Push the nil this context.
+	pushOop(Oop());
+
+	// Push the receiver oop.
+	pushOop(receiver);
+
+    // Copy the elements
+    auto copiedElements = closure->getNumberOfElements() - BlockClosure::BlockClosureVariableCount;
+    for(size_t i = 0; i < copiedElements; ++i)
+        pushOop(closure->copiedData[i]);
+
+    // Set the initial pc
+    pc = closure->startpc.decodeSmallInteger();
 }
 
 void StackInterpreter::fetchFrameData()

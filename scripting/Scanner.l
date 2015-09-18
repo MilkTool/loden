@@ -12,24 +12,33 @@
 #define YYSTYPE LODTALK_STYPE
 #define YYLTYPE LODTALK_LTYPE
 #define YY_EXTRA_TYPE ParserScannerExtraData *
+
+#define YY_USER_ACTION \
+yylloc->first_line = yylloc->last_line = yylineno; \
+yylloc->first_column = yyextra->columnCount; yylloc->last_column = yyextra->columnCount+yyleng-1; \
+    yyextra->columnCount += yyleng;
 %}
 
 %%
 %{
+    yyextra->columnCount = 1;
     if (yyextra->startToken)
     {
         int t = yyextra->startToken;
         yyextra->startToken = 0;
         return t;
     }
+
 %}
 
 \.                              { return DOT; }
 \;                              { return SEMICOLON; }
 \^                              { return RETURN; }
 
-[ \t\n]         ;
-\"[^\"]*\"     ;
+[ \t]                           {}
+[\r]?[\n]                       { yyextra->columnCount = 0; }
+[\r]                            { yyextra->columnCount = 0; }
+\"[^\"]*\"                      {}
 
 \{                              { return LCBRACKET; }
 \}                              { return RCBRACKET; }
@@ -114,4 +123,3 @@ $.                          {
 }
 
 %%
-

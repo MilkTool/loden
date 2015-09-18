@@ -7,6 +7,7 @@ struct ParserScannerExtraData
 {
 	int startToken;
 	int errorCount;
+    int columnCount;
 	Lodtalk::AST::Node *astResult;
 };
 

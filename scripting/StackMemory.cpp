@@ -38,7 +38,7 @@ void StackFrame::marryFrame()
     context->sender = Oop::fromPointer(framePointer + 1);
     context->pc = Oop::fromPointer(getPrevFramePointer() + 1);
     context->stackp = Oop::fromPointer(stackPointer + 1);
-    context->method = Oop::fromPointer(method);
+    context->method = method;
     context->closureOrNil = closure;
     context->receiver = getReceiver();
 

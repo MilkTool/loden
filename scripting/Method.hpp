@@ -127,7 +127,7 @@ public:
     }
 
     Oop stackp;
-    Oop method;
+    CompiledMethod *method;
     Oop closureOrNil;
     Oop receiver;
     Oop data[];
