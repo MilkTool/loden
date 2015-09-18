@@ -1,0 +1,1 @@
+self executeFileNamed: 'kernel/kernel.lodtalk'

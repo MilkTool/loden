@@ -11,7 +11,7 @@ void printHelp()
 
 void loadKernel()
 {
-    executeScriptFromFileNamed("runtime/kernel.lodtalk");
+    executeScriptFromFileNamed("runtime/runtime.lodtalk");
 }
 
 int main(int argc, const char *argv[])

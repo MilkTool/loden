@@ -14,19 +14,19 @@ namespace Lodtalk
 {
 
 using namespace AST;
-	
+
 // Variable lookup description
 class VariableLookup
 {
 public:
 	VariableLookup() {}
 	virtual ~VariableLookup() {}
-	
+
 	virtual bool isMutable() const = 0;
 
 	virtual Oop getValue() = 0;
 	virtual void setValue(Oop newValue) = 0;
-	
+
 	virtual void generateLoad( MethodAssembler::Assembler &gen) const = 0;
 };
 
@@ -41,16 +41,16 @@ class EvaluationScope
 public:
 	EvaluationScope(const EvaluationScopePtr &parentScope);
 	virtual ~EvaluationScope();
-	
+
 	virtual VariableLookupPtr lookSymbol(Oop symbol) = 0;
-	
+
 	VariableLookupPtr lookSymbolRecursively(Oop symbol);
-	
+
 	const EvaluationScopePtr &getParent() const
 	{
 		return parentScope;
 	}
-	
+
 private:
 	EvaluationScopePtr parentScope;
 };
@@ -79,7 +79,7 @@ public:
 	LiteralVariableLookup(Oop literalVariable)
 		: variable(reinterpret_cast<LiteralVariable*> (literalVariable.pointer)) {}
 	~LiteralVariableLookup() {}
-	
+
 	virtual bool isMutable() const
 	{
 		return true;
@@ -89,7 +89,7 @@ public:
 	{
 		return variable->value;
 	}
-	
+
 	virtual void setValue(Oop newValue)
 	{
 		variable->value = newValue;
@@ -99,7 +99,7 @@ public:
 	{
 		gen.pushLiteralVariable(variable.getOop());
 	}
-	
+
 	Ref<LiteralVariable> variable;
 };
 
@@ -120,7 +120,7 @@ public:
 	{
 		abort();
 	}
-	
+
 	virtual void setValue(Oop newValue)
 	{
 		abort();
@@ -130,7 +130,7 @@ public:
 	{
 		gen.pushReceiverVariableIndex(instanceVariableIndex);
 	}
-	
+
 	int instanceVariableIndex;
 };
 
@@ -141,7 +141,7 @@ public:
 	TemporalVariableLookup(int temporalIndex, bool isMutable_)
 		: temporalIndex(temporalIndex), isMutable_(isMutable_) {}
 	~TemporalVariableLookup() {}
-	
+
 	virtual bool isMutable() const
 	{
 		return true;
@@ -151,7 +151,7 @@ public:
 	{
 		abort();
 	}
-	
+
 	virtual void setValue(Oop newValue)
 	{
 		abort();
@@ -178,7 +178,7 @@ class GlobalEvaluationScope: public EvaluationScope
 public:
 	GlobalEvaluationScope()
 		: EvaluationScope(EvaluationScopePtr()) {}
-		
+
 	virtual VariableLookupPtr lookSymbol(Oop symbol);
 };
 
@@ -194,15 +194,15 @@ VariableLookupPtr GlobalEvaluationScope::lookSymbol(Oop symbol)
 // Instance variable scope
 class InstanceVariableScope: public EvaluationScope
 {
-public:	
+public:
 	InstanceVariableScope(const EvaluationScopePtr &parent, ClassDescription *classDesc)
 		: EvaluationScope(parent), classDesc(classDesc) {}
-	
+
 	virtual VariableLookupPtr lookSymbol(Oop symbol);
-	
+
 private:
 	std::pair<int, int> findInstanceVariable(ClassDescription *pos, Oop symbol);
-	
+
 	Ref<ClassDescription> classDesc;
 	std::map<OopRef, VariableLookupPtr> lookupCache;
 };
@@ -212,11 +212,11 @@ VariableLookupPtr InstanceVariableScope::lookSymbol(Oop symbol)
 	auto it = lookupCache.find(symbol);
 	if(it != lookupCache.end())
 		return it->second;
-		
+
 	auto res = findInstanceVariable(classDesc.get(), symbol);
 	if(res.first < 0)
 		return VariableLookupPtr();
-		
+
 	auto instanceVariable = std::make_shared<InstanceVariableLookup> (res.first);
 	lookupCache[symbol] = instanceVariable;
 	return instanceVariable;
@@ -234,7 +234,7 @@ std::pair<int, int> InstanceVariableScope::findInstanceVariable(ClassDescription
 			return superInstance;
 		instanceCount = superInstance.second;
 	}
-	
+
 	// Find the symbol here
 	auto instanceVarNames = pos->instanceVariables;
 	auto instanceVarIndex = -1;
@@ -252,7 +252,7 @@ std::pair<int, int> InstanceVariableScope::findInstanceVariable(ClassDescription
 		}
 		instanceCount += count;
 	}
-	
+
 	return std::make_pair(instanceVarIndex, instanceCount);
 }
 
@@ -262,12 +262,12 @@ class LocalScope: public EvaluationScope
 public:
 	LocalScope(const EvaluationScopePtr &parent)
 		: EvaluationScope(parent) {}
-	
+
 	bool addArgument(Oop symbol, int temporalIndex);
 	bool addTemporal(Oop symbol, int temporalIndex);
-		
+
 	virtual VariableLookupPtr lookSymbol(Oop symbol);
-	
+
 private:
 	std::map<OopRef, VariableLookupPtr> variables;
 };
@@ -299,19 +299,19 @@ public:
 	ScopedInterpreter(const EvaluationScopePtr &initialScope = EvaluationScopePtr())
 		: currentScope(initialScope) {}
 	~ScopedInterpreter() {}
-	
+
 	void pushScope(EvaluationScopePtr newScope)
 	{
 		currentScope = newScope;
 	}
-	
+
 	void popScope()
 	{
 		currentScope = currentScope->getParent();
 	}
-	
+
 	void error(Node *location, const char *format, ...);
-	
+
 protected:
 	EvaluationScopePtr currentScope;
 };
@@ -322,7 +322,7 @@ void ScopedInterpreter::error(Node *location, const char *format, ...)
     va_list args;
     va_start(args, format);
     vsnprintf(buffer, 1024, format, args);
-	
+
 	fputs(buffer, stderr);
 	fputs("\n", stderr);
 	abort();
@@ -351,7 +351,7 @@ public:
 	virtual Oop visitSelfReference(SelfReference *node);
 	virtual Oop visitSuperReference(SuperReference *node);
 	virtual Oop visitThisContextReference(ThisContextReference *node);
-	
+
 private:
 	OopRef currentSelf;
 };
@@ -383,11 +383,11 @@ Oop ASTInterpreter::visitBlockExpression(BlockExpression *node)
 Oop ASTInterpreter::visitIdentifierExpression(IdentifierExpression *node)
 {
 	VariableLookupPtr variable;
-	
+
 	// Find in the current scope.
 	if(currentScope)
 		variable = currentScope->lookSymbolRecursively(node->getSymbol());
-		
+
 	// Ensure it was found.
 	if(!variable)
 		error(node, "undeclared identifier '%s'.", node->getIdentifier().c_str());
@@ -418,17 +418,17 @@ Oop ASTInterpreter::visitMessageSendNode(MessageSendNode *node)
 	OopRef result;
 	std::vector<OopRef> argumentValueRefs;
 	std::vector<Oop> argumentValues;
-	
+
 	// Evaluate the receiver.
 	OopRef receiver = node->getReceiver()->acceptVisitor(this);
 	auto &chained = node->getChainedMessages();
-	
+
 	// Send each message in the chain
 	for(int i = -1; i < (int)chained.size(); ++i)
 	{
 		auto message = i < 0 ? node : chained[i];
 		auto selector = message->getSelectorOop();
-		
+
 		// Evaluate the arguments.
 		auto &arguments = message->getArguments();
 		argumentValues.clear();
@@ -441,7 +441,7 @@ Oop ASTInterpreter::visitMessageSendNode(MessageSendNode *node)
 		// Send the message.
 		result = sendMessage(receiver.oop, selector, argumentValues.size(), &argumentValues[0]);
 	}
-	
+
 	// Return the result.
 	return result.oop;
 }
@@ -472,7 +472,7 @@ Oop ASTInterpreter::visitSequenceNode(SequenceNode *node)
 		assert(0 && "unimplemented");
 		abort();
 	}
-	
+
 	for(auto &child : node->getChildren())
 		result = child->acceptVisitor(this);
 	return result;
@@ -492,6 +492,117 @@ Oop ASTInterpreter::visitThisContextReference(ThisContextReference *node)
 {
 	error(node, "this context is not supported");
 	abort();
+}
+
+// Method compiler semantic analysis
+class MethodSemanticAnalysis: public ScopedInterpreter
+{
+public:
+	MethodSemanticAnalysis(const EvaluationScopePtr &initialScope)
+		: ScopedInterpreter(initialScope), temporalCount(0), argumentCount(0) {}
+
+    virtual Oop visitArgument(Argument *node);
+    virtual Oop visitArgumentList(ArgumentList *node);
+    virtual Oop visitAssignmentExpression(AssignmentExpression *node);
+    virtual Oop visitBlockExpression(BlockExpression *node);
+    virtual Oop visitIdentifierExpression(IdentifierExpression *node);
+    virtual Oop visitLiteralNode(LiteralNode *node);
+    virtual Oop visitLocalDeclarations(LocalDeclarations *node);
+    virtual Oop visitLocalDeclaration(LocalDeclaration *node);
+    virtual Oop visitMessageSendNode(MessageSendNode *node);
+    virtual Oop visitMethodAST(MethodAST *node);
+    virtual Oop visitMethodHeader(MethodHeader *node);
+    virtual Oop visitReturnStatement(ReturnStatement *node);
+    virtual Oop visitSequenceNode(SequenceNode *node);
+    virtual Oop visitSelfReference(SelfReference *node);
+    virtual Oop visitSuperReference(SuperReference *node);
+    virtual Oop visitThisContextReference(ThisContextReference *node);
+
+private:
+	void pushTemporalScope();
+	void popTemporalScope();
+
+	size_t temporalCount;
+	size_t argumentCount;
+};
+
+Oop MethodSemanticAnalysis::visitArgument(Argument *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodSemanticAnalysis::visitArgumentList(ArgumentList *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodSemanticAnalysis::visitAssignmentExpression(AssignmentExpression *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodSemanticAnalysis::visitBlockExpression(BlockExpression *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodSemanticAnalysis::visitIdentifierExpression(IdentifierExpression *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodSemanticAnalysis::visitLiteralNode(LiteralNode *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodSemanticAnalysis::visitLocalDeclarations(LocalDeclarations *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodSemanticAnalysis::visitLocalDeclaration(LocalDeclaration *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodSemanticAnalysis::visitMessageSendNode(MessageSendNode *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+Oop MethodSemanticAnalysis::visitMethodAST(MethodAST *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodSemanticAnalysis::visitMethodHeader(MethodHeader *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodSemanticAnalysis::visitReturnStatement(ReturnStatement *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodSemanticAnalysis::visitSequenceNode(SequenceNode *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodSemanticAnalysis::visitSelfReference(SelfReference *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodSemanticAnalysis::visitSuperReference(SuperReference *node)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop MethodSemanticAnalysis::visitThisContextReference(ThisContextReference *node)
+{
+    LODTALK_UNIMPLEMENTED();
 }
 
 // Method compiler
@@ -522,7 +633,7 @@ private:
 	void pushTemporalScope();
 	void popTemporalScope();
 	size_t makeTemporalIndex();
-	
+
 	size_t temporalCount;
 	size_t argumentCount;
 	OopRef selector;
@@ -574,15 +685,15 @@ Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
 Oop MethodCompiler::visitIdentifierExpression(IdentifierExpression *node)
 {
 	VariableLookupPtr variable;
-	
+
 	// Find in the current scope.
 	if(currentScope)
 		variable = currentScope->lookSymbolRecursively(node->getSymbol());
-		
+
 	// Ensure it was found.
 	if(!variable)
 		error(node, "undeclared identifier '%s'.", node->getIdentifier().c_str());
-		
+
 	// Generate the load.
 	variable->generateLoad(gen);
 
@@ -611,22 +722,22 @@ Oop MethodCompiler::visitMessageSendNode(MessageSendNode *node)
 {
 	// Visit the receiver.
 	node->getReceiver()->acceptVisitor(this);
-	
+
 	// Visit the arguments in reverse order.
 	auto &chained = node->getChainedMessages();
-	
+
 	// Send each message in the chain
 	bool first = true;
 	for(int i = -1; i < (int)chained.size(); ++i)
 	{
 		auto message = i < 0 ? node : chained[i];
 		auto selector = message->getSelectorOop();
-		
+
 		if(first)
 			first = false;
 		else
 			gen.popStackTop();
-		
+
 		// Evaluate the arguments.
 		auto &arguments = message->getArguments();
 		for(auto &arg : arguments)
@@ -644,16 +755,16 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
 	// Get the method selector.
 	auto header = node->getHeader();
 	selector = makeSelector(header->getSelector());
-	
+
 	// Process the arguments
 	auto argumentList = header->getArgumentList();
 	if(argumentList)
 	{
 		auto &arguments = argumentList->getArguments();
-		
+
 		// Store the argument count.
 		argumentCount = arguments.size();
-	
+
 		// Create the arguments scope.
 		auto argumentScope = std::make_shared<LocalScope> (currentScope);
 		for(size_t i = 0; i < argumentCount; ++i)
@@ -663,26 +774,26 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
 			if(!res)
 				error(arg, "the argument has the same name as another argument.");
 		}
-		
+
 		pushScope(argumentScope);
 	}
-	
+
 	// Visit the method body
 	node->getBody()->acceptVisitor(this);
-	
+
 	if(argumentList)
 		popScope();
-	
+
 	// Always return
 	if(!gen.isLastReturn())
 		gen.returnReceiver();
-		
+
 	// Set the method selector
 	gen.addLiteral(selector);
-	
+
 	// Set the class binding.
 	gen.addLiteral(classBinding);
-	
+
 	return Oop::fromPointer(gen.generate(temporalCount, argumentCount));
 }
 
@@ -696,7 +807,7 @@ Oop MethodCompiler::visitReturnStatement(ReturnStatement *node)
 {
 	// Visit the value.
 	node->getValue()->acceptVisitor(this);
-	
+
 	// Return it
 	gen.returnTop();
 	return Oop();
@@ -709,7 +820,7 @@ Oop MethodCompiler::visitSequenceNode(SequenceNode *node)
 		assert(0 && "unimplemented");
 		abort();
 	}
-	
+
 	bool first = true;
 	for(auto &child : node->getChildren())
 	{
@@ -717,10 +828,10 @@ Oop MethodCompiler::visitSequenceNode(SequenceNode *node)
 			first = false;
 		else
 			gen.popStackTop();
-			
+
 		child->acceptVisitor(this);
 	}
-	
+
 	return Oop();
 }
 
@@ -743,6 +854,12 @@ Oop MethodCompiler::visitThisContextReference(ThisContextReference *node)
 }
 
 // Compiler interface
+CompiledMethod *compileMethod(const EvaluationScopePtr &scope, ClassDescription *clazz, Node *ast)
+{
+	MethodCompiler compiler(scope, clazz->getBinding());
+    return reinterpret_cast<CompiledMethod*> (ast->acceptVisitor(&compiler).pointer);
+}
+
 Oop executeDoIt(const std::string &code)
 {
 	// TODO: implement this
@@ -763,15 +880,15 @@ Oop executeScriptFromFile(FILE *file, const std::string &name, const std::string
 		return Oop();
 	context->globalContextClass = Oop::fromPointer(GlobalContext::MetaclassObject);
 	context->basePath = makeByteString(basePath);
-		
+
 	// Parse the script.
 	auto ast = Lodtalk::AST::parseSourceFromFile(file);
 	if(!ast)
 		return Oop();
-	
+
 	// Create the global scope
 	auto scope = std::make_shared<GlobalEvaluationScope> ();
-	
+
 	// Interpret the script.
 	ASTInterpreter interpreter(scope, context.getOop());
 	auto result = ast->acceptVisitor(&interpreter);
@@ -785,7 +902,7 @@ Oop executeScriptFromFileNamed(const std::string &filename)
 		nativeErrorFormat("Failed to open file '%s'", filename.c_str());
 
 	std::string basePathString = dirname(filename);
-		
+
 	return 	executeScriptFromFile(file, filename, basePathString);
 }
 
@@ -821,7 +938,7 @@ Oop ScriptContext::addFunction(Oop methodAstHandle)
 		nativeError("cannot add method with nil ast.");
 	if(classIndexOf(methodAstHandle) != SCI_MethodASTHandle)
 		nativeError("expected a method AST handle.");
-		
+
 	// Check the class
 	if(!isClassOrMetaclass(globalContextClass))
 		nativeError("a global context class is needed");
@@ -830,18 +947,17 @@ Oop ScriptContext::addFunction(Oop methodAstHandle)
 	// Get the ast
 	MethodASTHandle *handle = reinterpret_cast<MethodASTHandle*> (methodAstHandle.pointer);
 	auto ast = handle->ast;
-	
+
 	// Create the global scope
 	auto globalScope = std::make_shared<GlobalEvaluationScope> ();
-	
+
 	// TODO: Create the class global variables scope.
-	
+
 	// Create the class instance variables scope.
 	auto instanceVarScope = std::make_shared<InstanceVariableScope> (globalScope, clazz);
 
 	// Compile the method
-	MethodCompiler compiler(instanceVarScope, clazz->getBinding());
-	Ref<CompiledMethod> compiledMethod(reinterpret_cast<CompiledMethod*> (ast->acceptVisitor(&compiler).pointer));
+	Ref<CompiledMethod> compiledMethod = compileMethod(instanceVarScope, clazz, ast);
 
 	// Register the method in the global context class side
 	auto selector = compiledMethod->getSelector();
@@ -866,22 +982,21 @@ Oop ScriptContext::addMethod(Oop methodAstHandle)
 	// Get the ast
 	MethodASTHandle *handle = reinterpret_cast<MethodASTHandle*> (methodAstHandle.pointer);
 	auto ast = handle->ast;
-	
+
 	// Create the global scope
 	auto globalScope = std::make_shared<GlobalEvaluationScope> ();
-	
+
 	// TODO: Create the class variables scope.
-	
+
 	// Create the class instance variables scope.
 	auto instanceVarScope = std::make_shared<InstanceVariableScope> (globalScope, clazz);
-	
+
 	// Compile the method
-	MethodCompiler compiler(instanceVarScope, clazz->getBinding());
-	auto compiledMethod = reinterpret_cast<CompiledMethod*> (ast->acceptVisitor(&compiler).pointer);
+	Ref<CompiledMethod> compiledMethod = compileMethod(instanceVarScope, clazz, ast);
 
 	// Register the method in the current class
 	auto selector = compiledMethod->getSelector();
-	clazz->methodDict->atPut(selector, Oop::fromPointer(compiledMethod));
+	clazz->methodDict->atPut(selector, compiledMethod.getOop());
 
 	// Return self
 	return selfOop();

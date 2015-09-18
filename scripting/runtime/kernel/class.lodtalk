@@ -18,4 +18,3 @@ self method [
 new: arraySize
     ^ (self basicNew: arraySize) initialize
 ].
-
