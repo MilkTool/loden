@@ -1,0 +1,21 @@
+"Kernel methods"
+self class: Class.
+self category: 'accessing'.
+
+self method [
+name
+    ^ name
+].
+
+self category: 'construction'.
+
+self method [
+new
+    ^ self basicNew initialize
+].
+
+self method [
+new: arraySize
+    ^ (self basicNew: arraySize) initialize
+].
+

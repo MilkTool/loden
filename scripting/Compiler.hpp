@@ -15,10 +15,12 @@ public:
 	Oop setCurrentClass(Oop classObject);
 	Oop addFunction(Oop functionAst);
 	Oop addMethod(Oop methodAst);
+	Oop executeFileNamed(Oop fileName);
 
 	Oop currentCategory;
 	Oop currentClass;
 	Oop globalContextClass;
+	Oop basePath;
 };
 
 // Method AST handle
@@ -34,8 +36,9 @@ public:
 
 // Compiler interface
 Oop executeDoIt(const std::string &code);
-Oop executeScript(const std::string &code, const std::string name = "unnamed");
-Oop executeScriptFromFile(FILE *file, const std::string name = "unnamed");
+Oop executeScript(const std::string &code, const std::string &name = "unnamed", const std::string &basePath = ".");
+Oop executeScriptFromFile(FILE *file, const std::string &name = "unnamed", const std::string &basePath = ".");
+Oop executeScriptFromFileNamed(const std::string &fileName);
 
 }
 

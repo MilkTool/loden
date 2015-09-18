@@ -35,12 +35,16 @@ inline void nativeError(const std::string &what)
 	throw NativeError(what);
 }
 
+void nativeErrorFormat(const char *format, ...);
+
 inline void nativeSubclassResponsibility()
 {
+	nativeError("Subclass responsibility.");
 }
 
-inline void nativeNotImplemented()
+inline void nativeNotYetImplemented()
 {
+	nativeError("Subclass not yet implemented.");
 }
 
 } // End of namespace Lodtalk

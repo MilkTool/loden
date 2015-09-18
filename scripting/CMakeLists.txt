@@ -8,6 +8,8 @@ set(Lodtalk_SRC
      AST.cpp
      Collections.cpp
      Compiler.cpp
+     Exception.cpp
+     FileSystem.cpp
      InputOutput.cpp
      Method.cpp
      MethodBuilder.cpp

@@ -9,6 +9,11 @@ void printHelp()
 {
 }
 
+void loadKernel()
+{
+    executeScriptFromFileNamed("runtime/kernel.lodtalk");
+}
+
 int main(int argc, const char *argv[])
 {
     std::string scriptFilename;
@@ -33,6 +38,10 @@ int main(int argc, const char *argv[])
         return -1;
     }
     
+    // Execute the kernel script
+    loadKernel();
+    
+    // Execute the source script.
     if(scriptFilename == "-")
     {
         // Execute script from the standard input.
@@ -40,16 +49,8 @@ int main(int argc, const char *argv[])
     }
     else
     {
-        auto file = fopen(scriptFilename.c_str(), "r");
-        if(!file)
-        {
-            fprintf(stderr, "Failed to open file: %s\n", scriptFilename.c_str());
-            return -1;
-        }
-        
         // Execute the script from the file.
-        executeScriptFromFile(file, scriptFilename);
-        fclose(file);
+        executeScriptFromFileNamed(scriptFilename);
     }
     
     // Call the main function.

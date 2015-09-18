@@ -1,0 +1,2 @@
+self executeFileNamed: 'class.lodtalk';
+    executeFileNamed: 'object.lodtalk'

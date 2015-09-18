@@ -7,6 +7,8 @@
 #include "MethodBuilder.hpp"
 #include "ParserScannerInterface.hpp"
 #include "Exception.hpp"
+#include "FileSystem.hpp"
+#include "RAII.hpp"
 
 namespace Lodtalk
 {
@@ -747,19 +749,20 @@ Oop executeDoIt(const std::string &code)
 	abort();
 }
 
-Oop executeScript(const std::string &code, const std::string name)
+Oop executeScript(const std::string &code, const std::string &name, const std::string &basePath)
 {
 	// TODO: implement this
 	abort();
 }
 
-Oop executeScriptFromFile(FILE *file, const std::string name)
+Oop executeScriptFromFile(FILE *file, const std::string &name, const std::string &basePath)
 {
 	// Create the script context
 	Ref<ScriptContext> context(reinterpret_cast<ScriptContext*> (ScriptContext::ClassObject->basicNativeNew()));
 	if(context.isNil())
 		return Oop();
 	context->globalContextClass = Oop::fromPointer(GlobalContext::MetaclassObject);
+	context->basePath = makeByteString(basePath);
 		
 	// Parse the script.
 	auto ast = Lodtalk::AST::parseSourceFromFile(file);
@@ -775,6 +778,16 @@ Oop executeScriptFromFile(FILE *file, const std::string name)
 	return result;
 }
 
+Oop executeScriptFromFileNamed(const std::string &filename)
+{
+	StdFile file(filename, "r");
+	if(!file)
+		nativeErrorFormat("Failed to open file '%s'", filename.c_str());
+
+	std::string basePathString = dirname(filename);
+		
+	return 	executeScriptFromFile(file, filename, basePathString);
+}
 
 // ScriptContext
 Oop ScriptContext::setCurrentCategory(Oop category)
@@ -787,6 +800,19 @@ Oop ScriptContext::setCurrentClass(Oop classObject)
 {
 	currentClass = classObject;
 	return selfOop();
+}
+
+Oop ScriptContext::executeFileNamed(Oop fileNameOop)
+{
+	std::string basePathString;
+	if(fileNameOop.isNil())
+		nativeError("expected a file name.");
+
+	if(!basePath.isNil())
+		basePathString = getByteStringData(basePath);
+	std::string fileNameString = getByteStringData(fileNameOop);
+	std::string fullFileName = joinPath(basePathString, fileNameString);
+	return executeScriptFromFileNamed(fullFileName);
 }
 
 Oop ScriptContext::addFunction(Oop methodAstHandle)
@@ -870,10 +896,11 @@ LODTALK_BEGIN_CLASS_TABLE(ScriptContext)
 	LODTALK_METHOD("class:", &ScriptContext::setCurrentClass)
 	LODTALK_METHOD("function:", &ScriptContext::addFunction)
 	LODTALK_METHOD("method:", &ScriptContext::addMethod)
+	LODTALK_METHOD("executeFileNamed:", &ScriptContext::executeFileNamed)
 LODTALK_END_CLASS_TABLE()
 
-LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(ScriptContext, Object, OF_FIXED_SIZE, 3,
-"currentCategory currentClass globalContextClass");
+LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(ScriptContext, Object, OF_FIXED_SIZE, 4,
+"currentCategory currentClass globalContextClass basePath");
 
 // The method ast handle
 LODTALK_BEGIN_CLASS_SIDE_TABLE(MethodASTHandle)
