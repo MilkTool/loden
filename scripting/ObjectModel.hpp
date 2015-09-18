@@ -320,6 +320,15 @@ public:
 		return pointer + sizeof(ObjectHeader);
 	}
 
+    void *getFirstIndexableFieldPointer() const
+	{
+		if(!isPointer())
+			return nullptr;
+		if(header->slotCount == 255)
+			return pointer + sizeof(ObjectHeader) + 8;
+		return pointer + sizeof(ObjectHeader) + getFixedSlotCount()*sizeof(void*);
+	}
+
 	inline SmallIntegerValue decodeSmallInteger() const
 	{
 		assert(isSmallInteger());
@@ -383,6 +392,8 @@ public:
 		return variableSlotSizeFor((ObjectFormat)header->objectFormat) != 0;
 	}
 
+    size_t getFixedSlotCount() const;
+
 	inline size_t getNumberOfElements() const
 	{
 		auto slotCount = getSlotCount();
@@ -391,7 +402,11 @@ public:
 			return 0;
 
 		if(format < OF_INDEXABLE_64)
+        {
+            if(format == OF_VARIABLE_SIZE_IVARS)
+                return slotCount - getFixedSlotCount();
 			return slotCount;
+        }
 
 		if(format >= OF_INDEXABLE_8)
 		{
@@ -761,6 +776,12 @@ inline Ref<ProtoObject> makeCharacterObject(int value)
 
 int64_t readIntegerObject(const Ref<Oop> &ref);
 double readDoubleObject(const Ref<Oop> &ref);
+
+Oop positiveInt32ObjectFor(uint32_t value);
+Oop positiveInt64ObjectFor(uint64_t value);
+
+uint32_t positiveInt32ValueOf(Oop value);
+uint64_t positiveInt64ValueOf(Oop value);
 
 // Class table
 Oop getClassFromIndex(int classIndex);

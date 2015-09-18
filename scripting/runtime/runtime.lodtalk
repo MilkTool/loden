@@ -1,1 +1,2 @@
-self executeFileNamed: 'kernel/kernel.lodtalk'
+self executeFileNamed: 'kernel/kernel.lodtalk';
+    executeFileNamed: 'collections/collections.lodtalk'

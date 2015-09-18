@@ -502,6 +502,32 @@ Ref<ProtoObject> makeFloatObject(double value)
 	return makeRef(&NilObject);
 }
 
+Oop positiveInt32ObjectFor(uint32_t value)
+{
+    // TODO: Implement this properly
+    return Oop::encodeSmallInteger(value);
+}
+
+Oop positiveInt64ObjectFor(uint64_t value)
+{
+    // TODO: Implement this properly
+    return Oop::encodeSmallInteger(value);
+}
+
+uint32_t positiveInt32ValueOf(Oop value)
+{
+    if(value.isSmallInteger())
+        return value.decodeSmallInteger();
+    LODTALK_UNIMPLEMENTED();
+}
+
+uint64_t positiveInt64ValueOf(Oop value)
+{
+    if(value.isSmallInteger())
+        return value.decodeSmallInteger();
+    LODTALK_UNIMPLEMENTED();
+}
+
 // Get a class from its index
 Oop getClassFromIndex(int classIndex)
 {
@@ -539,6 +565,17 @@ bool isMetaclass(Oop oop)
 bool isClass(Oop oop)
 {
 	return isClassOrMetaclass(oop) && !isMetaclass(oop);
+}
+
+size_t getFixedSlotCountOfClass(Oop clazzOop)
+{
+    auto clazz = reinterpret_cast<ClassDescription*> (clazzOop.pointer);
+    return clazz->fixedVariableCount.decodeSmallInteger();
+}
+
+size_t Oop::getFixedSlotCount() const
+{
+    return getFixedSlotCountOfClass(getClassFromOop(*this));
 }
 
 // Send the message

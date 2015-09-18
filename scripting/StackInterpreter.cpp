@@ -840,7 +840,7 @@ void StackInterpreter::activateBlockClosure(BlockClosure *closure)
 	pushOop(receiver);
 
     // Copy the elements
-    auto copiedElements = closure->getNumberOfElements() - BlockClosure::BlockClosureVariableCount;
+    auto copiedElements = closure->getNumberOfElements();
     for(size_t i = 0; i < copiedElements; ++i)
         pushOop(closure->copiedData[i]);
 
