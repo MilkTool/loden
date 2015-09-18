@@ -1,0 +1,18 @@
+"BlockClosure"
+self class: BlockClosure.
+self category: 'accessing'.
+
+self method [
+numArgs
+    ^ numArgs
+].
+
+self method [
+outerContext
+    ^ outerContext
+].
+
+self method [
+startpc
+    ^ startpc
+].

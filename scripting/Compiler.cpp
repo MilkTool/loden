@@ -1,4 +1,3 @@
-#include <memory>
 #include <map>
 #include <stdio.h>
 #include <stdarg.h>
@@ -22,6 +21,11 @@ public:
 	VariableLookup() {}
 	virtual ~VariableLookup() {}
 
+    virtual bool isTemporal() const
+    {
+        return false;
+    }
+
 	virtual bool isMutable() const = 0;
 
 	virtual Oop getValue() = 0;
@@ -29,8 +33,6 @@ public:
 
 	virtual void generateLoad( MethodAssembler::Assembler &gen) const = 0;
 };
-
-typedef std::shared_ptr<VariableLookup> VariableLookupPtr;
 
 // Evaluation scope class
 class EvaluationScope;
@@ -138,9 +140,14 @@ public:
 class TemporalVariableLookup: public VariableLookup
 {
 public:
-	TemporalVariableLookup(int temporalIndex, bool isMutable_)
-		: temporalIndex(temporalIndex), isMutable_(isMutable_) {}
+	TemporalVariableLookup(Node *localContext, bool isMutable_)
+		: temporalIndex(-1), localContext(localContext), isMutable_(isMutable_), isCapturedInClosure_(false) {}
 	~TemporalVariableLookup() {}
+
+    virtual bool isTemporal() const
+    {
+        return true;
+    }
 
 	virtual bool isMutable() const
 	{
@@ -159,6 +166,7 @@ public:
 
 	virtual void generateLoad(MethodAssembler::Assembler &gen) const
 	{
+        assert(temporalIndex >= 0);
 		gen.pushTemporal(temporalIndex);
 	}
 
@@ -168,9 +176,34 @@ public:
 		gen.storeTemporalVariable(temporalIndex);
 	}*/
 
+    void setTemporalIndex(int newIndex)
+    {
+        temporalIndex = newIndex;
+    }
+
+    Node *getLocalContext()
+    {
+        return localContext;
+    }
+
+    bool isCapturedInClosure()
+    {
+        return isCapturedInClosure_;
+    }
+
+    void setCapturedInClosure(bool newValue)
+    {
+        isCapturedInClosure_ = newValue;
+    }
+
+private:
+
 	int temporalIndex;
+    Node *localContext;
 	bool isMutable_;
+    bool isCapturedInClosure_;
 };
+typedef std::shared_ptr<TemporalVariableLookup> TemporalVariableLookupPtr;
 
 // Global variable evaluation scope
 class GlobalEvaluationScope: public EvaluationScope
@@ -263,8 +296,8 @@ public:
 	LocalScope(const EvaluationScopePtr &parent)
 		: EvaluationScope(parent) {}
 
-	bool addArgument(Oop symbol, int temporalIndex);
-	bool addTemporal(Oop symbol, int temporalIndex);
+	TemporalVariableLookupPtr addArgument(Oop symbol, Node *localContext);
+	TemporalVariableLookupPtr addTemporal(Oop symbol, Node *localContext);
 
 	virtual VariableLookupPtr lookSymbol(Oop symbol);
 
@@ -272,16 +305,20 @@ private:
 	std::map<OopRef, VariableLookupPtr> variables;
 };
 
-bool LocalScope::addArgument(Oop symbol, int temporalIndex)
+TemporalVariableLookupPtr LocalScope::addArgument(Oop symbol, Node *localContext)
 {
-	auto variable = std::make_shared<TemporalVariableLookup> (temporalIndex, false);
-	return variables.insert(std::make_pair(symbol, variable)).second;
+	auto variable = std::make_shared<TemporalVariableLookup> (localContext, false);
+	if(variables.insert(std::make_pair(symbol, variable)).second)
+        return variable;
+    return TemporalVariableLookupPtr();
 }
 
-bool LocalScope::addTemporal(Oop symbol, int temporalIndex)
+TemporalVariableLookupPtr LocalScope::addTemporal(Oop symbol, Node *localContext)
 {
-	auto variable = std::make_shared<TemporalVariableLookup> (temporalIndex, true);
-	return variables.insert(std::make_pair(symbol, variable)).second;
+	auto variable = std::make_shared<TemporalVariableLookup> (localContext, true );
+	if(variables.insert(std::make_pair(symbol, variable)).second)
+        return variable;
+    return TemporalVariableLookupPtr();
 }
 
 VariableLookupPtr LocalScope::lookSymbol(Oop symbol)
@@ -292,8 +329,26 @@ VariableLookupPtr LocalScope::lookSymbol(Oop symbol)
 	return VariableLookupPtr();
 }
 
+class AbstractASTVisitor: public ASTVisitor
+{
+public:
+	void error(Node *location, const char *format, ...);
+};
+
+void AbstractASTVisitor::error(Node *location, const char *format, ...)
+{
+    char buffer[1024];
+    va_list args;
+    va_start(args, format);
+    vsnprintf(buffer, 1024, format, args);
+
+	fputs(buffer, stderr);
+	fputs("\n", stderr);
+	abort();
+}
+
 // Scoped interpreter
-class ScopedInterpreter: public ASTVisitor
+class ScopedInterpreter: public AbstractASTVisitor
 {
 public:
 	ScopedInterpreter(const EvaluationScopePtr &initialScope = EvaluationScopePtr())
@@ -310,23 +365,10 @@ public:
 		currentScope = currentScope->getParent();
 	}
 
-	void error(Node *location, const char *format, ...);
 
 protected:
 	EvaluationScopePtr currentScope;
 };
-
-void ScopedInterpreter::error(Node *location, const char *format, ...)
-{
-    char buffer[1024];
-    va_list args;
-    va_start(args, format);
-    vsnprintf(buffer, 1024, format, args);
-
-	fputs(buffer, stderr);
-	fputs("\n", stderr);
-	abort();
-}
 
 // ASTInterpreter visitor
 class ASTInterpreter: public ScopedInterpreter
@@ -499,7 +541,7 @@ class MethodSemanticAnalysis: public ScopedInterpreter
 {
 public:
 	MethodSemanticAnalysis(const EvaluationScopePtr &initialScope)
-		: ScopedInterpreter(initialScope), temporalCount(0), argumentCount(0) {}
+		: ScopedInterpreter(initialScope) {}
 
     virtual Oop visitArgument(Argument *node);
     virtual Oop visitArgumentList(ArgumentList *node);
@@ -519,11 +561,9 @@ public:
     virtual Oop visitThisContextReference(ThisContextReference *node);
 
 private:
-	void pushTemporalScope();
-	void popTemporalScope();
 
-	size_t temporalCount;
-	size_t argumentCount;
+    MethodAST::LocalVariables localVariables;
+    Node *localContext;
 };
 
 Oop MethodSemanticAnalysis::visitArgument(Argument *node)
@@ -538,22 +578,83 @@ Oop MethodSemanticAnalysis::visitArgumentList(ArgumentList *node)
 
 Oop MethodSemanticAnalysis::visitAssignmentExpression(AssignmentExpression *node)
 {
-    LODTALK_UNIMPLEMENTED();
+    // Visit the identifier.
+    node->getReference()->acceptVisitor(this);
+
+    // Visit the value.
+    node->getValue()->acceptVisitor(this);
+
+    return Oop();
 }
 
 Oop MethodSemanticAnalysis::visitBlockExpression(BlockExpression *node)
 {
-    LODTALK_UNIMPLEMENTED();
+    // Store the local context.
+    auto oldLocalContext = localContext;
+    localContext = node;
+    FunctionalNode::LocalVariables oldLocalVariables;
+    oldLocalVariables.swap(localVariables);
+
+    // Process the arguments
+	auto argumentList = node->getArgumentList();
+	if(argumentList)
+	{
+		auto &arguments = argumentList->getArguments();
+        auto argumentCount = arguments.size();
+
+		// Create the arguments scope.
+		auto argumentScope = std::make_shared<LocalScope> (currentScope);
+		for(size_t i = 0; i < argumentCount; ++i)
+		{
+			auto &arg = arguments[i];
+			auto res = argumentScope->addArgument(arg->getSymbolOop(), localContext);
+			if(!res)
+				error(arg, "the argument has the same name as another argument.");
+            localVariables.push_back(res);
+		}
+
+		pushScope(argumentScope);
+	}
+
+    // Visit the method body
+	node->getBody()->acceptVisitor(this);
+
+	if(argumentList)
+		popScope();
+
+    // Store the block local variables.
+    node->setLocalVariables(localVariables);
+
+    // Restore the local context.
+    localContext = oldLocalContext;
+    oldLocalVariables.swap(localVariables);
+
+    return Oop();
 }
 
 Oop MethodSemanticAnalysis::visitIdentifierExpression(IdentifierExpression *node)
 {
-    LODTALK_UNIMPLEMENTED();
+    // Find the variable
+    auto variable = currentScope->lookSymbolRecursively(node->getSymbol());
+    if(!variable)
+        error(node, "undeclared identifier '%s'.", node->getIdentifier().c_str());
+
+    // Check the variable context, for marking the closure.
+    if(variable->isTemporal())
+    {
+        auto temporal = std::static_pointer_cast<TemporalVariableLookup> (variable);
+        if(temporal->getLocalContext() != localContext)
+            temporal->setCapturedInClosure(true);
+    }
+
+    node->setVariable(variable);
+
+    return Oop();
 }
 
 Oop MethodSemanticAnalysis::visitLiteralNode(LiteralNode *node)
 {
-    LODTALK_UNIMPLEMENTED();
+    return Oop();
 }
 
 Oop MethodSemanticAnalysis::visitLocalDeclarations(LocalDeclarations *node)
@@ -568,11 +669,65 @@ Oop MethodSemanticAnalysis::visitLocalDeclaration(LocalDeclaration *node)
 
 Oop MethodSemanticAnalysis::visitMessageSendNode(MessageSendNode *node)
 {
-    LODTALK_UNIMPLEMENTED();
+    // Visit the receiver.
+	node->getReceiver()->acceptVisitor(this);
+
+	// Visit the arguments in reverse order.
+	auto &chained = node->getChainedMessages();
+
+	// Send each message in the chain
+	for(int i = -1; i < (int)chained.size(); ++i)
+	{
+		auto message = i < 0 ? node : chained[i];
+
+		// Visit the arguments.
+		auto &arguments = message->getArguments();
+		for(auto &arg : arguments)
+			arg->acceptVisitor(this);
+	}
+
+	return Oop();
 }
+
 Oop MethodSemanticAnalysis::visitMethodAST(MethodAST *node)
 {
-    LODTALK_UNIMPLEMENTED();
+    // Set the local context.
+    localContext = node;
+
+    // Get the method header.
+	auto header = node->getHeader();
+
+	// Process the arguments
+	auto argumentList = header->getArgumentList();
+	if(argumentList)
+	{
+		auto &arguments = argumentList->getArguments();
+        auto argumentCount = arguments.size();
+
+		// Create the arguments scope.
+		auto argumentScope = std::make_shared<LocalScope> (currentScope);
+		for(size_t i = 0; i < argumentCount; ++i)
+		{
+			auto &arg = arguments[i];
+			auto res = argumentScope->addArgument(arg->getSymbolOop(), localContext);
+			if(!res)
+				error(arg, "the argument has the same name as another argument.");
+            localVariables.push_back(res);
+		}
+
+		pushScope(argumentScope);
+	}
+
+    // Visit the method body
+	node->getBody()->acceptVisitor(this);
+
+	if(argumentList)
+		popScope();
+
+    // Store the local variables in the ast.
+    node->setLocalVariables(localVariables);
+
+    return Oop();
 }
 
 Oop MethodSemanticAnalysis::visitMethodHeader(MethodHeader *node)
@@ -582,35 +737,58 @@ Oop MethodSemanticAnalysis::visitMethodHeader(MethodHeader *node)
 
 Oop MethodSemanticAnalysis::visitReturnStatement(ReturnStatement *node)
 {
-    LODTALK_UNIMPLEMENTED();
+    // Visit the value.
+	node->getValue()->acceptVisitor(this);
+    return Oop();
 }
 
 Oop MethodSemanticAnalysis::visitSequenceNode(SequenceNode *node)
 {
-    LODTALK_UNIMPLEMENTED();
+    auto decls = node->getLocalDeclarations();
+    if(decls)
+	{
+        auto newScope = std::make_shared<LocalScope> (currentScope);
+        for(auto &localDecl : decls->getLocals())
+        {
+            auto res = newScope->addArgument(localDecl->getSymbolOop(), localContext);
+			if(!res)
+				error(localDecl, "the argument has the same name as another argument.");
+            localVariables.push_back(res);
+        }
+
+        pushScope(newScope);
+	}
+
+	for(auto &child : node->getChildren())
+		child->acceptVisitor(this);
+
+    if(decls)
+        popScope();
+
+    return Oop();
 }
 
 Oop MethodSemanticAnalysis::visitSelfReference(SelfReference *node)
 {
-    LODTALK_UNIMPLEMENTED();
+    return Oop();
 }
 
 Oop MethodSemanticAnalysis::visitSuperReference(SuperReference *node)
 {
-    LODTALK_UNIMPLEMENTED();
+    return Oop();
 }
 
 Oop MethodSemanticAnalysis::visitThisContextReference(ThisContextReference *node)
 {
-    LODTALK_UNIMPLEMENTED();
+    return Oop();
 }
 
 // Method compiler
-class MethodCompiler: public ScopedInterpreter
+class MethodCompiler: public AbstractASTVisitor
 {
 public:
-	MethodCompiler(const EvaluationScopePtr &initialScope, Oop classBinding)
-		: ScopedInterpreter(initialScope), temporalCount(0), argumentCount(0), classBinding(classBinding) {}
+	MethodCompiler(Oop classBinding)
+		: classBinding(classBinding) {}
 
 	virtual Oop visitArgument(Argument *node);
 	virtual Oop visitArgumentList(ArgumentList *node);
@@ -630,65 +808,81 @@ public:
 	virtual Oop visitThisContextReference(ThisContextReference *node);
 
 private:
-	void pushTemporalScope();
-	void popTemporalScope();
-	size_t makeTemporalIndex();
-
-	size_t temporalCount;
-	size_t argumentCount;
 	OopRef selector;
 	OopRef classBinding;
 	MethodAssembler::Assembler gen;
 };
 
 // Method compiler.
-
-void MethodCompiler::pushTemporalScope()
-{
-	// TODO
-}
-void MethodCompiler::popTemporalScope()
-{
-	// TODO
-}
-
-size_t MethodCompiler::makeTemporalIndex()
-{
-	auto tempIndex = temporalCount++;
-	return argumentCount + tempIndex;
-}
-
 Oop MethodCompiler::visitArgument(Argument *node)
 {
-	assert(0 && "unimplemented");
-	abort();
+	LODTALK_UNIMPLEMENTED();
 }
 
 Oop MethodCompiler::visitArgumentList(ArgumentList *node)
 {
-	assert(0 && "unimplemented");
-	abort();
+	LODTALK_UNIMPLEMENTED();
 }
 
 Oop MethodCompiler::visitAssignmentExpression(AssignmentExpression *node)
 {
-	assert(0 && "unimplemented");
-	abort();
+	LODTALK_UNIMPLEMENTED();
 }
 
 Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
 {
-	assert(0 && "unimplemented");
-	abort();
+
+    auto blockEnd = gen.makeLabel();
+
+    // Process the arguments
+    auto argumentList = node->getArgumentList();
+    size_t argumentCount = 0;
+    if(argumentList)
+        argumentCount = argumentList->getArguments().size();
+
+    // The count of temporal vectors.
+    auto temporalVectorCount = 0;
+
+    // TODO: Push the captured temporal vectors.
+
+    // Prepare the local variables of the block.
+    auto &blockLocals  = node->getLocalVariables();
+    size_t numCopied = 0;
+    size_t numLocals = 0;
+
+    for(size_t i = 0; i < blockLocals.size(); ++i)
+    {
+        auto &localVar = blockLocals[i];
+        if(i < argumentCount)
+        {
+            localVar->setTemporalIndex(i);
+        }
+        else
+        {
+            localVar->setTemporalIndex(argumentCount + numLocals + temporalVectorCount);
+            ++numLocals;
+            ++numCopied;
+            gen.pushNil();
+        }
+    }
+
+    // Push the block.
+    gen.pushClosure(numCopied, argumentCount, blockEnd, 0);
+
+    // TODO: Generate the inner temporal vector.
+
+    // Generate the block body.
+    node->getBody()->acceptVisitor(this);
+
+    // Finish the block.
+    gen.putLabel(blockEnd);
+
+	return Oop();
 }
 
 Oop MethodCompiler::visitIdentifierExpression(IdentifierExpression *node)
 {
-	VariableLookupPtr variable;
-
-	// Find in the current scope.
-	if(currentScope)
-		variable = currentScope->lookSymbolRecursively(node->getSymbol());
+	auto &variable = node->getVariable();
 
 	// Ensure it was found.
 	if(!variable)
@@ -708,20 +902,19 @@ Oop MethodCompiler::visitLiteralNode(LiteralNode *node)
 
 Oop MethodCompiler::visitLocalDeclarations(LocalDeclarations *node)
 {
-	assert(0 && "unimplemented");
-	abort();
+	LODTALK_UNIMPLEMENTED();
 }
 
 Oop MethodCompiler::visitLocalDeclaration(LocalDeclaration *node)
 {
-	assert(0 && "unimplemented");
-	abort();
+	LODTALK_UNIMPLEMENTED();
 }
 
 Oop MethodCompiler::visitMessageSendNode(MessageSendNode *node)
 {
 	// Visit the receiver.
 	node->getReceiver()->acceptVisitor(this);
+    bool isSuper = node->getReceiver()->isSuperReference();
 
 	// Visit the arguments in reverse order.
 	auto &chained = node->getChainedMessages();
@@ -744,45 +937,41 @@ Oop MethodCompiler::visitMessageSendNode(MessageSendNode *node)
 			arg->acceptVisitor(this);
 
 		// Send the message.
-		gen.send(selector, arguments.size());
+        if(isSuper)
+            gen.superSend(selector, arguments.size());
+        else
+		    gen.send(selector, arguments.size());
 	}
 
-	return nilOop();
+	return Oop();
 }
 
 Oop MethodCompiler::visitMethodAST(MethodAST *node)
 {
+    size_t temporalCount = 0;
+    size_t argumentCount = 0;
+    size_t capturedCount = 0;
+
 	// Get the method selector.
 	auto header = node->getHeader();
 	selector = makeSelector(header->getSelector());
 
 	// Process the arguments
 	auto argumentList = header->getArgumentList();
+    argumentCount = 0;
 	if(argumentList)
-	{
-		auto &arguments = argumentList->getArguments();
+        argumentCount = argumentList->getArguments().size();;
 
-		// Store the argument count.
-		argumentCount = arguments.size();
-
-		// Create the arguments scope.
-		auto argumentScope = std::make_shared<LocalScope> (currentScope);
-		for(size_t i = 0; i < argumentCount; ++i)
-		{
-			auto &arg = arguments[i];
-			auto res = argumentScope->addArgument(arg->getSymbolOop(), i);
-			if(!res)
-				error(arg, "the argument has the same name as another argument.");
-		}
-
-		pushScope(argumentScope);
-	}
+    // Compute the local variables indices.
+    auto &localVars = node->getLocalVariables();
+    for(size_t i = 0; i < localVars.size(); ++i)
+    {
+        auto &localVar = localVars[i];
+        localVar->setTemporalIndex(i);
+    }
 
 	// Visit the method body
 	node->getBody()->acceptVisitor(this);
-
-	if(argumentList)
-		popScope();
 
 	// Always return
 	if(!gen.isLastReturn())
@@ -799,8 +988,7 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
 
 Oop MethodCompiler::visitMethodHeader(MethodHeader *node)
 {
-	// Should not reach here.
-	abort();
+	LODTALK_UNIMPLEMENTED();
 }
 
 Oop MethodCompiler::visitReturnStatement(ReturnStatement *node)
@@ -815,12 +1003,6 @@ Oop MethodCompiler::visitReturnStatement(ReturnStatement *node)
 
 Oop MethodCompiler::visitSequenceNode(SequenceNode *node)
 {
-	if(node->getLocalDeclarations())
-	{
-		assert(0 && "unimplemented");
-		abort();
-	}
-
 	bool first = true;
 	for(auto &child : node->getChildren())
 	{
@@ -843,8 +1025,8 @@ Oop MethodCompiler::visitSelfReference(SelfReference *node)
 
 Oop MethodCompiler::visitSuperReference(SuperReference *node)
 {
-	assert(0 && "unimplemented");
-	abort();
+    gen.pushReceiver();
+	return Oop();
 }
 
 Oop MethodCompiler::visitThisContextReference(ThisContextReference *node)
@@ -856,7 +1038,12 @@ Oop MethodCompiler::visitThisContextReference(ThisContextReference *node)
 // Compiler interface
 CompiledMethod *compileMethod(const EvaluationScopePtr &scope, ClassDescription *clazz, Node *ast)
 {
-	MethodCompiler compiler(scope, clazz->getBinding());
+    // Perform the semantic analysis
+    MethodSemanticAnalysis semanticAnalyzer(scope);
+    ast->acceptVisitor(&semanticAnalyzer);
+
+    // Generate the actual method
+	MethodCompiler compiler(clazz->getBinding());
     return reinterpret_cast<CompiledMethod*> (ast->acceptVisitor(&compiler).pointer);
 }
 

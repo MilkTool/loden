@@ -8,6 +8,42 @@ namespace MethodAssembler
 
 const size_t ExtensibleBytecodeSizeMax = 16;
 
+// InstructionNode
+uint8_t *InstructionNode::encodeExtA(uint8_t *buffer, uint64_t value)
+{
+    if(!value)
+        return buffer;
+    LODTALK_UNIMPLEMENTED();
+}
+
+uint8_t *InstructionNode::encodeExtB(uint8_t *buffer, int64_t value)
+{
+    if(!value)
+        return buffer;
+    LODTALK_UNIMPLEMENTED();
+}
+
+size_t InstructionNode::sizeofExtA(uint64_t value)
+{
+    size_t res = 0;
+    while(value)
+    {
+        value /= 256;
+        res += 2;
+    }
+    return res;
+}
+
+size_t InstructionNode::sizeofExtB(int64_t value)
+{
+    size_t res = 0;
+    while(value)
+    {
+        value /= 256;
+        res += 2;
+    }
+    return res;
+}
 
 // Single bytecode instruction
 class SingleBytecodeInstruction: public InstructionNode
@@ -19,14 +55,14 @@ public:
 	virtual bool isReturnInstruction() const
 	{
 		return isReturn;
-	} 
-	
+	}
+
 	virtual uint8_t *encode(uint8_t *buffer)
 	{
 		*buffer++ = bytecode;
 		return buffer;
 	}
-	
+
 protected:
 	virtual size_t computeMaxSize()
 	{
@@ -58,10 +94,10 @@ public:
 			*buffer++ = index;
 			return buffer;
 		}
-			
+
 		LODTALK_UNIMPLEMENTED();
 	}
-	
+
 protected:
 	virtual size_t computeMaxSize()
 	{
@@ -69,12 +105,12 @@ protected:
 			return 1;
 		if(index < 256)
 			return 2;
-			
+
 		LODTALK_UNIMPLEMENTED();
 	}
 
 private:
-	int index;	
+	int index;
 };
 
 // PushLiteral
@@ -91,10 +127,10 @@ public:
 			*buffer++ = BytecodeSet::PushLiteralShortFirst + index;
 			return buffer;
 		}
-			
+
 		LODTALK_UNIMPLEMENTED();
 	}
-	
+
 protected:
 	virtual size_t computeMaxSize()
 	{
@@ -104,7 +140,7 @@ protected:
 	}
 
 private:
-	int index;	
+	int index;
 };
 
 // PushLiteralVariable
@@ -124,7 +160,7 @@ public:
 
 		assert(0 && "unimplemented");
 	}
-	
+
 protected:
 	virtual size_t computeMaxSize()
 	{
@@ -134,7 +170,7 @@ protected:
 	}
 
 private:
-	int index;	
+	int index;
 };
 
 // Push temporal
@@ -156,7 +192,7 @@ public:
 		*buffer++ = index;
 		return buffer;
 	}
-	
+
 protected:
 	virtual size_t computeMaxSize()
 	{
@@ -164,7 +200,61 @@ protected:
 	}
 
 private:
-	int index;	
+	int index;
+};
+
+// Push closure
+class PushClosure: public InstructionNode
+{
+public:
+    PushClosure(int numCopied, int numArgs, Label *blockEnd, int numExtensions)
+        : numCopied(numCopied), numArgs(numArgs), blockEnd(blockEnd), numExtensions(numExtensions) {}
+
+        virtual uint8_t *encode(uint8_t *buffer)
+    	{
+            buffer = encodeExtA(buffer, extendAValue());
+            buffer = encodeExtB(buffer, extendBValue());
+
+    		*buffer++ = BytecodeSet::PushClosure;
+    		*buffer++ =
+                ((numExtensions & BytecodeSet::PushClosure_NumExtensionsMask) << BytecodeSet::PushClosure_NumExtensionsShift) |
+                ((numArgs & BytecodeSet::PushClosure_NumArgsMask) << BytecodeSet::PushClosure_NumArgsShift) |
+                ((numCopied & BytecodeSet::PushClosure_NumCopiedMask) << BytecodeSet::PushClosure_NumCopiedShift);
+            *buffer++ = blockSize() & 0xFF;
+    		return buffer;
+    	}
+
+protected:
+    int extendAValue()
+    {
+        return numCopied / 8 * 16 + numArgs/8;
+    }
+
+    int blockSize()
+    {
+        return blockEnd->getPosition() - getPosition() - getLastSize();
+    }
+
+    int extendBValue()
+    {
+        return blockSize() / 256;
+    }
+
+	virtual size_t computeMaxSize()
+	{
+		return 3 + sizeofExtA(extendAValue()) + ExtensibleBytecodeSizeMax;
+	}
+
+    virtual size_t computeBetterSize()
+	{
+		return 3 + sizeofExtA(extendAValue()) + sizeofExtB(blockSize());
+	}
+
+private:
+    int numCopied;
+    int numArgs;
+    Label *blockEnd;
+    int numExtensions;
 };
 
 // Send message
@@ -194,7 +284,7 @@ public:
 
 		if(argumentCount > BytecodeSet::Send_ArgumentCountMask)
 			assert(0 && "unimplemented");
-			
+
 		if(selectorIndex > BytecodeSet::Send_LiteralIndexMask)
 			assert(0 && "unimplemented");
 
@@ -203,7 +293,7 @@ public:
 			((selectorIndex & BytecodeSet::Send_LiteralIndexMask) << BytecodeSet::Send_LiteralIndexShift);
 		return buffer;
 	}
-	
+
 protected:
 	virtual size_t computeMaxSize()
 	{
@@ -213,13 +303,13 @@ protected:
 			return 1;
 
 		size_t count = 2;
-		
+
 		if(argumentCount > BytecodeSet::Send_ArgumentCountMask)
 			assert(0 && "unimplemented");
 
  		if(selectorIndex > BytecodeSet::Send_LiteralIndexMask)
 			assert(0 && "unimplemented");
-		return count;		
+		return count;
 	}
 
 private:
@@ -238,7 +328,7 @@ public:
 	{
 		assert(0 && "unimplemented");
 	}
-	
+
 protected:
 	virtual size_t computeMaxSize()
 	{
@@ -271,7 +361,7 @@ size_t Assembler::addLiteral(Oop newLiteral)
 		if(literals[i] == newLiteral)
 			return i;
 	}
-	
+
 	auto ret = literals.size();
 	literals.push_back(newLiteral);
 	return ret;
@@ -304,8 +394,11 @@ size_t Assembler::computeInstructionsSize()
 	// Compute the max size.
 	size_t maxSize = 0;
 	for(auto &instr : instructionStream)
+    {
 		maxSize += instr->computeMaxSizeForPosition(maxSize);
-		
+        instr->commitSize();
+    }
+
 	// Compute the optimal iteratively.
 	size_t oldSize = maxSize;
 	size_t currentSize = 0;
@@ -315,8 +408,10 @@ size_t Assembler::computeInstructionsSize()
 		currentSize = 0;
 		for(auto &instr : instructionStream)
 			currentSize += instr->computeBetterSizeForPosition(currentSize);
+        for(auto &instr : instructionStream)
+            instr->commitSize();
 	} while(currentSize < oldSize);
-	
+
 	return currentSize;
 }
 
@@ -326,18 +421,18 @@ CompiledMethod *Assembler::generate(size_t temporalCount, size_t argumentCount, 
 	auto instructionsSize = computeInstructionsSize();
 	auto literalCount = literals.size();
 	auto methodSize = literalCount*sizeof(void*) + instructionsSize + extraSize;
-	
+
 	// Create the method header
 	auto methodHeader = CompiledMethodHeader::create(literalCount, temporalCount, argumentCount);
-	
+
 	// Create the compiled method
 	auto compiledMethod = CompiledMethod::newMethodWithHeader(methodSize, methodHeader);
-	
+
 	// Set the compiled method literals
 	auto literalData = compiledMethod->getFirstLiteralPointer();
 	for(size_t i = 0; i < literals.size(); ++i)
 		literalData[i] = literals[i].oop;
-		
+
 	// Encode the bytecode instructions.
 	auto instructionBuffer = compiledMethod->getFirstBCPointer();
 	auto instructionBufferEnd = instructionBuffer + instructionsSize;
@@ -350,7 +445,7 @@ CompiledMethod *Assembler::generate(size_t temporalCount, size_t argumentCount, 
 			abort();
 		}
 	}
-	
+
 	return compiledMethod;
 }
 
@@ -422,6 +517,11 @@ void Assembler::pushLiteralVariableIndex(int literalVariableIndex)
 void Assembler::pushTemporal(int temporalIndex)
 {
 	addInstruction(new PushTemporal(temporalIndex));
+}
+
+void Assembler::pushClosure(int numCopied, int numArgs, Label *blockEnd, int numExtensions)
+{
+    addInstruction(new PushClosure(numCopied, numArgs, blockEnd, numExtensions));
 }
 
 void Assembler::pushReceiver()

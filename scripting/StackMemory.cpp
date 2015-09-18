@@ -15,6 +15,12 @@ LODTALK_END_CLASS_TABLE()
 
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(StackMemoryCommitedPage, Object, OF_INDEXABLE_8, 0);
 
+// Stack frame
+void StackFrame::marryFrame()
+{
+    // TODO: Implement me
+}
+
 // Stack memory for a single thread.
 StackMemory::StackMemory()
 {
@@ -29,7 +35,7 @@ void StackMemory::setStorage(uint8_t *storage, size_t storageSize)
 	stackPageSize = storageSize;
 	stackPageHighest = storage + storageSize;
 	stackPageLowest = storage;
-	stackFrame = StackFrame(nullptr, stackPageHighest);	
+	stackFrame = StackFrame(nullptr, stackPageHighest);
 }
 
 // Stack memories interface used by the GC
@@ -47,7 +53,7 @@ public:
 		std::unique_lock<std::mutex> l(mutex);
 		memories.push_back(memory);
 	}
-	
+
 	void unregisterMemory(StackMemory* memory)
 	{
 		std::unique_lock<std::mutex> l(mutex);
@@ -60,7 +66,7 @@ public:
 			}
 		}
 	}
-	
+
 private:
 	std::mutex mutex;
 	std::vector<StackMemory*> memories;
@@ -81,7 +87,7 @@ void withStackMemory(const StackMemoryEntry &entryPoint)
 {
 	if(currentStackMemory)
 		return entryPoint(currentStackMemory);
-		
+
 	// Ensure the current stack memory pointer is clear when I finish.
 	struct EnsureBlock
 	{
@@ -92,7 +98,7 @@ void withStackMemory(const StackMemoryEntry &entryPoint)
 			currentStackMemory = nullptr;
 		}
 	} ensure;
-	
+
 	currentStackMemory = new StackMemory();
 	currentStackMemory->setStorage(reinterpret_cast<uint8_t*> (alloca(StackMemoryPageSize)), StackMemoryPageSize);
 	getStackMemoriesData()->registerMemory(currentStackMemory);

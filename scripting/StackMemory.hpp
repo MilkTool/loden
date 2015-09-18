@@ -14,7 +14,7 @@ class CompiledMethod;
 namespace InterpreterStackFrame
 {
 	static const int WordSize = sizeof(void*);
-	
+
 	static const int LastArgumentOffset = 2*WordSize;
 	static const int ReturnInstructionPointerOffset = WordSize;
 	static const int PrevFramePointerOffset = 0;
@@ -29,7 +29,7 @@ inline uintptr_t encodeFrameMetaData(bool hasContext, bool isBlock, size_t numAr
 {
 	return (numArguments & 0xFF) |
 		  ((isBlock & 0xFF) << 8) |
-		  ((hasContext & 0xFF) << 16); 
+		  ((hasContext & 0xFF) << 16);
 }
 
 inline void decodeFrameMetaData(uintptr_t metadata, bool &hasContext, bool &isBlock, size_t &numArguments)
@@ -58,12 +58,12 @@ public:
 	StackFrame(uint8_t *framePointer = nullptr, uint8_t *stackPointer = nullptr)
 		: framePointer(framePointer), stackPointer(stackPointer) {}
 	~StackFrame() {}
-	
+
 	inline uint8_t *getPrevFramePointer()
 	{
 		return *reinterpret_cast<uint8_t**> (framePointer + InterpreterStackFrame::PrevFramePointerOffset);
 	}
-	
+
 	inline CompiledMethod *getMethod()
 	{
 		return *reinterpret_cast<CompiledMethod**> (framePointer + InterpreterStackFrame::MethodOffset);
@@ -83,22 +83,22 @@ public:
 	{
 		return *reinterpret_cast<uintptr_t*> (framePointer + InterpreterStackFrame::MetadataOffset);
 	}
-	
+
 	inline StackFrame getPreviousFrame()
 	{
 		return StackFrame(getPrevFramePointer(), framePointer + InterpreterStackFrame::LastArgumentOffset);
 	}
-	
+
 	inline Oop stackOopAt(size_t offset)
 	{
 		return *reinterpret_cast<Oop*> (stackPointer + offset);
 	}
-	
+
 	inline Oop stackTop()
 	{
 		return *reinterpret_cast<Oop*> (stackPointer);
 	}
-	
+
 	template<typename FT>
 	inline void oopElementsDo(const FT &f)
 	{
@@ -107,14 +107,32 @@ public:
 
 		// This context
 		f(getThisContext());
-		
+
 		// Frame elements
 		Oop *frameElementsStart = reinterpret_cast<Oop*> (stackPointer);
 		Oop *frameElementsEnd = reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::FirstTempOffset);
 		for(Oop *pos = frameElementsStart; pos <= frameElementsEnd; ++pos)
 			f(*pos);
 	}
-	
+
+    void marryFrame();
+
+    inline bool isBlock()
+    {
+        return getMetadata() & 0xFF00;
+    }
+
+    inline bool hasContext()
+    {
+        return getMetadata() & 0xFF000;
+    }
+
+    inline void ensureFrameIsMarried()
+    {
+        if(!hasContext())
+            marryFrame();
+    }
+
 	uint8_t *framePointer;
 	uint8_t *stackPointer;
 };
@@ -127,10 +145,10 @@ class StackMemory
 public:
 	StackMemory();
 	~StackMemory();
-	
+
 	void setStorage(uint8_t *storage, size_t storageSize);
 
-public:	
+public:
 	inline size_t getStackSize() const
 	{
 		return stackPageHighest - stackFrame.stackPointer;
@@ -140,13 +158,13 @@ public:
 	{
 		return stackFrame.stackPointer - stackPageLowest;
 	}
-	
+
 	inline void pushOop(Oop oop)
 	{
 		stackFrame.stackPointer -= sizeof(Oop);
 		*reinterpret_cast<Oop*> (stackFrame.stackPointer) = oop;
 	}
-	
+
 	inline void pushPointer(uint8_t *pointer)
 	{
 		stackFrame.stackPointer -= sizeof(pointer);
@@ -164,7 +182,7 @@ public:
 		stackFrame.stackPointer -= sizeof(value);
 		*reinterpret_cast<intptr_t*> (stackFrame.stackPointer) = value;
 	}
-	
+
 	inline uint8_t *stackPointerAt(size_t offset)
 	{
 		return *reinterpret_cast<uint8_t**> (stackFrame.stackPointer + offset);
@@ -174,7 +192,7 @@ public:
 	{
 		return stackFrame.stackOopAt(offset);
 	}
-	
+
 	inline Oop stackTop()
 	{
 		return stackFrame.stackTop();
@@ -184,14 +202,14 @@ public:
 	{
 		return *reinterpret_cast<uintptr_t*> (stackFrame.stackPointer + offset);
 	}
-	
+
 	inline Oop popOop()
 	{
 		auto res = stackOopAt(0);
 		stackFrame.stackPointer += sizeof(Oop);
 		return res;
 	}
-	
+
 	inline uintptr_t popUInt()
 	{
 		auto res = stackUIntTop(0);
@@ -203,14 +221,14 @@ public:
 	{
 		stackFrame.stackPointer += count * sizeof(Oop);
 	}
-	
+
 	inline uint8_t *popPointer()
 	{
 		auto result = stackPointerAt(0);
 		stackFrame.stackPointer += sizeof(uint8_t*);
 		return result;
 	}
-	
+
 	inline uint8_t *getStackPointer()
 	{
 		return stackFrame.stackPointer;
@@ -225,22 +243,22 @@ public:
 	{
 		stackFrame.framePointer = newPointer;
 	}
-	
+
 	inline void setStackPointer(uint8_t *newPointer)
 	{
 		stackFrame.stackPointer = newPointer;
 	}
-	
+
 	inline uint8_t *getPrevFramePointer()
 	{
 		return stackFrame.getPrevFramePointer();
 	}
-	
+
 	inline StackFrame getCurrentFrame()
 	{
 		return stackFrame;
 	}
-	
+
 	inline CompiledMethod *getMethod()
 	{
 		return stackFrame.getMethod();
@@ -261,11 +279,16 @@ public:
 		return stackFrame.getMetadata();;
 	}
 
+    void ensureFrameIsMarried()
+    {
+        stackFrame.ensureFrameIsMarried();
+    }
+
 	template<typename FT>
 	inline void stackFramesDo(const FT &function)
 	{
 		auto currentFrame = stackFrame;
-	
+
 		while(currentFrame.framePointer)
 		{
 			function(currentFrame);
@@ -276,9 +299,9 @@ private:
 	uint8_t *stackPageLowest;
 	uint8_t *stackPageHighest;
 	size_t stackPageSize;
-	
+
 	StackFrame stackFrame;
-	
+
 };
 
 typedef std::function<void (StackMemory*) > StackMemoryEntry;

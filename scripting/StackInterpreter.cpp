@@ -11,13 +11,13 @@ namespace Lodtalk
 /**
  * The stack interpreter.
  * This stack interpreter is based in the arquitecture of squeak.
- */ 
+ */
 class StackInterpreter
 {
 public:
 	StackInterpreter(StackMemory *stack);
 	~StackInterpreter();
-	
+
 	Oop interpretMethod(CompiledMethod *method, Oop receiver, int argumentCount, Oop *arguments);
 	void interpret();
 
@@ -37,7 +37,7 @@ private:
 		error(buffer);
 		abort();
 	}
-	
+
 	int fetchByte()
 	{
 		return getInstructionBasePointer()[pc++];
@@ -47,7 +47,7 @@ private:
 	{
 		return reinterpret_cast<int8_t*> (getInstructionBasePointer())[pc++];
 	}
-	
+
 	void fetchNextInstructionOpcode()
 	{
 		nextOpcode = fetchByte();
@@ -62,27 +62,27 @@ private:
 	{
 		return stack->getAvailableCapacity();
 	}
-	
+
 	void pushOop(Oop object)
 	{
 		stack->pushOop(object);
 	}
-	
+
 	void pushPointer(uint8_t *pointer)
 	{
 		stack->pushPointer(pointer);
 	}
-	
+
 	void pushUInt(uintptr_t value)
 	{
 		stack->pushUInt(value);
 	}
-	
+
 	void pushPC()
 	{
 		pushUInt(pc);
 	}
-	
+
 	void popPC()
 	{
 		pc = popUInt();
@@ -91,12 +91,12 @@ private:
 	{
 		return reinterpret_cast<uint8_t*> (method);
 	}
-	
+
 	Oop currentReceiver() const
 	{
 		return stack->getReceiver();
 	}
-	
+
 	Oop popOop()
 	{
 		return stack->popOop();
@@ -106,12 +106,12 @@ private:
 	{
 		return stack->popPointer();
 	}
-	
+
 	uintptr_t popUInt()
 	{
 		return stack->popUInt();
 	}
-	
+
 	Oop stackTop()
 	{
 		return stack->stackTop();
@@ -121,59 +121,59 @@ private:
 	{
 		return stack->stackOopAt(offset);
 	}
-	
+
 	bool condJumpOnNotBoolean(bool jumpType)
 	{
 		LODTALK_UNIMPLEMENTED();
 	}
-	
+
 	void nonLocalReturnValue(Oop value)
 	{
 		LODTALK_UNIMPLEMENTED();
 	}
-	
+
 	void returnValue(Oop value)
 	{
-		// Special handling for non-local returns. 
+		// Special handling for non-local returns.
 		if(isBlock)
 			nonLocalReturnValue(value);
-			
+
 		// Restore the stack into beginning of the frame pointer.
-		stack->setStackPointer(stack->getFramePointer()); 
+		stack->setStackPointer(stack->getFramePointer());
 		stack->setFramePointer(stack->popPointer());
-		
+
 		// Pop the return pc
 		popPC();
-		
+
 		// Pop the arguments and the receiver.
 		stack->popMultiplesOops(argumentCount + 1);
-		
+
 		// Push the return value.
 		pushOop(value);
-		
+
 		// If there is no, then it means that we are returning.
 		if(pc)
 		{
 			// Re fetch the frame data to continue.
 			fetchFrameData();
-			
+
 			// Fetch the next instruction
 			fetchNextInstructionOpcode();
 		}
 	}
-	
+
 	void blockReturnValue(Oop value)
 	{
 		LODTALK_UNIMPLEMENTED();
 	}
-	
+
 	void activateMethodFrame(CompiledMethod *method);
 	void fetchFrameData();
-	
+
 private:
 	// Use the stack memory.
 	StackMemory *stack;
- 
+
 	// Interpreter data.
 	size_t pc;
 	int nextOpcode;
@@ -189,24 +189,24 @@ private:
 	bool hasContext;
 	bool isBlock;
 	size_t argumentCount;
-	
+
 
 private:
 	CompiledMethod *getMethod()
 	{
 		return method;
 	}
-	
+
 	Oop getInstanceVariable(int index)
 	{
 		return reinterpret_cast<Oop*> (currentReceiver().getFirstFieldPointer())[index];
 	}
-	
+
 	void setInstanceVariable(int index, Oop value)
 	{
 		reinterpret_cast<Oop*> (currentReceiver().getFirstFieldPointer())[index] = value;
 	}
-	
+
 	Oop getLiteral(int index)
 	{
 		return literalArray[index];
@@ -219,7 +219,7 @@ private:
 		else
 			return InterpreterStackFrame::FirstTempOffset - ptrdiff_t(index - argumentCount) *sizeof (Oop);
 	}
-	
+
 	Oop getTemporary(size_t index)
 	{
 		return *reinterpret_cast<Oop*> (stack->getFramePointer() + getTemporaryOffset(index));
@@ -229,17 +229,17 @@ private:
 	{
 		*reinterpret_cast<Oop*> (stack->getFramePointer() + getTemporaryOffset(index)) = value;
 	}
-	
+
 	void pushReceiverVariable(int receiverVarIndex)
 	{
 		auto localVar = getInstanceVariable(receiverVarIndex);
 		pushOop(localVar);
 	}
-	
+
 	void pushLiteralVariable(int literalVarIndex)
 	{
 		auto literal = getLiteral(literalVarIndex);
-		
+
 		// Cast the literal variable and push the value
 		auto literalVar = reinterpret_cast<LiteralVariable*> (literal.pointer);
 		pushOop(literalVar->value);
@@ -250,13 +250,13 @@ private:
 		auto literal = getLiteral(literalIndex);
 		pushOop(literal);
 	}
-	
+
 	void pushTemporary(int temporaryIndex)
 	{
 		auto temporary = getTemporary(temporaryIndex);
 		pushOop(temporary);
 	}
-	
+
 	void sendLiteralIndexArgumentCount(int literalIndex, int argumentCount)
 	{
 		auto selector = getLiteral(literalIndex);
@@ -265,7 +265,7 @@ private:
 		// Get the receiver.
 		auto newReceiver = stack->stackOopAt(argumentCount * sizeof(Oop));
 		//printf("Send #%s [%s]%p\n", getByteSymbolData(selector).c_str(), getClassNameOfObject(newReceiver).c_str(), newReceiver.pointer);
-		
+
 		// Find the called method
 		auto calledMethodOop = lookupMessage(newReceiver, selector);
 		if(calledMethodOop.isNil())
@@ -273,14 +273,14 @@ private:
 			// TODO: Send a DNU
 			LODTALK_UNIMPLEMENTED();
 		}
-		
+
 		// Get the called method type
 		auto methodClassIndex = classIndexOf(calledMethodOop);
 		if(methodClassIndex == SCI_CompiledMethod)
 		{
 			// Push the return PC.
 			pushPC();
-			
+
 			// Activate the new compiled method.
 			auto compiledMethod = reinterpret_cast<CompiledMethod*> (calledMethodOop.pointer);
 			activateMethodFrame(compiledMethod);
@@ -291,20 +291,20 @@ private:
 			Oop nativeMethodArgs[CompiledMethodHeader::ArgumentMask];
 			for(int i = 0; i < argumentCount; ++i)
 				nativeMethodArgs[argumentCount - i - 1] = stack->stackOopAt(i*sizeof(Oop));
-			
+
 			// Call the native method
 			auto nativeMethod = reinterpret_cast<NativeMethod*> (calledMethodOop.pointer);
 			Oop result = nativeMethod->execute(newReceiver, argumentCount, nativeMethodArgs);
-			
+
 			// Pop the arguments and the receiver.
 			stack->popMultiplesOops(argumentCount + 1);
-			
+
 			// Push the result in the stack.
 			pushOop(result);
-			
+
 			// Re fetch the frame data to continue.
 			fetchFrameData();
-			
+
 			// Fetch the next instruction
 			fetchNextInstructionOpcode();
 		}
@@ -314,77 +314,77 @@ private:
 			LODTALK_UNIMPLEMENTED();
 		}
 	}
-	
+
 	// Bytecode instructions
 	void interpretPushReceiverVariableShort()
 	{
 		fetchNextInstructionOpcode();
-		
+
 		// Fetch the variable index.
 		auto variableIndex = currentOpcode & 0xF;
 		pushReceiverVariable(variableIndex);
 	}
-	
+
 	void interpretPushLiteralVariableShort()
 	{
 		fetchNextInstructionOpcode();
-		
+
 		// Fetch the literal index
 		auto literalVarIndex = currentOpcode & 0xF;
 		pushLiteralVariable(literalVarIndex);
 	}
-	
+
 	void interpretPushLiteralShort()
 	{
 		fetchNextInstructionOpcode();
-		
+
 		// Fetch the literal index
-		auto literalIndex = currentOpcode & 0x1F; 
+		auto literalIndex = currentOpcode & 0x1F;
 		pushLiteral(literalIndex);
 	}
-	
+
 	void interpretPushTempShort()
 	{
 		fetchNextInstructionOpcode();
-		
+
 		// Fetch the temporal index
 		auto tempIndex = currentOpcode - BytecodeSet::PushTempShortFirst;
 		pushTemporary(tempIndex);
 	}
-	
+
 	void interpretSendShortArgs0()
 	{
 		// Fetch the literal index
 		auto literalIndex = currentOpcode & 0x0F;
 		sendLiteralIndexArgumentCount(literalIndex, 0);
 	}
-	
+
 	void interpretSendShortArgs1()
 	{
 		// Fetch the literal index
 		auto literalIndex = currentOpcode & 0x0F;
 		sendLiteralIndexArgumentCount(literalIndex, 1);
 	}
-	
+
 	void interpretSendShortArgs2()
 	{
 		// Fetch the literal index
 		auto literalIndex = currentOpcode & 0x0F;
 		sendLiteralIndexArgumentCount(literalIndex, 2);
 	}
-	
+
 	void interpretJumpShort()
 	{
 		auto delta = (currentOpcode & 7) + 1;
 		pc += delta;
 	}
-	
+
 	void interpretJumpOnTrueShort()
 	{
 		// Fetch the condition and the next instruction opcode
 		fetchNextInstructionOpcode();
 		auto condition = popOop();
-		
+
 		// Perform the branch when requested.
 		if(condition == trueOop())
 		{
@@ -398,13 +398,13 @@ private:
 			condJumpOnNotBoolean(true);
 		}
 	}
-	
+
 	void interpretJumpOnFalseShort()
 	{
 		// Fetch the condition and the next instruction opcode
 		fetchNextInstructionOpcode();
 		auto condition = popOop();
-		
+
 		// Perform the branch when requested.
 		if(condition == falseOop())
 		{
@@ -418,17 +418,17 @@ private:
 			condJumpOnNotBoolean(false);
 		}
 	}
-	
+
 	void interpretPopStoreReceiverVariableShort()
 	{
 		LODTALK_UNIMPLEMENTED();
 	}
-	
+
 	void interpretPopStoreTemporalVariableShort()
 	{
 		LODTALK_UNIMPLEMENTED();
 	}
-	
+
 	void interpretPushReceiver()
 	{
 		fetchNextInstructionOpcode();
@@ -446,19 +446,19 @@ private:
 		fetchNextInstructionOpcode();
 		pushOop(falseOop());
 	}
-	
+
 	void interpretPushNil()
 	{
 		fetchNextInstructionOpcode();
 		pushOop(nilOop());
 	}
-	
+
 	void interpretPushZero()
 	{
 		fetchNextInstructionOpcode();
 		pushOop(Oop::encodeSmallInteger(0));
 	}
-	
+
 	void interpretPushOne()
 	{
 		fetchNextInstructionOpcode();
@@ -485,12 +485,12 @@ private:
 	{
 		returnValue(trueOop());
 	}
-	
+
 	void interpretReturnFalse()
 	{
 		returnValue(falseOop());
 	}
-	
+
 	void interpretReturnNil()
 	{
 		returnValue(nilOop());
@@ -510,18 +510,18 @@ private:
 	{
 		blockReturnValue(popOop());
 	}
-	
+
 	void interpretNop()
 	{
 		fetchNextInstructionOpcode();
-		
+
 		// Do nothing
 	}
 
 	void interpretPopStackTop()
 	{
 		fetchNextInstructionOpcode();
-		
+
 		// Pop the element from the stack.
 		popOop();
 	}
@@ -552,15 +552,15 @@ private:
 	{
 		LODTALK_UNIMPLEMENTED();
 	}
-	
+
 	void interpretPushTemporary()
 	{
 		auto tempIndex = fetchByte();
 		fetchNextInstructionOpcode();
-		
+
 		pushTemporary(tempIndex);
 	}
-	
+
 	void interpretPushNTemps()
 	{
 		LODTALK_UNIMPLEMENTED();
@@ -575,7 +575,7 @@ private:
 	{
 		LODTALK_UNIMPLEMENTED();
 	}
-	
+
 	void interpretPushArrayWithElements()
 	{
 		LODTALK_UNIMPLEMENTED();
@@ -585,15 +585,15 @@ private:
 	{
 		// Fetch the data.
 		int data = fetchByte();
-		
+
 		// Decode the literal index and argument index
 		auto argumentCount = (data & BytecodeSet::Send_ArgumentCountMask) + extendB * BytecodeSet::Send_ArgumentCountCount;
 		auto literalIndex = ((data >> BytecodeSet::Send_LiteralIndexShift) & BytecodeSet::Send_LiteralIndexMask) + extendA * BytecodeSet::Send_LiteralIndexCount;
-		
+
 		// Clear the extension values.
 		extendA = 0;
 		extendB = 0;
-		
+
 		// Send the message
 		sendLiteralIndexArgumentCount(literalIndex, argumentCount);
 	}
@@ -622,7 +622,7 @@ private:
 	{
 		LODTALK_UNIMPLEMENTED();
 	}
-	
+
 	void interpretPopStoreReceiverVariable()
 	{
 		LODTALK_UNIMPLEMENTED();
@@ -653,6 +653,41 @@ private:
 		LODTALK_UNIMPLEMENTED();
 	}
 
+    void interpretPushClosure()
+    {
+        // Fetch some arguments.
+        auto firstByte = fetchByte();
+        auto blockSize = fetchByte() + extendB * 256;
+        auto startPc = pc;
+        pc += blockSize;
+        fetchNextInstructionOpcode();
+
+        // Decode more of the arguments.
+        auto numCopied = ((firstByte >> BytecodeSet::PushClosure_NumCopiedShift) & BytecodeSet::PushClosure_NumCopiedMask)
+            + (extendA/16)*8;
+        auto numArgs = ((firstByte >> BytecodeSet::PushClosure_NumArgsShift) & BytecodeSet::PushClosure_NumArgsMask) + (extendA%16)*8;
+
+        // Ensure my frame is married.
+        stack->ensureFrameIsMarried();
+
+        // Create the block closure.
+        BlockClosure *blockClosure = BlockClosure::create(numCopied);
+        blockClosure->outerContext = stack->getThisContext();
+        blockClosure->startpc = Oop::encodeSmallInteger(startPc);
+        blockClosure->numArgs = Oop::encodeSmallInteger(numArgs);
+
+        // Copy some elements into the closure.
+        Oop *closureCopiedElements = reinterpret_cast<Oop*> (blockClosure->getFirstFieldPointer());
+        for(size_t i = 0; i < numCopied; ++i)
+            closureCopiedElements[numCopied - i - 1] = popOop();
+
+        // Push the closure.
+        pushOop(Oop::fromPointer(blockClosure));
+
+        // Reset the extension values.
+        extendA = 0;
+        extendB = 0;
+    }
 };
 
 StackInterpreter::StackInterpreter(StackMemory *stack)
@@ -663,7 +698,7 @@ StackInterpreter::StackInterpreter(StackMemory *stack)
 StackInterpreter::~StackInterpreter()
 {
 }
-	
+
 Oop StackInterpreter::interpretMethod(CompiledMethod *newMethod, Oop receiver, int argumentCount, Oop *arguments)
 {
 	// Check the argument count
@@ -678,9 +713,9 @@ Oop StackInterpreter::interpretMethod(CompiledMethod *newMethod, Oop receiver, i
 	// Make the method frame.
 	pushUInt(0); // Return instruction PC.
 	activateMethodFrame(newMethod);
-	
+
 	interpret();
-	
+
 	auto returnValue = popOop();
 	return returnValue;
 }
@@ -691,39 +726,39 @@ void StackInterpreter::activateMethodFrame(CompiledMethod *newMethod)
 	auto header = *newMethod->getHeader();
 	auto numArguments = header.getArgumentCount();
 	auto numTemporals = header.getTemporalCount();
-	
+
 	// Get the receiver
 	auto receiver = stackOopAt((1 + numArguments)*sizeof(Oop));
 
 	// Push the frame pointer.
 	pushPointer(stack->getFramePointer()); // Return frame pointer.
 
-	// Set the new frame pointer.	
+	// Set the new frame pointer.
 	stack->setFramePointer(stack->getStackPointer());
-	
+
 	// Push the method object.
 	pushOop(Oop::fromPointer(newMethod));
 	this->method = newMethod;
-	
+
 	// Encode frame metadata
 	pushUInt(encodeFrameMetaData(false, false, numArguments));
-	
+
 	// Push the nil this context.
-	pushOop(Oop()); 
+	pushOop(Oop());
 
 	// Push the oop.
 	pushOop(receiver);
-	
+
 	// Push the nil temporals.
 	for(size_t i = 0; i < numTemporals; ++i)
 		pushOop(Oop());
 
 	// Fetch the frame data.
 	fetchFrameData();
-	
-	// Set the instruction pointer. 
+
+	// Set the instruction pointer.
 	pc = newMethod->getFirstPCOffset();
-	
+
 	// Fetch the first instruction opcode
 	fetchNextInstructionOpcode();
 }
@@ -733,7 +768,7 @@ void StackInterpreter::fetchFrameData()
 	// Decode the frame metadata.
 	decodeFrameMetaData(stack->getMetadata(), this->hasContext, this->isBlock, argumentCount);
 
-	// Get the method and the literal array	
+	// Get the method and the literal array
 	method = stack->getMethod();
 	literalArray = method->getFirstLiteralPointer();
 }
@@ -746,7 +781,7 @@ void StackInterpreter::interpret()
 	while(pc != 0)
 	{
 		currentOpcode = nextOpcode;
-		
+
 		switch(currentOpcode)
 		{
 #define MAKE_RANGE_CASE(i, from, to, name) \
@@ -777,7 +812,7 @@ Oop interpretCompiledMethod(CompiledMethod *method, Oop receiver, int argumentCo
 	Oop result;
 	withStackMemory([&](StackMemory *stack) {
 		StackInterpreter interpreter(stack);
-		result = interpreter.interpretMethod(method, receiver, argumentCount, arguments); 
+		result = interpreter.interpretMethod(method, receiver, argumentCount, arguments);
 	});
 	return result;
 }

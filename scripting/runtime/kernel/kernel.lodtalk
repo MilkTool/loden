@@ -1,2 +1,6 @@
-self executeFileNamed: 'class.lodtalk';
-    executeFileNamed: 'object.lodtalk'
+self executeFileNamed: 'Class.lodtalk';
+    executeFileNamed: 'ProtoObject.lodtalk';
+    executeFileNamed: 'Object.lodtalk';
+    executeFileNamed: 'Context.lodtalk';
+    executeFileNamed: 'BlockClosure.lodtalk';
+    executeFileNamed: 'ScriptContext.lodtalk'

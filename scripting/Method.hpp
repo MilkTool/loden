@@ -16,32 +16,32 @@ class NativeMethodWrapper;
  */
 class CompiledMethod: public ByteArray
 {
-	LODTALK_NATIVE_CLASS();	
+	LODTALK_NATIVE_CLASS();
 public:
 	static CompiledMethod *newMethodWithHeader(size_t numberOfBytes, CompiledMethodHeader header);
 
 	Oop execute(Oop receiver, int argumentCount, Oop *arguments);
-	
+
 	CompiledMethodHeader *getHeader()
 	{
 		return reinterpret_cast<CompiledMethodHeader*> (getFirstFieldPointer());
 	}
-	
+
 	size_t getLiteralCount()
 	{
 		return getHeader()->getLiteralCount();
 	}
-	
+
 	size_t getTemporalCount()
 	{
 		return getHeader()->getTemporalCount();
 	}
-	
+
 	size_t getArgumentCount()
 	{
 		return getHeader()->getArgumentCount();
 	}
-	
+
 	size_t getFirstPC()
 	{
 		return (getHeader()->getLiteralCount() + 1)*sizeof(void*);
@@ -56,12 +56,12 @@ public:
 	{
 		return getFirstBCPointer() - reinterpret_cast<uint8_t*> (this);
 	}
-	
+
 	Oop *getFirstLiteralPointer()
 	{
-		return reinterpret_cast<Oop *> (getFirstFieldPointer() + sizeof(void*)); 
+		return reinterpret_cast<Oop *> (getFirstFieldPointer() + sizeof(void*));
 	}
-	
+
 	Oop getSelector()
 	{
 		auto selectorIndex = getLiteralCount() - 2;
@@ -91,8 +91,68 @@ public:
 	}
 
 	Oop execute(Oop receiver, int argumentCount, Oop *arguments);
-	
+
 	NativeMethodWrapper *wrapper;
+};
+
+/**
+ * InstructionStream
+ */
+class InstructionStream: public Object
+{
+    LODTALK_NATIVE_CLASS();
+public:
+    static const int InstructionStreamVariableCount = 2;
+
+    Oop sender;
+    Oop pc;
+};
+
+/**
+ * Context
+ */
+class Context: public InstructionStream
+{
+    LODTALK_NATIVE_CLASS();
+public:
+    static const int ContextVariableCount = InstructionStreamVariableCount + 4;
+
+    static Context *create();
+
+    Oop stackp;
+    Oop method;
+    Oop closureOrNil;
+    Oop receiver;
+};
+
+/**
+ * Block closure
+ */
+class BlockClosure: public Object
+{
+    LODTALK_NATIVE_CLASS();
+public:
+    static const int BlockClosureVariableCount = 3;
+
+    static BlockClosure *create(int numcopied);
+
+    Oop outerContext;
+    Oop startpc;
+    Oop numArgs;
+};
+
+/**
+ * Message send
+ */
+class MessageSend: public Object
+{
+    LODTALK_NATIVE_CLASS();
+public:
+    static const int MessageSendVariableCount = 3;
+
+    Oop receiver;
+    Oop selector;
+    Oop arguments;
 };
 
 /**
@@ -103,16 +163,16 @@ class NativeMethodWrapper
 public:
 	NativeMethodWrapper() {}
 	virtual ~NativeMethodWrapper() {}
-	
+
 	virtual Oop execute(Oop receiver, int argumentCount, Oop *arguments) = 0;
 };
 
 namespace detail
 {
-	// Argument marshallers. 
+	// Argument marshallers.
 	template<typename T>
 	struct NativeArgumentMarshaller;
-	
+
 	template<>
 	struct NativeArgumentMarshaller<Oop>
 	{
@@ -135,11 +195,11 @@ namespace detail
 	struct NativeArgumentMarshaller<T*> :
 		MPL::if_<std::is_base_of<ProtoObject, T>::value, ExplicitTypeArgumentMarshaller<T>, MPL::error_base>::type
 	{};
-	
+
 	// Result marshallers.
 	template<typename T>
 	struct NativeResultMarshaller;
-	
+
 	template<>
 	struct NativeResultMarshaller<Oop>
 	{
@@ -166,32 +226,32 @@ T nativeArgumentMarshaller(Oop object)
  * Global native method wrapper
  */
 template<typename R, typename...Args>
-class GlobalNativeMethodWrapper: public NativeMethodWrapper 
+class GlobalNativeMethodWrapper: public NativeMethodWrapper
 {
 public:
 	typedef R (*FunctionType) (Args...);
 	typedef MPL::vector<Args...> FunctionArgumentTypes;
-	
+
 	GlobalNativeMethodWrapper(const FunctionType &function)
 		: function(function)
 	{
 	}
-	
+
 	virtual Oop execute(Oop receiver, int argumentCount, Oop *arguments) override
 	{
 		assert(argumentCount + 1== MPL::size<FunctionArgumentTypes>::value);
 		return nativeResultMarshaller<R> (addReceiver(receiver, arguments));
 	}
-	
+
 private:
 	R addReceiver(Oop receiver, Oop *arguments)
 	{
 		typedef typename MPL::front<FunctionArgumentTypes>::type ArgumentType;
 		typedef typename MPL::pop_front<FunctionArgumentTypes>::type NextTypes;
-		
+
 		return addArguments<NextTypes> (arguments, nativeArgumentMarshaller<ArgumentType> (receiver));
 	}
-	
+
 	template<typename RemainingTypes, typename...CurrentArgs>
 	typename std::enable_if<MPL::size<RemainingTypes>::value != 0, R>::type
 	addArguments(Oop *arguments, CurrentArgs... marshalledArguments)
@@ -210,7 +270,7 @@ private:
 	{
 		return function(marshalledArguments...);
 	}
-	
+
 	FunctionType function;
 };
 
@@ -228,13 +288,13 @@ public:
 		: function(function)
 	{
 	}
-	
+
 	virtual Oop execute(Oop receiver, int argumentCount, Oop *arguments) override
 	{
 		assert(argumentCount == MPL::size<FunctionArgumentTypes>::value);
 		return nativeResultMarshaller<R> (addArguments<FunctionArgumentTypes> (receiver, arguments));
 	}
-	
+
 private:
 	template<typename RemainingTypes, typename...CurrentArgs>
 	typename std::enable_if<MPL::size<RemainingTypes>::value != 0, R>::type
@@ -255,7 +315,7 @@ private:
 		auto self = nativeArgumentMarshaller<CT*> (receiver);
 		return (self->*function) (marshalledArguments...);
 	}
-	
+
 	FunctionType function;
 };
 
@@ -263,34 +323,34 @@ namespace detail
 {
 	template<typename T>
 	struct NativeMethodWrapperCreator;
-	
+
 	template<typename R, typename... Args>
 	struct NativeMethodWrapperCreator<R (*) (Args...)>
 	{
 		typedef R (*FT) (Args...);
-		
+
 		static NativeMethodWrapper *apply(const FT &functionPointer)
 		{
 			return new GlobalNativeMethodWrapper<R, Args...> (functionPointer);
 		}
 	};
-	
+
 	template<typename R, typename... Args>
 	struct NativeMethodWrapperCreator<R (Args...)>
 	{
 		typedef R (*FT) (Args...);
-		
+
 		static NativeMethodWrapper *apply(const FT &functionPointer)
 		{
 			return new GlobalNativeMethodWrapper<R, Args...> (functionPointer);
 		}
 	};
-	
+
 	template<typename R, typename CT, typename... Args>
 	struct NativeMethodWrapperCreator<R (CT::*) (Args...)>
 	{
 		typedef R (CT::*FT) (Args...);
-		
+
 		static NativeMethodWrapper *apply(const FT &functionPointer)
 		{
 			return new MemberNativeMethodWrapper<R, CT, Args...> (functionPointer);
@@ -315,15 +375,15 @@ public:
 		: selectorString(selectorString), methodWrapper(methodWrapper)
 	{
 	}
-	
+
 	~NativeMethodDescriptor()
 	{
 	}
-	
-	
+
+
 	Oop getSelector() const;
 	Oop getMethod() const;
-	
+
 private:
 	std::string selectorString;
 	NativeMethodWrapper *methodWrapper;

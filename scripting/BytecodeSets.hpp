@@ -16,13 +16,20 @@ constexpr int Send_LiteralIndexShift = 3;
 constexpr int Send_LiteralIndexMask = (1<<5) - 1;
 constexpr int Send_LiteralIndexCount = (1<<5);
 
+constexpr int PushClosure_NumExtensionsMask = 3;
+constexpr int PushClosure_NumExtensionsShift = 6;
+constexpr int PushClosure_NumCopiedMask = 3;
+constexpr int PushClosure_NumCopiedShift = 7;
+constexpr int PushClosure_NumArgsMask = 7;
+constexpr int PushClosure_NumArgsShift = 0;
+
 #define SISTAV1_INSTRUCTION_RANGE(name, range_first, range_end) \
 	constexpr int name##First = range_first; \
 	constexpr int name##Last = range_end; \
 	constexpr int name##RangeSize = range_end - range_first + 1;
-	
+
 #define SISTAV1_INSTRUCTION(name, opcode) \
-	constexpr int name = opcode; 
+	constexpr int name = opcode;
 
 #include "SistaV1BytecodeSet.inc"
 

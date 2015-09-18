@@ -23,6 +23,11 @@ bool Node::isReturnStatement() const
 	return false;
 }
 
+bool Node::isSuperReference() const
+{
+    return false;
+}
+
 // Identifier expression
 IdentifierExpression::IdentifierExpression(const std::string &identifier)
 	: identifier(identifier)
@@ -40,12 +45,22 @@ Oop IdentifierExpression::acceptVisitor(ASTVisitor *visitor)
 
 bool IdentifierExpression::isIdentifierExpression() const
 {
-	return true;	
+	return true;
 }
 
 const std::string &IdentifierExpression::getIdentifier() const
 {
 	return identifier;
+}
+
+const VariableLookupPtr &IdentifierExpression::getVariable() const
+{
+    return variable;
+}
+
+void IdentifierExpression::setVariable(const VariableLookupPtr &newVariable)
+{
+    variable = newVariable;
 }
 
 Oop IdentifierExpression::getSymbol() const
@@ -169,7 +184,7 @@ Node *AssignmentExpression::getValue() const
 	return value;
 }
 
-// Sequence node	
+// Sequence node
 SequenceNode::SequenceNode(Node *first)
 	: localDeclarations(nullptr)
 {
@@ -207,7 +222,6 @@ void SequenceNode::setLocalDeclarations(LocalDeclarations *newLocals)
 {
 	localDeclarations = newLocals;
 }
-
 
 // Return statement
 ReturnStatement::ReturnStatement(Node *value)
@@ -253,6 +267,11 @@ Oop LocalDeclaration::acceptVisitor(ASTVisitor *visitor)
 const std::string &LocalDeclaration::getName() const
 {
 	return name;
+}
+
+Oop LocalDeclaration::getSymbolOop()
+{
+    return makeByteSymbol(name);
 }
 
 // Local declarations
@@ -328,7 +347,7 @@ const std::vector<Argument*> &ArgumentList::getArguments()
 
 void ArgumentList::appendArgument(Argument *argument)
 {
-	arguments.push_back(argument);	
+	arguments.push_back(argument);
 }
 
 // Block expression
@@ -356,6 +375,16 @@ ArgumentList *BlockExpression::getArgumentList() const
 SequenceNode *BlockExpression::getBody() const
 {
 	return body;
+}
+// FunctionalNode
+void FunctionalNode::setLocalVariables(const LocalVariables &newLocalVariables)
+{
+    localVariables = newLocalVariables;
+}
+
+const FunctionalNode::LocalVariables &FunctionalNode::getLocalVariables() const
+{
+    return localVariables;
 }
 
 // Method header
@@ -440,11 +469,16 @@ Oop SuperReference::acceptVisitor(ASTVisitor *visitor)
 	return visitor->visitSuperReference(this);
 }
 
+bool SuperReference::isSuperReference() const
+{
+    return true;
+}
+
 // This context reference
 Oop ThisContextReference::acceptVisitor(ASTVisitor *visitor)
 {
 	return visitor->visitThisContextReference(this);
 }
 
-} // End of namespace AST	
+} // End of namespace AST
 } // End of namespace Lodtalk

@@ -13,8 +13,8 @@ The VM provides a primitive that fills an Array with the state of the counters, 
 	0-15		0000 iiii 			Push Receiver Variable #iiii
 	16-31		0001 iiii			Push Literal Variable #iiii
 	32-63		001 iiiii				Push Literal #iiiii
-	64-71		01000 iii			Push Temp #iii 
-	72-75		010010 ii			Push Temp #ii + 8	
+	64-71		01000 iii			Push Temp #iii
+	72-75		010010 ii			Push Temp #ii + 8
 	76			01001100			Push Receiver
 	77			01001101			Push true
 	78			01001110			Push false
@@ -27,13 +27,13 @@ The VM provides a primitive that fills an Array with the state of the counters, 
 	88-91		010110 ii			Return Receiver/true/false/nil
 	92			01011100			Return top
 	93			01011101			BlockReturn nil
-*	94			01011110			BlockReturn Top [* return from enclosing block N, N = Extend A, then jump by Ext B ] 
+*	94			01011110			BlockReturn Top [* return from enclosing block N, N = Extend A, then jump by Ext B ]
 	95			01011111			Nop
 	96-111		0110 iiii			Send Arithmetic Message #iiii #(#+ #- #< #> #'<=' #'>=' #= #'~=' #* #/ #'\\' #@ #bitShift: #'//' #bitAnd: #bitOr:)
 	112-119	01110 iii			Send Special Message #iii #(#at: #at:put: #size #next #nextPut: #atEnd #'==' class)
 	120		01111000			UNASSIGNED (was: blockCopy:)
 	121		01111001			Send Special Message #value
-	122-123	0111101 i			Send Special Message #i #(#value: #do:)	
+	122-123	0111101 i			Send Special Message #i #(#value: #do:)
 	124-127	011111 ii			Send Special Message #ii #(#new #new: #x #y))
 	128-143	1000 iiii			Send Literal Selector #iiii With 0 Argument
 	144-159	1001 iiii			Send Literal Selector #iiii With 1 Arguments
@@ -43,11 +43,11 @@ The VM provides a primitive that fills an Array with the state of the counters, 
 	192-199	11000 iii			Pop and Jump 0n False iii +1 (i.e., 1 through 8)
 	200-207	11001 iii			Pop and Store Receiver Variable #iii
 	208-215	11010 iii			Pop and Store Temporary Variable #iii
-	216		11011000			Pop Stack Top 
+	216		11011000			Pop Stack Top
 	217		11011001			UNASSIGNED
 	218-219	1101101 i			UNASSIGNED
 	220-223	110111 ii			UNASSIGNED
-	
+
 2 Byte Bytecodes
 *	224		11100000	aaaaaaaa	Extend A (Ext A = Ext A prev * 256 + Ext A)
 *	225		11100001	bbbbbbbb	Extend B (Ext B = Ext B prev * 256 + Ext B)
@@ -58,14 +58,14 @@ The VM provides a primitive that fills an Array with the state of the counters, 
 	230		11100110	iiiiiiii		PushNClosureTemps iiiiiiii
 *	231		11100111	iiiiiiii		Push Integer #iiiiiiii (+ Extend B * 256, where bbbbbbbb = sddddddd, e.g. -32768 = i=0, a=0, s=1)
 *	232		11101000	iiiiiiii		Push Character #iiiiiiii (+ Extend B * 256) (move ot 230)
-	233		11101001	jkkkkkkk	Push (Array new: kkkkkkk) (j = 0) &	Pop kkkkkkk elements into: (Array new: kkkkkkk) (j = 1)	
+	233		11101001	jkkkkkkk	Push (Array new: kkkkkkk) (j = 0) &	Pop kkkkkkk elements into: (Array new: kkkkkkk) (j = 1)
 **	234		11101010	iiiiijjj		Send Literal Selector #iiiii (+ Extend A * 32) with jjj (+ Extend B * 8) Arguments
 **	235		11101011	iiiiijjj		Send To Superclass Literal Selector #iiiii (+ Extend A * 32) with jjj (+ Extend B * 8) Arguments
 *	236		11101100	iiiiiiii		trap on behavior/array of behavior #iiiiiiii (+ Extend B * 256, where Extend B >= 0)
 *	237		11101101	iiiiiiii		Jump #iiiiiiii (+ Extend B * 256, where bbbbbbbb = sddddddd, e.g. -32768 = i=0, a=0, s=1)
 *	238		11101110	iiiiiiii		Pop and Jump 0n True #iiiiiiii (+ Extend B * 256, where Extend B >= 0)
-*	239		11101111	iiiiiiii		Pop and Jump 0n False #iiiiiiii (+ Extend B * 256, where Extend B >= 0)	
-*	240		11110000	iiiiiiii		Pop and Store Receiver Variable #iiiiiii (+ Extend A * 256)	
+*	239		11101111	iiiiiiii		Pop and Jump 0n False #iiiiiiii (+ Extend B * 256, where Extend B >= 0)
+*	240		11110000	iiiiiiii		Pop and Store Receiver Variable #iiiiiii (+ Extend A * 256)
 *	241		11110001	iiiiiiii		Pop and Store Literal Variable #iiiiiiii (+ Extend A * 256)
 *	242		11110010	iiiiiiii		Pop and Store Temporary Variable #iiiiiiii
 	243		11110011	iiiiiiii		Store Receiver Variable #iiiiiii (+ Extend A * 256)
@@ -73,7 +73,7 @@ The VM provides a primitive that fills an Array with the state of the counters, 
 *	245		11110110	iiiiiiii		Store Temporary Variable #iiiiiiii
 	246-247	1111011 i	xxxxxxxx	UNASSIGNED
 
-3 Byte Bytecodes	
+3 Byte Bytecodes
 	248		11111000 	iiiiiiii	mjjjjjjj	Call Primitive #iiiiiiii + (jjjjjjj * 256) m=1 means inlined primitive, no hard return after execution.
 	249		11111001 	xxxxxxxx	syyyyyyy	Reserved for Push Float
 **	250		11111010 	eeiiikkk		jjjjjjjj		Push Closure Num Copied iii (+ExtA//16*8) Num Args kkk (+ ExtA\\16*8) BlockSize jjjjjjjj (+ExtB*256). ee = num extensions
@@ -152,7 +152,7 @@ SISTAV1_INSTRUCTION(Nop, 95)
 	112-119	01110 iii			Send Special Message #iii #(#at: #at:put: #size #next #nextPut: #atEnd #'==' class)
 	120		01111000			UNASSIGNED (was: blockCopy:)
 	121		01111001			Send Special Message #value
-	122-123	0111101 i			Send Special Message #i #(#value: #do:)	
+	122-123	0111101 i			Send Special Message #i #(#value: #do:)
 	124-127	011111 ii			Send Special Message #ii #(#new #new: #x #y))
 */
 
@@ -190,3 +190,6 @@ SISTAV1_INSTRUCTION(PopStoreTemporalVariable, 242)
 SISTAV1_INSTRUCTION(StoreReceiverVariable, 243)
 SISTAV1_INSTRUCTION(StoreLiteralVariable, 244)
 SISTAV1_INSTRUCTION(StoreTemporalVariable, 245)
+
+// 3 Byte instructions
+SISTAV1_INSTRUCTION(PushClosure, 250)

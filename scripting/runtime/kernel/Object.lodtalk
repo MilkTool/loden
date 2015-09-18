@@ -1,0 +1,14 @@
+"Object methods"
+self class: Object.
+
+self category: 'accessing'.
+
+self method [
+name
+    ^ self class name
+].
+
+self method [
+yourself
+    ^ self
+].
