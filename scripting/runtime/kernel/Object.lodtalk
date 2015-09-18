@@ -4,7 +4,7 @@ self class: Object.
 self category: 'accessing'.
 self method [
 name
-    ^ self class name
+    ^ self printString
 ].
 
 self method [
@@ -21,4 +21,16 @@ value
 self method [
 valueWithArguments
     ^ self
-]
+].
+
+self category: 'converting'.
+self method [
+asString
+    ^ self printString
+].
+
+self category: 'printing'.
+self method [
+printString
+    ^ self class name
+].

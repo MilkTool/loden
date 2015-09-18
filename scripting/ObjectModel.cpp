@@ -25,12 +25,15 @@ class SpecialRuntimeObjects
 public:
 	SpecialRuntimeObjects();
 	~SpecialRuntimeObjects();
-	
+
 	void createSpecialObjectTable();
 	void createSpecialClassTable();
 
 	std::vector<Oop> specialObjectTable;
 	std::vector<ClassDescription*> specialClassTable;
+
+    size_t blockActivationSelectorFirst;
+    size_t blockActivationSelectorCount;
 };
 
 static SpecialRuntimeObjects *theSpecialRuntimeObjects = nullptr;
@@ -53,9 +56,22 @@ SpecialRuntimeObjects::~SpecialRuntimeObjects()
 
 void SpecialRuntimeObjects::createSpecialObjectTable()
 {
+    WithoutGC wgc;
+
 	specialObjectTable.push_back(nilOop());
 	specialObjectTable.push_back(trueOop());
 	specialObjectTable.push_back(falseOop());
+
+    // Block activation selectors
+    blockActivationSelectorFirst = specialObjectTable.size();
+    specialObjectTable.push_back(makeSelector("value"));
+    specialObjectTable.push_back(makeSelector("value:"));
+    specialObjectTable.push_back(makeSelector("value:value:"));
+    specialObjectTable.push_back(makeSelector("value:value:value:"));
+    specialObjectTable.push_back(makeSelector("value:value:value:value:"));
+    specialObjectTable.push_back(makeSelector("value:value:value:value:value:"));
+    specialObjectTable.push_back(makeSelector("value:value:value:value:value:value:"));
+    blockActivationSelectorCount = specialObjectTable.size() - blockActivationSelectorFirst;
 }
 
 void SpecialRuntimeObjects::createSpecialClassTable()
@@ -77,19 +93,24 @@ public:
 		Gray,
 		Black,
 	};
-	
+
 	GarbageCollector();
 	~GarbageCollector();
-	
+
+    void initialize();
+
 	uint8_t *allocateObjectMemory(size_t objectSize);
-	
+
 	void performCollection();
-	
+
 	void registerOopReference(OopRef *ref);
 	void unregisterOopReference(OopRef *ref);
-	
+
 	void registerGCRoot(Oop *gcroot, size_t size);
 	void unregisterGCRoot(Oop *gcroot);
+
+    void enable();
+    void disable();
 
 private:
 	template<typename FT>
@@ -111,7 +132,7 @@ private:
 				stackFrame.oopElementsDo(f);
 			});
 		}
-		
+
 		// Traverse the oop reference
 		OopRef *pos = firstReference;
 		for(; pos; pos = pos->nextReference_)
@@ -119,17 +140,18 @@ private:
 			f(pos->oop);
 		}
 	}
-	
+
 	void mark();
 	void markObject(Oop objectPointer);
 	void sweep();
-	
+
 	std::mutex controlMutex;
 	std::vector<std::pair<Oop*, size_t>> rootPointers;
 	std::list<Oop> allocatedObjects;
 	std::vector<StackMemory*> currentStacks;
 	OopRef *firstReference;
 	OopRef *lastReference;
+    bool enabled;
 };
 
 static GarbageCollector *theGarbageCollector = nullptr;
@@ -137,36 +159,55 @@ static GarbageCollector *theGarbageCollector = nullptr;
 static GarbageCollector *getGC()
 {
 	if(!theGarbageCollector)
+    {
 		theGarbageCollector = new GarbageCollector();
+        theGarbageCollector->initialize();
+    }
 	return theGarbageCollector;
 }
 
 GarbageCollector::GarbageCollector()
-	: firstReference(nullptr), lastReference(nullptr)
+	: firstReference(nullptr), lastReference(nullptr), enabled(true)
 {
-	auto specialObjects = getSpecialRuntimeObjects();
-	
-	// Register the special objects table.
-	registerGCRoot(&specialObjects->specialObjectTable[0], specialObjects->specialObjectTable.size());
-	
-	// Register the special classes table.
-	registerGCRoot((Oop*)&specialObjects->specialClassTable[0], specialObjects->specialClassTable.size());
 }
 
 GarbageCollector::~GarbageCollector()
 {
 }
 
+void GarbageCollector::initialize()
+{
+    auto specialObjects = getSpecialRuntimeObjects();
+
+	// Register the special objects table.
+	registerGCRoot(&specialObjects->specialObjectTable[0], specialObjects->specialObjectTable.size());
+
+	// Register the special classes table.
+	registerGCRoot((Oop*)&specialObjects->specialClassTable[0], specialObjects->specialClassTable.size());
+}
+
+void GarbageCollector::enable()
+{
+    std::unique_lock<std::mutex> l(controlMutex);
+    enabled = true;
+}
+
+void GarbageCollector::disable()
+{
+    std::unique_lock<std::mutex> l(controlMutex);
+    enabled = false;
+}
+
 uint8_t *GarbageCollector::allocateObjectMemory(size_t objectSize)
 {
 	performCollection();
 	assert(objectSize >= sizeof(ObjectHeader));
-	
+
 	// TODO: use a proper GCed heap.
 	auto result = (uint8_t*)malloc(objectSize);
 	auto header = reinterpret_cast<ObjectHeader*> (result);
 	*header = {0};
-	
+
 	allocatedObjects.push_back(Oop::fromPointer(result));
 	return result;
 }
@@ -175,14 +216,14 @@ void GarbageCollector::registerOopReference(OopRef *ref)
 {
 	std::unique_lock<std::mutex> l(controlMutex);
 	assert(ref);
-	
+
 	// Insert the reference into the beginning doubly linked list.
 	ref->prevReference_ = nullptr;
 	ref->nextReference_ = firstReference;
 	if(firstReference)
 		firstReference->prevReference_ = ref;
 	firstReference = ref;
-	
+
 	// Make sure the last reference is set.
 	if(!lastReference)
 		lastReference = firstReference;
@@ -227,9 +268,12 @@ void GarbageCollector::unregisterGCRoot(Oop *gcroot)
 void GarbageCollector::performCollection()
 {
 	std::unique_lock<std::mutex> l(controlMutex);
+    if(!enabled)
+        return;
+
 	// Get the current stacks
 	currentStacks = getAllStackMemories();
-	
+
 	// TODO: Suspend the other GC threads.
 	mark();
 	sweep();
@@ -246,7 +290,7 @@ void GarbageCollector::mark()
 void GarbageCollector::markObject(Oop objectPointer)
 {
 	// TODO: Use the schorr-waite algorithm.
-	
+
 	// mark pointer objects.
 	if(!objectPointer.isPointer())
 		return;
@@ -258,7 +302,7 @@ void GarbageCollector::markObject(Oop objectPointer)
 
 	// Mark gray
 	header->gcColor = Gray;
-	
+
 	// Mark recursively the children
 	auto format = header->objectFormat;
 	if(format == OF_FIXED_SIZE ||
@@ -274,12 +318,12 @@ void GarbageCollector::markObject(Oop objectPointer)
 			headerSize += 8;
 		}
 
-		// Traverse the slots.		
+		// Traverse the slots.
 		auto slots = reinterpret_cast<Oop*> (objectPointer.pointer + headerSize);
 		for(size_t i = 0; i < slotCount; ++i)
 			markObject(slots[i]);
 	}
-	
+
 	// Special handilng of compiled method literals
 	if(format >= OF_COMPILED_METHOD)
 	{
@@ -321,7 +365,7 @@ void GarbageCollector::sweep()
 	onRootsDo([this](Oop root) {
 		if(!root.isPointer())
 			return;
-			
+
 		auto header = reinterpret_cast<ObjectHeader*> (root.pointer);
 		header->gcColor = White;
 	});
@@ -341,6 +385,16 @@ void OopRef::unregisterSelf()
 }
 
 // GC collector public interface
+void disableGC()
+{
+    getGC()->disable();
+}
+
+void enableGC()
+{
+    getGC()->enable();
+}
+
 void registerGCRoot(Oop *gcroot, size_t size)
 {
 	getGC()->registerGCRoot(gcroot, size);
@@ -387,7 +441,7 @@ ObjectHeader *newObject(size_t fixedSlotCount, size_t indexableSize, ObjectForma
 			assert(indexableSize <= indexableSlotCount*divisor);
 		}
 	}
-	
+
 	// Compute more sizes
 	auto totalSlotCount = fixedSlotCount + indexableSlotCount;
 	auto headerSize = sizeof(ObjectHeader);
@@ -402,7 +456,7 @@ ObjectHeader *newObject(size_t fixedSlotCount, size_t indexableSize, ObjectForma
 	auto data = allocateObjectMemory(objectSize);
 	auto header = reinterpret_cast<ObjectHeader*> (data);
 
-	// Generate a hash if requested. 
+	// Generate a hash if requested.
 	if(identityHash < 0)
 		identityHash = generateIdentityHash(data);
 
@@ -417,7 +471,7 @@ ObjectHeader *newObject(size_t fixedSlotCount, size_t indexableSize, ObjectForma
 		auto bigHeader = reinterpret_cast<BigObjectHeader*> (header);
 		bigHeader->slotCount = totalSlotCount;
 	}
-	
+
 	// Initialize the slots.
 	auto slotStarts = data + headerSize;
 	if(!hasPrimitiveData)
@@ -457,7 +511,7 @@ Oop getClassFromIndex(int classIndex)
 	{
 		LODTALK_UNIMPLEMENTED();
 	}
-	
+
 	return Oop::fromPointer(specialObjects->specialClassTable[classIndex]);
 }
 
@@ -472,7 +526,7 @@ bool isClassOrMetaclass(Oop oop)
 	auto classIndex = classIndexOf(oop);
 	if(classIndex == SCI_Metaclass)
 		return true;
-	
+
 	auto clazz = getClassFromIndex(classIndexOf(oop));
 	return classIndexOf(clazz) == SCI_Metaclass;
 }
@@ -499,7 +553,7 @@ Oop lookupMessage(Oop receiver, Oop selector)
 	auto classIndex = classIndexOf(receiver);
 	auto classOop = getClassFromIndex(classIndex);
 	assert(!isNil(classOop));
-	
+
 	// Lookup the method
 	auto behavior = reinterpret_cast<Behavior*> (classOop.pointer);
 	return behavior->lookupSelector(selector);
@@ -510,7 +564,7 @@ Oop sendMessage(Oop receiver, Oop selector, int argumentCount, Oop *arguments)
 	auto method = lookupMessage(receiver, selector);
 	if(isNil(method))
 		return sendDNUMessage(receiver, selector, argumentCount, arguments);
-		
+
 	// Execute the method
 	auto methodClassIndex = classIndexOf(method);
 	if(methodClassIndex == SCI_CompiledMethod)
@@ -565,10 +619,10 @@ static SystemDictionary *getGlobalDictionary()
 		theGlobalDictionary = new SystemDictionary();
 		registerGCRoot((Oop*)&theGlobalDictionary, 1);
 	}
-	
+
 	return theGlobalDictionary;
 }
- 
+
 Oop setGlobalVariable(const char *name, Oop value)
 {
 	return setGlobalVariable(ByteSymbol::fromNative(name).getOop(), value);
@@ -577,7 +631,7 @@ Oop setGlobalVariable(const char *name, Oop value)
 Oop setGlobalVariable(Oop symbol, Oop value)
 {
 	auto globalDictionary = getGlobalDictionary();
-	
+
 	// Set the existing value.
 	auto globalVar = globalDictionary->getNativeAssociationOrNil(symbol);
 	if(classIndexOf(Oop::fromPointer(globalVar)) == SCI_GlobalVariable)
@@ -585,7 +639,7 @@ Oop setGlobalVariable(Oop symbol, Oop value)
 		globalVar->value = value;
 		return Oop::fromPointer(globalVar);
 	}
-	
+
 	// Create the global variable
 	Ref<Association> newGlobalVar = GlobalVariable::make(symbol, value);
 	globalDictionary->putNativeAssociation(newGlobalVar.get());
@@ -645,4 +699,12 @@ std::string getByteStringData(Oop object)
 	return string->getString();
 }
 
+// Special selectors.
+Oop getBlockActivationSelector(size_t argumentCount)
+{
+    auto specialObjects = getSpecialRuntimeObjects();
+    if(argumentCount >= specialObjects->blockActivationSelectorCount)
+        return Oop();
+    return specialObjects->specialObjectTable[specialObjects->blockActivationSelectorFirst + argumentCount];
+}
 } // End of namespace Lodtalk

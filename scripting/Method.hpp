@@ -159,6 +159,11 @@ public:
         return getOuterContext()->getReceiver();
     }
 
+    inline size_t getArgumentCount()
+    {
+        return numArgs.decodeSmallInteger();
+    }
+
     Oop outerContext;
     Oop startpc;
     Oop numArgs;

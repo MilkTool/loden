@@ -3,6 +3,7 @@
 #include "StackInterpreter.hpp"
 #include "PreprocessorHacks.hpp"
 #include "BytecodeSets.hpp"
+#include "Exception.hpp"
 #include "Common.hpp"
 
 namespace Lodtalk
@@ -19,6 +20,8 @@ public:
 	~StackInterpreter();
 
 	Oop interpretMethod(CompiledMethod *method, Oop receiver, int argumentCount, Oop *arguments);
+    Oop interpretBlockClosure(BlockClosure *closure, int argumentCount, Oop *arguments);
+
 	void interpret();
 
 private:
@@ -132,13 +135,9 @@ private:
 		LODTALK_UNIMPLEMENTED();
 	}
 
-	void returnValue(Oop value)
-	{
-		// Special handling for non-local returns.
-		if(isBlock)
-			nonLocalReturnValue(value);
-
-		// Restore the stack into beginning of the frame pointer.
+    void localReturnValue(Oop value)
+    {
+        // Restore the stack into beginning of the frame pointer.
 		stack->setStackPointer(stack->getFramePointer());
 		stack->setFramePointer(stack->popPointer());
 
@@ -160,11 +159,21 @@ private:
 			// Fetch the next instruction
 			fetchNextInstructionOpcode();
 		}
+
+    }
+
+	void returnValue(Oop value)
+	{
+		// Special handling for non-local returns.
+		if(isBlock)
+			nonLocalReturnValue(value);
+        else
+            localReturnValue(value);
 	}
 
 	void blockReturnValue(Oop value)
 	{
-		LODTALK_UNIMPLEMENTED();
+		localReturnValue(value);
 	}
 
 	void activateMethodFrame(CompiledMethod *method);
@@ -265,7 +274,24 @@ private:
 
 		// Get the receiver.
 		auto newReceiver = stack->stackOopAt(argumentCount * sizeof(Oop));
+        auto newReceiverClassIndex = classIndexOf(newReceiver);
 		//printf("Send #%s [%s]%p\n", getByteSymbolData(selector).c_str(), getClassNameOfObject(newReceiver).c_str(), newReceiver.pointer);
+
+        // This could be a block context activation.
+        if(newReceiverClassIndex == SCI_BlockClosure && selector == getBlockActivationSelector(argumentCount))
+        {
+            auto blockClosure = reinterpret_cast<BlockClosure*> (newReceiver.pointer);
+            if(blockClosure->getArgumentCount() == argumentCount)
+            {
+                // Push the return PC.
+    			pushPC();
+
+                // Activate the block closure.
+
+    			activateBlockClosure(blockClosure);
+                return;
+            }
+        }
 
 		// Find the called method
 		auto calledMethodOop = lookupMessage(newReceiver, selector);
@@ -704,7 +730,7 @@ Oop StackInterpreter::interpretMethod(CompiledMethod *newMethod, Oop receiver, i
 {
 	// Check the argument count
 	if(argumentCount != (int)newMethod->getArgumentCount())
-		error("invalid suplied argument count.");
+		nativeError("invalid suplied argument count.");
 
 	// Push the receiver and the arguments
 	pushOop(receiver);
@@ -714,6 +740,27 @@ Oop StackInterpreter::interpretMethod(CompiledMethod *newMethod, Oop receiver, i
 	// Make the method frame.
 	pushUInt(0); // Return instruction PC.
 	activateMethodFrame(newMethod);
+
+	interpret();
+
+	auto returnValue = popOop();
+	return returnValue;
+}
+
+Oop StackInterpreter::interpretBlockClosure(BlockClosure *closure, int argumentCount, Oop *arguments)
+{
+	// Check the argument count
+	if(argumentCount != (int)closure->getArgumentCount())
+		nativeError("invalid suplied argument count.");
+
+	// Push the closure and the arguments
+	pushOop(Oop::fromPointer(closure));
+	for(int i = 0; i < argumentCount; ++i)
+		pushOop(arguments[i]);
+
+	// Make the closure frame.
+	pushUInt(0); // Return instruction PC.
+	activateBlockClosure(closure);
 
 	interpret();
 
@@ -797,8 +844,14 @@ void StackInterpreter::activateBlockClosure(BlockClosure *closure)
     for(size_t i = 0; i < copiedElements; ++i)
         pushOop(closure->copiedData[i]);
 
+    // Fetch the frame data.
+	fetchFrameData();
+
     // Set the initial pc
     pc = closure->startpc.decodeSmallInteger();
+
+    // Fetch the first instruction opcode
+	fetchNextInstructionOpcode();
 }
 
 void StackInterpreter::fetchFrameData()
@@ -851,6 +904,16 @@ Oop interpretCompiledMethod(CompiledMethod *method, Oop receiver, int argumentCo
 	withStackMemory([&](StackMemory *stack) {
 		StackInterpreter interpreter(stack);
 		result = interpreter.interpretMethod(method, receiver, argumentCount, arguments);
+	});
+	return result;
+}
+
+Oop interpretBlockClosure(BlockClosure *closure, int argumentCount, Oop *arguments)
+{
+	Oop result;
+	withStackMemory([&](StackMemory *stack) {
+		StackInterpreter interpreter(stack);
+		result = interpreter.interpretBlockClosure(closure, argumentCount, arguments);
 	});
 	return result;
 }

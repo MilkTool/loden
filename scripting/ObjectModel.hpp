@@ -782,8 +782,25 @@ Oop sendBasicNew(Oop clazz);
 Oop sendBasicNewWithSize(Oop clazz, size_t size);
 
 // Garbage collection interface
+void disableGC();
+void enableGC();
+
 void registerGCRoot(Oop *gcroot, size_t size);
 void unregisterGCRoot(Oop *gcroot);
+
+class WithoutGC
+{
+public:
+    WithoutGC()
+    {
+        disableGC();
+    }
+
+    ~WithoutGC()
+    {
+        enableGC();
+    }
+};
 
 // Global variables
 Oop setGlobalVariable(const char *name, Oop value);
@@ -802,6 +819,9 @@ Oop getGlobalContext();
 std::string getClassNameOfObject(Oop object);
 std::string getByteSymbolData(Oop object);
 std::string getByteStringData(Oop object);
+
+// Other special objects.
+Oop getBlockActivationSelector(size_t argumentCount);
 
 // Message sending
 template<typename... Args>

@@ -5,4 +5,5 @@ self executeFileNamed: 'Class.lodtalk';
     executeFileNamed: 'InstructionStream.lodtalk';
     executeFileNamed: 'Context.lodtalk';
     executeFileNamed: 'BlockClosure.lodtalk';
-    executeFileNamed: 'ScriptContext.lodtalk'
+    executeFileNamed: 'ScriptContext.lodtalk';
+    executeFileNamed: 'String.lodtalk'
