@@ -81,6 +81,20 @@ private:
 		stack->pushUInt(value);
 	}
 
+    void pushIntegerObject(int64_t value)
+    {
+        pushOop(signedInt64ObjectFor(value));
+    }
+
+    void pushFloatObject(double value)
+    {
+        pushOop(floatObjectFor(value));
+    }
+    void pushBoolean(bool value)
+    {
+        pushOop(value ? trueOop() : falseOop());
+    }
+
 	void pushPC()
 	{
 		pushUInt(pc);
@@ -90,6 +104,7 @@ private:
 	{
 		pc = popUInt();
 	}
+
 	uint8_t *getInstructionBasePointer()
 	{
 		return reinterpret_cast<uint8_t*> (method);
@@ -104,6 +119,11 @@ private:
 	{
 		return stack->popOop();
 	}
+
+    void popMultiplesOops(size_t n)
+    {
+        stack->popMultiplesOops(n);
+    }
 
 	uint8_t *popPointer()
 	{
@@ -120,9 +140,14 @@ private:
 		return stack->stackTop();
 	}
 
-	Oop stackOopAt(size_t offset)
+	Oop stackOopAtOffset(size_t offset)
 	{
-		return stack->stackOopAt(offset);
+		return stack->stackOopAtOffset(offset);
+	}
+
+    Oop stackOopAt(size_t index)
+	{
+		return stackOopAtOffset(index*sizeof(Oop));
 	}
 
 	bool condJumpOnNotBoolean(bool jumpType)
@@ -267,13 +292,12 @@ private:
 		pushOop(temporary);
 	}
 
-	void sendLiteralIndexArgumentCount(int literalIndex, int argumentCount)
+	void sendSelectorArgumentCount(Oop selector, int argumentCount)
 	{
-		auto selector = getLiteral(literalIndex);
 		assert((size_t)argumentCount <= CompiledMethodHeader::ArgumentMask);
 
 		// Get the receiver.
-		auto newReceiver = stack->stackOopAt(argumentCount * sizeof(Oop));
+		auto newReceiver = stack->stackOopAtOffset(argumentCount * sizeof(Oop));
         auto newReceiverClassIndex = classIndexOf(newReceiver);
 		//printf("Send #%s [%s]%p\n", getByteSymbolData(selector).c_str(), getClassNameOfObject(newReceiver).c_str(), newReceiver.pointer);
 
@@ -281,7 +305,7 @@ private:
         if(newReceiverClassIndex == SCI_BlockClosure && selector == getBlockActivationSelector(argumentCount))
         {
             auto blockClosure = reinterpret_cast<BlockClosure*> (newReceiver.pointer);
-            if(blockClosure->getArgumentCount() == argumentCount)
+            if((int)blockClosure->getArgumentCount() == argumentCount)
             {
                 // Push the return PC.
     			pushPC();
@@ -317,14 +341,14 @@ private:
 			// Reverse the argument order.
 			Oop nativeMethodArgs[CompiledMethodHeader::ArgumentMask];
 			for(int i = 0; i < argumentCount; ++i)
-				nativeMethodArgs[argumentCount - i - 1] = stack->stackOopAt(i*sizeof(Oop));
+				nativeMethodArgs[argumentCount - i - 1] = stack->stackOopAtOffset(i*sizeof(Oop));
 
 			// Call the native method
 			auto nativeMethod = reinterpret_cast<NativeMethod*> (calledMethodOop.pointer);
 			Oop result = nativeMethod->execute(newReceiver, argumentCount, nativeMethodArgs);
 
 			// Pop the arguments and the receiver.
-			stack->popMultiplesOops(argumentCount + 1);
+			popMultiplesOops(argumentCount + 1);
 
 			// Push the result in the stack.
 			pushOop(result);
@@ -341,6 +365,17 @@ private:
 			LODTALK_UNIMPLEMENTED();
 		}
 	}
+
+    void sendLiteralIndexArgumentCount(int literalIndex, int argumentCount)
+    {
+        auto selector = getLiteral(literalIndex);
+        sendSelectorArgumentCount(selector, argumentCount);
+    }
+
+    void sendSpecialArgumentCount(SpecialMessageSelector specialSelectorId, int argumentCount)
+    {
+        sendSelectorArgumentCount(getSpecialMessageSelector(specialSelectorId), argumentCount);
+    }
 
 	// Bytecode instructions
 	void interpretPushReceiverVariableShort()
@@ -715,6 +750,482 @@ private:
         extendA = 0;
         extendB = 0;
     }
+
+    // Arithmetic messages.
+    void interpretSpecialMessageAdd()
+    {
+        Oop a = stackOopAt(1);
+        Oop b = stackOopAt(0);
+
+        if(a.isSmallInteger() && b.isSmallInteger())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ia = a.decodeSmallInteger();
+            auto ib = b.decodeSmallInteger();
+            pushIntegerObject(ia + ib);
+        }
+        else if(a.isCharacter() && b.isCharacter())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ca = a.decodeCharacter();
+            auto cb = b.decodeCharacter();
+            pushOop(Oop::encodeCharacter(ca + cb));
+        }
+        else if(a.isSmallFloat() && b.isSmallFloat())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto fa = a.decodeSmallFloat();
+            auto fb = b.decodeSmallFloat();
+            pushFloatObject(fa + fb);
+        }
+        else
+        {
+            sendSpecialArgumentCount(SpecialMessageSelector::Add, 1);
+        }
+    }
+
+    void interpretSpecialMessageMinus()
+    {
+        Oop a = stackOopAt(1);
+        Oop b = stackOopAt(0);
+
+        if(a.isSmallInteger() && b.isSmallInteger())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ia = a.decodeSmallInteger();
+            auto ib = b.decodeSmallInteger();
+            pushIntegerObject(ia - ib);
+        }
+        else if(a.isCharacter() && b.isCharacter())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ca = a.decodeCharacter();
+            auto cb = b.decodeCharacter();
+            pushOop(Oop::encodeCharacter(ca + cb));
+        }
+        else if(a.isSmallFloat() && b.isSmallFloat())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto fa = a.decodeSmallFloat();
+            auto fb = b.decodeSmallFloat();
+            pushFloatObject(fa + fb);
+        }
+        else
+        {
+            sendSpecialArgumentCount(SpecialMessageSelector::Add, 1);
+        }
+    }
+
+    void interpretSpecialMessageLessThan()
+    {
+        Oop a = stackOopAt(1);
+        Oop b = stackOopAt(0);
+
+        if(a.isSmallInteger() && b.isSmallInteger())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ia = a.decodeSmallInteger();
+            auto ib = b.decodeSmallInteger();
+            pushBoolean(ia < ib);
+        }
+        else if(a.isCharacter() && b.isCharacter())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ca = a.decodeCharacter();
+            auto cb = b.decodeCharacter();
+            pushBoolean(ca < cb);
+        }
+        else if(a.isSmallFloat() && b.isSmallFloat())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto fa = a.decodeSmallFloat();
+            auto fb = b.decodeSmallFloat();
+            pushBoolean(fa < fb);
+        }
+        else
+        {
+            sendSpecialArgumentCount(SpecialMessageSelector::LessThan, 1);
+        }
+    }
+
+    void interpretSpecialMessageGreaterThan()
+    {
+        Oop a = stackOopAt(1);
+        Oop b = stackOopAt(0);
+
+        if(a.isSmallInteger() && b.isSmallInteger())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ia = a.decodeSmallInteger();
+            auto ib = b.decodeSmallInteger();
+            pushBoolean(ia > ib);
+        }
+        else if(a.isCharacter() && b.isCharacter())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ca = a.decodeCharacter();
+            auto cb = b.decodeCharacter();
+            pushBoolean(ca > cb);
+        }
+        else if(a.isSmallFloat() && b.isSmallFloat())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto fa = a.decodeSmallFloat();
+            auto fb = b.decodeSmallFloat();
+            pushBoolean(fa > fb);
+        }
+        else
+        {
+            sendSpecialArgumentCount(SpecialMessageSelector::GreaterThan, 1);
+        }
+    }
+
+    void interpretSpecialMessageLessEqual()
+    {
+        Oop a = stackOopAt(1);
+        Oop b = stackOopAt(0);
+
+        if(a.isSmallInteger() && b.isSmallInteger())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ia = a.decodeSmallInteger();
+            auto ib = b.decodeSmallInteger();
+            pushBoolean(ia <= ib);
+        }
+        else if(a.isCharacter() && b.isCharacter())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ca = a.decodeCharacter();
+            auto cb = b.decodeCharacter();
+            pushBoolean(ca <= cb);
+        }
+        else if(a.isSmallFloat() && b.isSmallFloat())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto fa = a.decodeSmallFloat();
+            auto fb = b.decodeSmallFloat();
+            pushBoolean(fa <= fb);
+        }
+        else
+        {
+            sendSpecialArgumentCount(SpecialMessageSelector::LessEqual, 1);
+        }
+    }
+
+    void interpretSpecialMessageGreaterEqual()
+    {
+        Oop a = stackOopAt(1);
+        Oop b = stackOopAt(0);
+
+        if(a.isSmallInteger() && b.isSmallInteger())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ia = a.decodeSmallInteger();
+            auto ib = b.decodeSmallInteger();
+            pushBoolean(ia >= ib);
+        }
+        else if(a.isCharacter() && b.isCharacter())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ca = a.decodeCharacter();
+            auto cb = b.decodeCharacter();
+            pushBoolean(ca >= cb);
+        }
+        else if(a.isSmallFloat() && b.isSmallFloat())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto fa = a.decodeSmallFloat();
+            auto fb = b.decodeSmallFloat();
+            pushBoolean(fa >= fb);
+        }
+        else
+        {
+            sendSpecialArgumentCount(SpecialMessageSelector::GreaterEqual, 1);
+        }
+    }
+
+    void interpretSpecialMessageEqual()
+    {
+        Oop a = stackOopAt(1);
+        Oop b = stackOopAt(0);
+
+        if(a.isSmallInteger() && b.isSmallInteger())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ia = a.decodeSmallInteger();
+            auto ib = b.decodeSmallInteger();
+            pushBoolean(ia == ib);
+        }
+        else if(a.isCharacter() && b.isCharacter())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ca = a.decodeCharacter();
+            auto cb = b.decodeCharacter();
+            pushBoolean(ca == cb);
+        }
+        else if(a.isSmallFloat() && b.isSmallFloat())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto fa = a.decodeSmallFloat();
+            auto fb = b.decodeSmallFloat();
+            pushBoolean(fa == fb);
+        }
+        else
+        {
+            sendSpecialArgumentCount(SpecialMessageSelector::Equal, 1);
+        }
+    }
+
+    void interpretSpecialMessageNotEqual()
+    {
+        Oop a = stackOopAt(1);
+        Oop b = stackOopAt(0);
+
+        if(a.isSmallInteger() && b.isSmallInteger())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ia = a.decodeSmallInteger();
+            auto ib = b.decodeSmallInteger();
+            pushBoolean(ia != ib);
+        }
+        else if(a.isCharacter() && b.isCharacter())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ca = a.decodeCharacter();
+            auto cb = b.decodeCharacter();
+            pushBoolean(ca != cb);
+        }
+        else if(a.isSmallFloat() && b.isSmallFloat())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto fa = a.decodeSmallFloat();
+            auto fb = b.decodeSmallFloat();
+            pushBoolean(fa != fb);
+        }
+        else
+        {
+            sendSpecialArgumentCount(SpecialMessageSelector::NotEqual, 1);
+        }
+    }
+
+    void interpretSpecialMessageMultiply()
+    {
+        LODTALK_UNIMPLEMENTED();
+    }
+
+    void interpretSpecialMessageDivide()
+    {
+        LODTALK_UNIMPLEMENTED();
+    }
+
+    void interpretSpecialMessageRemainder()
+    {
+        LODTALK_UNIMPLEMENTED();
+    }
+
+    void interpretSpecialMessageMakePoint()
+    {
+        sendSpecialArgumentCount(SpecialMessageSelector::MakePoint, 1);
+    }
+
+    void interpretSpecialMessageBitShift()
+    {
+        LODTALK_UNIMPLEMENTED();
+    }
+
+    void interpretSpecialMessageIntegerDivision()
+    {
+        LODTALK_UNIMPLEMENTED();
+    }
+
+    void interpretSpecialMessageBitAnd()
+    {
+        Oop a = stackOopAt(1);
+        Oop b = stackOopAt(0);
+
+        if(a.isSmallInteger() && b.isSmallInteger())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ia = a.decodeSmallInteger();
+            auto ib = b.decodeSmallInteger();
+            pushOop(Oop::encodeSmallInteger(ia & ib));
+        }
+        else if(a.isCharacter() && b.isCharacter())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ca = a.decodeCharacter();
+            auto cb = b.decodeCharacter();
+            pushOop(Oop::encodeCharacter(ca & cb));
+        }
+        else
+        {
+            sendSpecialArgumentCount(SpecialMessageSelector::BitAnd, 1);
+        }
+    }
+
+    void interpretSpecialMessageBitOr()
+    {
+        Oop a = stackOopAt(1);
+        Oop b = stackOopAt(0);
+
+        if(a.isSmallInteger() && b.isSmallInteger())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ia = a.decodeSmallInteger();
+            auto ib = b.decodeSmallInteger();
+            pushOop(Oop::encodeSmallInteger(ia | ib));
+        }
+        else if(a.isCharacter() && b.isCharacter())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ca = a.decodeCharacter();
+            auto cb = b.decodeCharacter();
+            pushOop(Oop::encodeCharacter(ca | cb));
+        }
+        else
+        {
+            sendSpecialArgumentCount(SpecialMessageSelector::BitAnd, 1);
+        }
+    }
+
+    // Object accessing
+    void interpretSpecialMessageAt()
+    {
+        sendSpecialArgumentCount(SpecialMessageSelector::At, 1);
+    }
+
+    void interpretSpecialMessageAtPut()
+    {
+        sendSpecialArgumentCount(SpecialMessageSelector::AtPut, 2);
+    }
+
+    void interpretSpecialMessageSize()
+    {
+        sendSpecialArgumentCount(SpecialMessageSelector::Size, 0);
+    }
+
+    void interpretSpecialMessageNext()
+    {
+        sendSpecialArgumentCount(SpecialMessageSelector::Next, 0);
+    }
+
+    void interpretSpecialMessageNextPut()
+    {
+        sendSpecialArgumentCount(SpecialMessageSelector::NextPut, 1);
+    }
+
+    void interpretSpecialMessageAtEnd()
+    {
+        sendSpecialArgumentCount(SpecialMessageSelector::AtEnd, 0);
+    }
+
+    void interpretSpecialMessageIdentityEqual()
+    {
+        fetchNextInstructionOpcode();
+        Oop b = popOop();
+        Oop a = popOop();
+        pushBoolean(a == b);
+    }
+
+    void interpretSpecialMessageClass()
+    {
+        fetchNextInstructionOpcode();
+        Oop clazz = getClassFromOop(popOop());
+        pushOop(clazz);
+    }
+
+    // Block evaluation
+    void interpretSpecialMessageValue()
+    {
+        sendSpecialArgumentCount(SpecialMessageSelector::Value, 0);
+    }
+
+    void interpretSpecialMessageValueArg()
+    {
+        sendSpecialArgumentCount(SpecialMessageSelector::ValueArg, 1);
+    }
+
+    void interpretSpecialMessageDo()
+    {
+        sendSpecialArgumentCount(SpecialMessageSelector::Do, 1);
+    }
+
+    // Object instantiation
+    void interpretSpecialMessageNew()
+    {
+        sendSpecialArgumentCount(SpecialMessageSelector::New, 0);
+    }
+
+    void interpretSpecialMessageNewArray()
+    {
+        sendSpecialArgumentCount(SpecialMessageSelector::NewArray, 1);
+    }
+
+    void interpretSpecialMessageX()
+    {
+        sendSpecialArgumentCount(SpecialMessageSelector::X, 0);
+    }
+
+    void interpretSpecialMessageY()
+    {
+        sendSpecialArgumentCount(SpecialMessageSelector::Y, 0);
+    }
 };
 
 StackInterpreter::StackInterpreter(StackMemory *stack)
@@ -776,7 +1287,7 @@ void StackInterpreter::activateMethodFrame(CompiledMethod *newMethod)
 	auto numTemporals = header.getTemporalCount();
 
 	// Get the receiver
-	auto receiver = stackOopAt((1 + numArguments)*sizeof(Oop));
+	auto receiver = stackOopAtOffset((1 + numArguments)*sizeof(Oop));
 
 	// Push the frame pointer.
 	pushPointer(stack->getFramePointer()); // Return frame pointer.

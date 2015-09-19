@@ -104,7 +104,7 @@ public:
 		return StackFrame(getPrevFramePointer(), framePointer + InterpreterStackFrame::LastArgumentOffset);
 	}
 
-	inline Oop stackOopAt(size_t offset)
+	inline Oop stackOopAtOffset(size_t offset)
 	{
 		return *reinterpret_cast<Oop*> (stackPointer + offset);
 	}
@@ -208,9 +208,9 @@ public:
 		return *reinterpret_cast<uint8_t**> (stackFrame.stackPointer + offset);
 	}
 
-	inline Oop stackOopAt(size_t offset)
+	inline Oop stackOopAtOffset(size_t offset)
 	{
-		return stackFrame.stackOopAt(offset);
+		return stackFrame.stackOopAtOffset(offset);
 	}
 
 	inline Oop stackTop()
@@ -225,7 +225,7 @@ public:
 
 	inline Oop popOop()
 	{
-		auto res = stackOopAt(0);
+		auto res = stackOopAtOffset(0);
 		stackFrame.stackPointer += sizeof(Oop);
 		return res;
 	}

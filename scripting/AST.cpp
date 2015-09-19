@@ -69,8 +69,13 @@ Oop IdentifierExpression::getSymbol() const
 }
 
 // Literal node
-LiteralNode::LiteralNode(const Ref<ProtoObject> &value)
-	: value(value)
+LiteralNode::LiteralNode(Oop value)
+    : valueRef(value)
+{
+}
+
+LiteralNode::LiteralNode(ProtoObject *value)
+    : valueRef(Oop::fromPointer(value))
 {
 }
 
@@ -83,9 +88,9 @@ Oop LiteralNode::acceptVisitor(ASTVisitor *visitor)
 	return visitor->visitLiteralNode(this);
 }
 
-const Ref<ProtoObject> &LiteralNode::getValue() const
+Oop LiteralNode::getValue() const
 {
-	return value;
+	return valueRef.oop;
 }
 
 // Message send

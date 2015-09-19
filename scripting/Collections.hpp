@@ -98,13 +98,13 @@ class ByteString: public String
 	LODTALK_NATIVE_CLASS();
 public:
 	static ByteString *basicNativeNew(size_t indexableSize);
-	
+
 	static ByteString *fromNativeRange(const char *star, size_t size);
 	static Ref<ByteString> fromNative(const std::string &native);
 
 	Ref<Array> splitVariableNames();
 	static Ref<Array> splitVariableNames(const std::string &string);
-	
+
 	std::string getString();
 };
 
@@ -134,10 +134,10 @@ class ByteSymbol: public Symbol
 	LODTALK_NATIVE_CLASS();
 public:
 	static Object *basicNativeNew(size_t indexableSize);
-	
+
 	static Ref<ByteSymbol> fromNative(const std::string &native);
 	static Ref<ByteSymbol> fromNativeRange(const char *star, size_t size);
-	
+
 	std::string getString();
 };
 
@@ -173,13 +173,13 @@ public:
 	{
 		return tallyObject.decodeSmallInteger();
 	}
-	
+
 	Oop *getHashTableKeyValues() const
 	{
 		assert(keyValues);
 		return reinterpret_cast<Oop*> (keyValues->getFirstFieldPointer());
 	}
-	
+
 protected:
 	void setKeyCapacity(size_t keyCapacity)
 	{
@@ -196,7 +196,7 @@ protected:
 		auto keyHash = hashFunction(key);
 		auto startPosition = keyHash % capacity;
 		auto keyValuesArray = getHashTableKeyValues();
-		
+
 		// Search from the hash position to the end.
 		for(auto i = startPosition; i < capacity; ++i)
 		{
@@ -204,7 +204,7 @@ protected:
 			auto keyValue = keyValuesArray[i];
 			if(isNil(keyValue))
 				return i;
-				
+
 			// Check the key
 			auto slotKey = keyFunction(keyValue);
 			if(equals(key, slotKey))
@@ -224,7 +224,7 @@ protected:
 			if(equals(key, slotKey))
 				return i;
 		}
-		
+
 		// Not found.
 		return -1;
 	}
@@ -233,8 +233,8 @@ protected:
 	void increaseSize(const KF &keyFunction, const HF &hashFunction, const EF &equalityFunction)
 	{
 		tallyObject.intValue += 2;
-		
-		// Do not use more than 80% of the capacity 
+
+		// Do not use more than 80% of the capacity
 		if(tallyObject.intValue > capacityObject.intValue*4/5)
 			increaseCapacity(keyFunction, hashFunction, equalityFunction);
 	}
@@ -245,10 +245,10 @@ protected:
 		size_t newCapacity = getCapacity()*2;
 		if(!newCapacity)
 			newCapacity = 16;
-			
+
 		setCapacity(newCapacity, keyFunction, hashFunction, equalityFunction);
 	}
-	
+
 	template<typename KF, typename HF, typename EF>
 	Oop internalKeyValueAtOrNil(Oop key, const KF &keyFunction, const HF &hashFunction, const EF &equalityFunction)
 	{
@@ -256,7 +256,7 @@ protected:
 		auto position = findKeyPosition(key, keyFunction, hashFunction, equalityFunction);
 		if(position < 0)
 			return nilOop();
-			
+
 		auto oldKeyValue = getHashTableKeyValues()[position];
 		if(isNil(oldKeyValue))
 			return nilOop();
@@ -273,29 +273,29 @@ protected:
 			increaseCapacity(keyFunction, hashFunction, equalityFunction);
 			return internalPutKeyValue(keyValue, keyFunction, hashFunction, equalityFunction);
 		}
-		
+
 		// Put the key and value.
 		auto keyValueArray = getHashTableKeyValues();
 		auto oldKeyValue = keyValueArray[position];
 		keyValueArray[position] = keyValue;
-		
+
 		// Increase the size.
 		if(isNil(oldKeyValue))
 			increaseSize(keyFunction, hashFunction, equalityFunction);
 	}
-	
+
 	template<typename KF, typename HF, typename EF>
 	void setCapacity(size_t newCapacity, const KF &keyFunction, const HF &hashFunction, const EF &equalityFunction)
 	{
 		// Store temporarily the data.
 		Ref<Array> oldKeyValues(keyValues);
 		size_t oldCapacity = capacityObject.decodeSmallInteger();
-		
+
 		// Create the new capacity.
 		capacityObject = Oop::encodeSmallInteger(newCapacity);
 		tallyObject = Oop::encodeSmallInteger(0);
 		setKeyCapacity(newCapacity);
-		
+
 		// Add back the old objects.
 		if(!oldKeyValues.isNil())
 		{
@@ -341,7 +341,7 @@ public:
 	{
 		return internalAtOrNil(key);
 	}
-		
+
 	Oop atPut(Oop key, Oop value)
 	{
 		internalAtPut(key, value);
@@ -353,35 +353,35 @@ public:
 		assert(keyValues);
 		return reinterpret_cast<Oop*> (keyValues->getFirstFieldPointer());
 	}
-		
+
 	Oop *getHashTableValues() const
 	{
 		assert(values);
 		return reinterpret_cast<Oop*> (values->getFirstFieldPointer());
 	}
-	
+
 protected:
 	MethodDictionary()
 	{
 		object_header_ = ObjectHeader::specialNativeClass(generateIdentityHash(this), SCI_MethodDictionary, 4);
 		values = (Array*)&NilObject;
 	}
-	
+
 	void increaseSize()
 	{
 		tallyObject.intValue += 2;
-		
-		// Do not use more than 80% of the capacity 
+
+		// Do not use more than 80% of the capacity
 		if(tallyObject.intValue > capacityObject.intValue*4/5)
 			increaseCapacity();
 	}
-	
+
 	void increaseCapacity()
 	{
 		size_t newCapacity = getCapacity()*2;
 		if(!newCapacity)
 			newCapacity = 16;
-			
+
 		setCapacity(newCapacity);
 	}
 
@@ -391,7 +391,7 @@ protected:
 		auto position = findKeyPosition(key, identityFunction<Oop>, identityHashOf, identityOopEquals);
 		if(position < 0)
 			return nilOop();
-			
+
 		auto oldKey = getHashTableKeys()[position];
 		if(isNil(oldKey))
 			return nilOop();
@@ -407,32 +407,32 @@ protected:
 			increaseCapacity();
 			return internalAtPut(key, value);
 		}
-		
+
 		// Put the key and value.
 		auto keyArray = getHashTableKeys();
 		auto valueArray = getHashTableValues();
 		auto oldKey = keyArray[position];
 		keyArray[position] = key;
 		valueArray[position] = value;
-		
+
 		// Increase the size.
 		if(isNil(oldKey))
 			increaseSize();
 	}
-	
+
 	void setCapacity(size_t newCapacity)
 	{
 		// Store temporarily the data.
 		Ref<Array> oldKeys(keyValues);
 		Ref<Array> oldValues(values);
 		size_t oldCapacity = capacityObject.decodeSmallInteger();
-		
+
 		// Create the new capacity.
 		capacityObject = Oop::encodeSmallInteger(newCapacity);
 		tallyObject = Oop::encodeSmallInteger(0);
 		setKeyCapacity(newCapacity);
 		setValueCapacity(newCapacity);
-		
+
 		// Add back the old objects.
 		if(!oldKeys.isNil())
 		{
@@ -446,7 +446,7 @@ protected:
 			}
 		}
 	}
-	
+
 	void setValueCapacity(size_t valueCapacity)
 	{
 		values = Array::basicNativeNew(valueCapacity);
@@ -473,17 +473,17 @@ public:
 	{
 		internalPutKeyValue(assoc, getLookupKeyKey, identityHashOf, identityOopEquals);
 	}
-	
+
 	Oop getAssociationOrNil(Oop key)
 	{
 		return internalKeyValueAtOrNil(key, getLookupKeyKey, identityHashOf, identityOopEquals);
 	}
-	
+
 	void putNativeAssociation(Association *assoc)
 	{
 		putAssociation(Oop::fromPointer(assoc));
 	}
-	
+
 	Association *getNativeAssociationOrNil(Oop key)
 	{
 		return reinterpret_cast<Association *> (getAssociationOrNil(key).pointer);

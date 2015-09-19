@@ -107,8 +107,8 @@ thisContext                     { return KTHIS_CONTEXT; }
     return INTEGER;
 }
 
--?[0-9]+\.[0-9]*              {
-    yylval->integerValue = atoi(yytext);
+-?[0-9]+\.[0-9]+              {
+    yylval->floatingValue = atof(yytext);
     return REAL;
 }
 

@@ -66,6 +66,12 @@ ifFalse: falseBlock ifTrue: trueBlock
     ^ trueBlock value
 ].
 
+self category: 'printing'.
+self method [
+printString
+    ^ 'true'
+].
+
 "False"
 self class: False.
 self category: 'controlling'.
@@ -98,4 +104,10 @@ ifTrue: trueBlock ifFalse: falseBlock
 self method [
 ifFalse: falseBlock ifTrue: trueBlock
     ^ falseBlock value
+].
+
+self category: 'printing'.
+self method [
+printString
+    ^ 'false'
 ].

@@ -83,15 +83,16 @@ public:
 class LiteralNode: public Node
 {
 public:
-	LiteralNode(const Ref<ProtoObject> &value);
+    LiteralNode(Oop value);
+	LiteralNode(ProtoObject *value);
 	~LiteralNode();
 
 	virtual Oop acceptVisitor(ASTVisitor *visitor);
 
-	const Ref<ProtoObject> &getValue() const;
+	Oop getValue() const;
 
 private:
-	Ref<ProtoObject> value;
+	OopRef valueRef;
 };
 
 /**

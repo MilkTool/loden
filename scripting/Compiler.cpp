@@ -440,7 +440,7 @@ Oop ASTInterpreter::visitIdentifierExpression(IdentifierExpression *node)
 
 Oop ASTInterpreter::visitLiteralNode(LiteralNode *node)
 {
-	return node->getValue().getOop();
+	return node->getValue();
 }
 
 Oop ASTInterpreter::visitLocalDeclarations(LocalDeclarations *node)
@@ -907,7 +907,7 @@ Oop MethodCompiler::visitIdentifierExpression(IdentifierExpression *node)
 
 Oop MethodCompiler::visitLiteralNode(LiteralNode *node)
 {
-	gen.pushLiteral(node->getValue().getOop());
+	gen.pushLiteral(node->getValue());
 	return Oop();
 }
 
@@ -932,6 +932,7 @@ Oop MethodCompiler::visitMessageSendNode(MessageSendNode *node)
 
 	// Send each message in the chain
 	bool first = true;
+    int lastIndex = (int)chained.size() - 1;
 	for(int i = -1; i < (int)chained.size(); ++i)
 	{
 		auto message = i < 0 ? node : chained[i];
@@ -941,6 +942,8 @@ Oop MethodCompiler::visitMessageSendNode(MessageSendNode *node)
 			first = false;
 		else
 			gen.popStackTop();
+        if(i != lastIndex)
+            gen.duplicateStackTop();
 
 		// Evaluate the arguments.
 		auto &arguments = message->getArguments();

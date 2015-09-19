@@ -228,17 +228,17 @@ returnStatement: RETURN expression { $$ = new ReturnStatement($2); }
 
 specialIdentifiers: KSELF           { $$ = new SelfReference(); }
                   | KSUPER          { $$ = new SuperReference(); }
-                  | KTRUE           { $$ = new LiteralNode(makeRef(&TrueObject)); }
-                  | KFALSE          { $$ = new LiteralNode(makeRef(&FalseObject)); }
-                  | KNIL            { $$ = new LiteralNode(makeRef(&NilObject)); }
+                  | KTRUE           { $$ = new LiteralNode(&TrueObject); }
+                  | KFALSE          { $$ = new LiteralNode(&FalseObject); }
+                  | KNIL            { $$ = new LiteralNode(&NilObject); }
                   | KTHIS_CONTEXT   { $$ = new ThisContextReference(); }
                   ;
 
-literal: INTEGER    { $$ = new LiteralNode(makeIntegerObject($1)); }
-    | REAL          { $$ = new LiteralNode(makeFloatObject($1)); }
-    | STRING        { $$ = new LiteralNode(ByteString::fromNative(readStringValue($1))); }
-    | CHARACTER     { $$ = new LiteralNode(makeCharacterObject($1)); }
-    | SYMBOL        { $$ = new LiteralNode(ByteSymbol::fromNative(readStringValue($1))); }
+literal: INTEGER    { $$ = new LiteralNode(signedInt64ObjectFor($1)); }
+    | REAL          { $$ = new LiteralNode(floatObjectFor($1)); }
+    | STRING        { $$ = new LiteralNode(ByteString::fromNative(readStringValue($1)).getOop()); }
+    | CHARACTER     { $$ = new LiteralNode(Oop::encodeCharacter($1)); }
+    | SYMBOL        { $$ = new LiteralNode(ByteSymbol::fromNative(readStringValue($1)).getOop()); }
     ;
 
 binarySelector: BINARY_SELECTOR { $$ = $1; }

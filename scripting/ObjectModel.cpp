@@ -34,6 +34,8 @@ public:
 
     size_t blockActivationSelectorFirst;
     size_t blockActivationSelectorCount;
+    size_t specialMessageSelectorFirst;
+    size_t specialMessageSelectorCount;
 };
 
 static SpecialRuntimeObjects *theSpecialRuntimeObjects = nullptr;
@@ -72,6 +74,53 @@ void SpecialRuntimeObjects::createSpecialObjectTable()
     specialObjectTable.push_back(makeSelector("value:value:value:value:value:"));
     specialObjectTable.push_back(makeSelector("value:value:value:value:value:value:"));
     blockActivationSelectorCount = specialObjectTable.size() - blockActivationSelectorFirst;
+
+    // Special message selectors
+    specialMessageSelectorFirst = specialObjectTable.size();
+
+    // Arithmetic messages
+    specialObjectTable.push_back(makeSelector("+"));
+    specialObjectTable.push_back(makeSelector("-"));
+    specialObjectTable.push_back(makeSelector("<"));
+    specialObjectTable.push_back(makeSelector(">"));
+    specialObjectTable.push_back(makeSelector("<="));
+    specialObjectTable.push_back(makeSelector(">="));
+    specialObjectTable.push_back(makeSelector("="));
+    specialObjectTable.push_back(makeSelector("~="));
+    specialObjectTable.push_back(makeSelector("*"));
+    specialObjectTable.push_back(makeSelector("/"));
+    specialObjectTable.push_back(makeSelector("\\\\"));
+    specialObjectTable.push_back(makeSelector("@"));
+    specialObjectTable.push_back(makeSelector("bitShift:"));
+    specialObjectTable.push_back(makeSelector("//"));
+    specialObjectTable.push_back(makeSelector("bitAnd:"));
+    specialObjectTable.push_back(makeSelector("bitOr:"));
+
+    // Object accessing messages.
+    specialObjectTable.push_back(makeSelector("at:"));
+    specialObjectTable.push_back(makeSelector("at:put:"));
+    specialObjectTable.push_back(makeSelector("size"));
+    specialObjectTable.push_back(makeSelector("next"));
+    specialObjectTable.push_back(makeSelector("nextPut:"));
+    specialObjectTable.push_back(makeSelector("atEnd"));
+    specialObjectTable.push_back(makeSelector("=="));
+    specialObjectTable.push_back(makeSelector("class"));
+
+    specialObjectTable.push_back(Oop()); // Unassigned
+
+    // Block evaluation.
+    specialObjectTable.push_back(makeSelector("value"));
+    specialObjectTable.push_back(makeSelector("value:"));
+    specialObjectTable.push_back(makeSelector("do:"));
+
+    // Object instantiation.
+    specialObjectTable.push_back(makeSelector("new"));
+    specialObjectTable.push_back(makeSelector("new:"));
+    specialObjectTable.push_back(makeSelector("x"));
+    specialObjectTable.push_back(makeSelector("y"));
+
+    specialMessageSelectorCount = specialObjectTable.size() - specialMessageSelectorFirst;
+    assert(specialMessageSelectorCount == (size_t)SpecialMessageSelector::SpecialMessageCount);
 }
 
 void SpecialRuntimeObjects::createSpecialClassTable()
@@ -151,7 +200,7 @@ private:
 	std::vector<StackMemory*> currentStacks;
 	OopRef *firstReference;
 	OopRef *lastReference;
-    bool enabled;
+    int disableCount;
 };
 
 static GarbageCollector *theGarbageCollector = nullptr;
@@ -167,7 +216,7 @@ static GarbageCollector *getGC()
 }
 
 GarbageCollector::GarbageCollector()
-	: firstReference(nullptr), lastReference(nullptr), enabled(true)
+	: firstReference(nullptr), lastReference(nullptr), disableCount(0)
 {
 }
 
@@ -189,13 +238,13 @@ void GarbageCollector::initialize()
 void GarbageCollector::enable()
 {
     std::unique_lock<std::mutex> l(controlMutex);
-    enabled = true;
+    --disableCount;
 }
 
 void GarbageCollector::disable()
 {
     std::unique_lock<std::mutex> l(controlMutex);
-    enabled = false;
+    ++disableCount;
 }
 
 uint8_t *GarbageCollector::allocateObjectMemory(size_t objectSize)
@@ -268,7 +317,7 @@ void GarbageCollector::unregisterGCRoot(Oop *gcroot)
 void GarbageCollector::performCollection()
 {
 	std::unique_lock<std::mutex> l(controlMutex);
-    if(!enabled)
+    if(disableCount > 0)
         return;
 
 	// Get the current stacks
@@ -490,28 +539,32 @@ ObjectHeader *newObject(size_t fixedSlotCount, size_t indexableSize, ObjectForma
 }
 
 // Object creation / accessing
-Ref<ProtoObject> makeIntegerObject(int value)
-{
-	// TODO: Check the small integer range
-	return Ref<ProtoObject>::fromOop(Oop::encodeSmallInteger(value));
-}
-
-Ref<ProtoObject> makeFloatObject(double value)
-{
-	// TODO: Implement this
-	return makeRef(&NilObject);
-}
-
 Oop positiveInt32ObjectFor(uint32_t value)
 {
-    // TODO: Implement this properly
-    return Oop::encodeSmallInteger(value);
+    if(unsignedFitsInSmallInteger(value))
+        return Oop::encodeSmallInteger(value);
+    LODTALK_UNIMPLEMENTED();
 }
 
 Oop positiveInt64ObjectFor(uint64_t value)
 {
-    // TODO: Implement this properly
-    return Oop::encodeSmallInteger(value);
+    if(unsignedFitsInSmallInteger(value))
+        return Oop::encodeSmallInteger(value);
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop signedInt32ObjectFor(int32_t value)
+{
+    if(signedFitsInSmallInteger(value))
+        return Oop::encodeSmallInteger(value);
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop signedInt64ObjectFor(int64_t value)
+{
+    if(signedFitsInSmallInteger(value))
+        return Oop::encodeSmallInteger(value);
+    LODTALK_UNIMPLEMENTED();
 }
 
 uint32_t positiveInt32ValueOf(Oop value)
@@ -525,6 +578,16 @@ uint64_t positiveInt64ValueOf(Oop value)
 {
     if(value.isSmallInteger())
         return value.decodeSmallInteger();
+    LODTALK_UNIMPLEMENTED();
+}
+
+Oop floatObjectFor(double value)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
+double floatValueOf(Oop object)
+{
     LODTALK_UNIMPLEMENTED();
 }
 
@@ -744,4 +807,11 @@ Oop getBlockActivationSelector(size_t argumentCount)
         return Oop();
     return specialObjects->specialObjectTable[specialObjects->blockActivationSelectorFirst + argumentCount];
 }
+
+Oop getSpecialMessageSelector(SpecialMessageSelector selectorIndex)
+{
+    auto specialObjects = getSpecialRuntimeObjects();
+    return specialObjects->specialObjectTable[specialObjects->specialMessageSelectorFirst + (size_t)selectorIndex];
+}
+
 } // End of namespace Lodtalk

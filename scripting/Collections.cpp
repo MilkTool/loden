@@ -124,7 +124,7 @@ Ref<Array> ByteString::splitVariableNames(const std::string &string)
 	auto data = string.data();
 	auto size = string.size();
 	int tokenStart = -1;
-	
+
 	for(size_t i = 0; i < size; ++i)
 	{
 		auto c = data[i];
@@ -144,11 +144,11 @@ Ref<Array> ByteString::splitVariableNames(const std::string &string)
 			}
 		}
 	}
-	
+
 	// Push the last token.
 	if(tokenStart >= 0)
 		varNameIndices.push_back(std::make_pair(tokenStart, size - tokenStart));
-		
+
 	// Allocate the result.
 	Ref<Array> result = Array::basicNativeNew(varNameIndices.size());
 	for(size_t i = 0; i < varNameIndices.size(); ++i)
@@ -158,9 +158,9 @@ Ref<Array> ByteString::splitVariableNames(const std::string &string)
 		auto resultData = reinterpret_cast<Oop*> (result->getFirstFieldPointer());
 		resultData[i] = subString.getOop();
 	}
-	
+
 	return result;
-} 
+}
 
 Ref<Array> ByteString::splitVariableNames()
 {
@@ -220,7 +220,7 @@ Ref<ByteSymbol> ByteSymbol::fromNative(const std::string &native)
 {
 	if(!byteSymbolDictionary)
 		byteSymbolDictionary = new ByteSymbolDictionary();
-		
+
 	// Find existing internation
 	auto it = byteSymbolDictionary->find(native);
 	if(it != byteSymbolDictionary->end())
@@ -230,7 +230,7 @@ Ref<ByteSymbol> ByteSymbol::fromNative(const std::string &native)
 	auto result = basicNativeNew(native.size());
 	memcpy(result->getFirstFieldPointer(), native.data(), native.size());
 	auto ref = Ref<ByteSymbol> (reinterpret_cast<ByteSymbol*> (result));
-	
+
 	// Store in the internation dictionary.
 	(*byteSymbolDictionary)[native] = ref;
 	return ref;

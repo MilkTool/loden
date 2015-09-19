@@ -147,14 +147,44 @@ SISTAV1_INSTRUCTION(BlockReturnNil, 93)
 SISTAV1_INSTRUCTION(BlockReturnTop, 94)
 SISTAV1_INSTRUCTION(Nop, 95)
 
+// Arithmetic messages.
+SISTAV1_INSTRUCTION(SpecialMessageAdd, 96)
+SISTAV1_INSTRUCTION(SpecialMessageMinus, 97)
+SISTAV1_INSTRUCTION(SpecialMessageLessThan, 98)
+SISTAV1_INSTRUCTION(SpecialMessageGreaterThan, 99)
+SISTAV1_INSTRUCTION(SpecialMessageLessEqual, 100)
+SISTAV1_INSTRUCTION(SpecialMessageGreaterEqual, 101)
+SISTAV1_INSTRUCTION(SpecialMessageEqual, 102)
+SISTAV1_INSTRUCTION(SpecialMessageNotEqual, 103)
+SISTAV1_INSTRUCTION(SpecialMessageMultiply, 104)
+SISTAV1_INSTRUCTION(SpecialMessageDivide, 105)
+SISTAV1_INSTRUCTION(SpecialMessageRemainder, 106)
+SISTAV1_INSTRUCTION(SpecialMessageMakePoint, 107)
+SISTAV1_INSTRUCTION(SpecialMessageBitShift, 108)
+SISTAV1_INSTRUCTION(SpecialMessageIntegerDivision, 109)
+SISTAV1_INSTRUCTION(SpecialMessageBitAnd, 110)
+SISTAV1_INSTRUCTION(SpecialMessageBitOr, 111)
 
-/*	96-111		0110 iiii			Send Arithmetic Message #iiii #(#+ #- #< #> #'<=' #'>=' #= #'~=' #* #/ #'\\' #@ #bitShift: #'//' #bitAnd: #bitOr:)
-	112-119	01110 iii			Send Special Message #iii #(#at: #at:put: #size #next #nextPut: #atEnd #'==' class)
-	120		01111000			UNASSIGNED (was: blockCopy:)
-	121		01111001			Send Special Message #value
-	122-123	0111101 i			Send Special Message #i #(#value: #do:)
-	124-127	011111 ii			Send Special Message #ii #(#new #new: #x #y))
-*/
+// Object accessing
+SISTAV1_INSTRUCTION(SpecialMessageAt, 112)
+SISTAV1_INSTRUCTION(SpecialMessageAtPut, 113)
+SISTAV1_INSTRUCTION(SpecialMessageSize, 114)
+SISTAV1_INSTRUCTION(SpecialMessageNext, 115)
+SISTAV1_INSTRUCTION(SpecialMessageNextPut, 116)
+SISTAV1_INSTRUCTION(SpecialMessageAtEnd, 117)
+SISTAV1_INSTRUCTION(SpecialMessageIdentityEqual, 118)
+SISTAV1_INSTRUCTION(SpecialMessageClass, 119)
+
+// Block evaluation
+SISTAV1_INSTRUCTION(SpecialMessageValue, 121)
+SISTAV1_INSTRUCTION(SpecialMessageValueArg, 122)
+SISTAV1_INSTRUCTION(SpecialMessageDo, 123)
+
+// Object instantiation
+SISTAV1_INSTRUCTION(SpecialMessageNew, 124)
+SISTAV1_INSTRUCTION(SpecialMessageNewArray, 125)
+SISTAV1_INSTRUCTION(SpecialMessageX, 126)
+SISTAV1_INSTRUCTION(SpecialMessageY, 127)
 
 SISTAV1_INSTRUCTION_RANGE(SendShortArgs0, 128, 143)
 SISTAV1_INSTRUCTION_RANGE(SendShortArgs1, 144, 159)

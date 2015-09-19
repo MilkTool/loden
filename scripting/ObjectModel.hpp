@@ -86,6 +86,55 @@ enum ObjectFormat
 	OF_INDEXABLE_NATIVE_FIRST = OF_INDEXABLE_64,
 };
 
+enum class SpecialMessageSelector
+{
+    // Arithmetic message
+    Add = 0,
+    Minus,
+    LessThan,
+    GreaterThan,
+    LessEqual,
+    GreaterEqual,
+    Equal,
+    NotEqual,
+    Multiply,
+    Divide,
+    Remainder,
+    MakePoint,
+    BitShift,
+    IntegerDivision,
+    BitAnd,
+    BitOr,
+
+    // Object accessing
+    At,
+    AtPut,
+    Size,
+    Next,
+    NextPut,
+    AtEnd,
+    IdentityEqual,
+    Class,
+
+    // Unassigned
+    Unassigned,
+
+    // Block evaluation
+    Value,
+    ValueArg,
+    Do,
+
+    // Object instantiation
+    New,
+    NewArray,
+    X,
+    Y,
+
+    SpecialMessageCount,
+    FirstArithmeticMessage = Add,
+    ArithmeticMessageCount = BitOr - FirstArithmeticMessage,
+};
+
 inline size_t variableSlotSizeFor(ObjectFormat format)
 {
 	switch(format)
@@ -232,6 +281,18 @@ struct ObjectHeader
 static_assert(sizeof(ObjectHeader) == 8, "Object header size must be 8");
 
 typedef intptr_t SmallIntegerValue;
+static constexpr SmallIntegerValue SmallIntegerMin = SmallIntegerValue(1) << (sizeof(SmallIntegerValue)*8 - 1);
+static constexpr SmallIntegerValue SmallIntegerMax = ~SmallIntegerMin;
+
+inline bool unsignedFitsInSmallInteger(uintptr_t value)
+{
+    return value <= (uintptr_t)SmallIntegerMax;
+}
+
+inline bool signedFitsInSmallInteger(intptr_t value)
+{
+    return SmallIntegerMin <= value && value <= SmallIntegerMax;
+}
 
 // Some special objects
 class UndefinedObject;
@@ -350,6 +411,16 @@ public:
 	{
 		return Oop((character << ObjectTag::CharacterShift) | ObjectTag::Character);
 	}
+
+    inline double decodeSmallFloat() const
+    {
+        LODTALK_UNIMPLEMENTED();
+    }
+
+    static inline Oop encodeSmallFloat(double value)
+    {
+        LODTALK_UNIMPLEMENTED();
+    }
 
 	bool operator==(const Oop &o) const
 	{
@@ -550,10 +621,10 @@ inline int identityHashOf(Oop obj)
 {
 	if(obj.isSmallInteger())
 		return obj.decodeSmallInteger();
-	if(obj.isCharacter())
+	else if(obj.isCharacter())
 		return obj.decodeCharacter();
-	//if(isSmallFloat(obj))
-	//	return decodeSmallFloat(obj);
+	else if(obj.isSmallFloat())
+		return obj.decodeSmallFloat();
 	return obj.header->identityHash;
 }
 
@@ -766,22 +837,20 @@ Ref<T> makeRef(T *pointer)
 }
 
 // Some object creation / accessing
-class ProtoObject;
-Ref<ProtoObject> makeIntegerObject(int value);
-Ref<ProtoObject> makeFloatObject(double value);
-inline Ref<ProtoObject> makeCharacterObject(int value)
-{
-	return Ref<ProtoObject>::fromOop(Oop::encodeCharacter(value));
-}
-
 int64_t readIntegerObject(const Ref<Oop> &ref);
 double readDoubleObject(const Ref<Oop> &ref);
 
 Oop positiveInt32ObjectFor(uint32_t value);
 Oop positiveInt64ObjectFor(uint64_t value);
 
-uint32_t positiveInt32ValueOf(Oop value);
-uint64_t positiveInt64ValueOf(Oop value);
+Oop signedInt32ObjectFor(int32_t value);
+Oop signedInt64ObjectFor(int64_t value);
+
+uint32_t positiveInt32ValueOf(Oop object);
+uint64_t positiveInt64ValueOf(Oop object);
+
+Oop floatObjectFor(double value);
+double floatValueOf(Oop object);
 
 // Class table
 Oop getClassFromIndex(int classIndex);
@@ -843,6 +912,7 @@ std::string getByteStringData(Oop object);
 
 // Other special objects.
 Oop getBlockActivationSelector(size_t argumentCount);
+Oop getSpecialMessageSelector(SpecialMessageSelector selectorIndex);
 
 // Message sending
 template<typename... Args>

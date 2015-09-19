@@ -579,6 +579,12 @@ InstructionNode *Assembler::pushZero()
 
 InstructionNode *Assembler::send(Oop selector, int argumentCount)
 {
+    for(int i = 0; i < (int)SpecialMessageSelector::SpecialMessageCount; ++i)
+    {
+        auto specialSelector = getSpecialMessageSelector(SpecialMessageSelector(i));
+        if(selector == specialSelector)
+            return addInstruction(new SingleBytecodeInstruction(BytecodeSet::SpecialMessageAdd + i, false));
+    }
 	return addInstruction(new SendMessage(addLiteral(selector), argumentCount));
 }
 
