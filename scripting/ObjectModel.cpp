@@ -188,9 +188,7 @@ ObjectHeader *newObject(size_t fixedSlotCount, size_t indexableSize, ObjectForma
 	auto headerSize = sizeof(ObjectHeader);
 	if(totalSlotCount >= 255)
 		headerSize += 8;
-	auto fixedSlotSize = fixedSlotCount * sizeof(void*);
-	auto variableSlotSize = indexableSlotCount * sizeof(void*);
-	auto bodySize = fixedSlotSize + variableSlotSize;
+	auto bodySize = totalSlotCount * sizeof(void*);
 	auto objectSize = headerSize + bodySize;
 
 	// Allocate the object memory

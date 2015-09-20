@@ -77,6 +77,13 @@ LODTALK_END_CLASS_TABLE()
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(CompiledMethod, ByteArray, OF_COMPILED_METHOD, 0);
 
 // NativeMethod
+NativeMethod *NativeMethod::create(NativeMethodWrapper *wrapper)
+{
+    auto result = reinterpret_cast<NativeMethod*> (newObject(0, sizeof(wrapper), OF_INDEXABLE_8, SCI_NativeMethod));
+    result->wrapper = wrapper;
+    return result;
+}
+
 Oop NativeMethod::execute(Oop receiver, int argumentCount, Oop *arguments)
 {
 	return wrapper->execute(receiver, argumentCount, arguments);
@@ -149,8 +156,7 @@ Oop NativeMethodDescriptor::getSelector() const
 
 Oop NativeMethodDescriptor::getMethod() const
 {
-	auto data = allocateObjectMemory(sizeof(NativeMethod));
-	nativeMethod.reset(new (data) NativeMethod(methodWrapper));
+	nativeMethod.reset(NativeMethod::create(methodWrapper));
 
 	return nativeMethod.getOop();
 }

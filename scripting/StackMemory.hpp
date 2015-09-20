@@ -118,10 +118,10 @@ public:
 	inline void oopElementsDo(const FT &f)
 	{
 		// This method
-		f(Oop::fromPointer(getMethod()));
+		f(*reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::MethodOffset));
 
 		// This context
-		f(getThisContext());
+		f(*reinterpret_cast<Oop*> (framePointer + InterpreterStackFrame::ThisContextOffset));
 
 		// Frame elements
 		Oop *frameElementsStart = reinterpret_cast<Oop*> (stackPointer);

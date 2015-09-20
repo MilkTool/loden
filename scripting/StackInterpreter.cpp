@@ -84,12 +84,22 @@ private:
 
     void pushIntegerObject(int64_t value)
     {
-        pushOop(signedInt64ObjectFor(value));
+        auto oop = signedInt64ObjectFor(value);
+        pushOop(oop);
+
+        // The GC could have been triggered?
+        if(!oop.isSmallInteger())
+            fetchFrameData();
     }
 
     void pushFloatObject(double value)
     {
-        pushOop(floatObjectFor(value));
+        auto oop = floatObjectFor(value);
+        pushOop(oop);
+
+        // The GC could have been triggered?
+        if(!oop.isSmallFloat())
+            fetchFrameData();
     }
     void pushBoolean(bool value)
     {
@@ -312,7 +322,6 @@ private:
     			pushPC();
 
                 // Activate the block closure.
-
     			activateBlockClosure(blockClosure);
                 return;
             }
@@ -735,6 +744,9 @@ private:
 
         // Create the block closure.
         BlockClosure *blockClosure = BlockClosure::create(numCopied);
+        fetchFrameData(); // For compaction
+
+        // Set the closure data.
         blockClosure->outerContext = stack->getThisContext();
         blockClosure->startpc = Oop::encodeSmallInteger(startPc);
         blockClosure->numArgs = Oop::encodeSmallInteger(numArgs);

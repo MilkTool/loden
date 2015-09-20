@@ -22,6 +22,11 @@ void StackFrame::marryFrame()
 
     auto method = getMethod();
 
+    // Instantiate the context.
+    auto slotCount = method->getHeader()->needsLargeFrame() ? Context::LargeContextSlots : Context::SmallContextSlots;
+    auto context = Context::create(slotCount);
+    method = getMethod();
+
     // Get the closure
     Oop closure;
     if(isBlockActivation())
@@ -29,10 +34,6 @@ void StackFrame::marryFrame()
         auto blockArgCount = getArgumentCount();
         closure = getArgumentAtReverseIndex(blockArgCount);
     }
-
-    // Instantiate the context.
-    auto slotCount = method->getHeader()->needsLargeFrame() ? Context::LargeContextSlots : Context::SmallContextSlots;
-    auto context = Context::create(slotCount);
 
     // Set the context parameters.
     context->sender = Oop::fromPointer(framePointer + 1);

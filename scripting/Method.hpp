@@ -84,11 +84,7 @@ class NativeMethod: public Object
 {
 	LODTALK_NATIVE_CLASS();
 public:
-	NativeMethod(NativeMethodWrapper *wrapper)
-	{
-		object_header_ = ObjectHeader::specialNativeClass(generateIdentityHash(this), SCI_NativeMethod, 1, OF_INDEXABLE_8);
-		this->wrapper = wrapper;
-	}
+    static NativeMethod *create(NativeMethodWrapper *wrapper);
 
 	Oop execute(Oop receiver, int argumentCount, Oop *arguments);
 
