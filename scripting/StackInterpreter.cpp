@@ -303,6 +303,15 @@ private:
 		pushOop(temporary);
 	}
 
+    void storeLiteralVariable(int variableIndex, Oop value)
+    {
+        auto literal = getLiteral(variableIndex);
+
+        // Cast the literal variable and set its value.
+        auto literalVar = reinterpret_cast<LiteralVariable*> (literal.pointer);
+        literalVar->value = value;
+    }
+
 	void sendSelectorArgumentCount(Oop selector, int argumentCount)
 	{
 		assert((size_t)argumentCount <= CompiledMethodHeader::ArgumentMask);
@@ -493,12 +502,16 @@ private:
 
 	void interpretPopStoreReceiverVariableShort()
 	{
-		LODTALK_UNIMPLEMENTED();
+        fetchNextInstructionOpcode();
+        auto variableIndex = currentOpcode & 7;
+        setInstanceVariable(variableIndex, popOop());
 	}
 
 	void interpretPopStoreTemporalVariableShort()
 	{
-		LODTALK_UNIMPLEMENTED();
+        fetchNextInstructionOpcode();
+        auto temporalIndex = currentOpcode & 7;
+        setTemporary(temporalIndex, popOop());
 	}
 
 	void interpretPushReceiver()
@@ -612,17 +625,29 @@ private:
 
 	void interpretPushReceiverVariable()
 	{
-		LODTALK_UNIMPLEMENTED();
+        auto variableIndex = fetchByte() + extendA*256;
+        fetchNextInstructionOpcode();
+        extendA = 0;
+
+        pushReceiverVariable(variableIndex);
 	}
 
 	void interpretPushLiteralVariable()
 	{
-		LODTALK_UNIMPLEMENTED();
+        auto literalVariableIndex = fetchByte() + extendA*256;
+        fetchNextInstructionOpcode();
+        extendA = 0;
+
+        pushLiteralVariable(literalVariableIndex);
 	}
 
 	void interpretPushLiteral()
 	{
-		LODTALK_UNIMPLEMENTED();
+        auto literalIndex = fetchByte() + extendA*256;
+        fetchNextInstructionOpcode();
+        extendA = 0;
+
+        pushLiteral(literalIndex);
 	}
 
 	void interpretPushTemporary()
@@ -635,22 +660,54 @@ private:
 
 	void interpretPushNTemps()
 	{
-		LODTALK_UNIMPLEMENTED();
+        auto ntemps = fetchByte();
+        fetchNextInstructionOpcode();
+
+        for(int i = 0; i < ntemps; ++i)
+            pushOop(Oop());
 	}
 
 	void interpretPushInteger()
 	{
-		LODTALK_UNIMPLEMENTED();
+        auto value = fetchSByte() + extendB*256;
+        fetchNextInstructionOpcode();
+        extendB = 0;
+
+        pushIntegerObject(value);
 	}
 
 	void interpretPushCharacter()
 	{
-		LODTALK_UNIMPLEMENTED();
+        auto value = fetchSByte() + extendB*256;
+        fetchNextInstructionOpcode();
+        extendB = 0;
+
+        pushOop(Oop::encodeCharacter(value));
 	}
 
 	void interpretPushArrayWithElements()
 	{
-		LODTALK_UNIMPLEMENTED();
+        auto arraySizeAndFlag = fetchByte();
+        fetchNextInstructionOpcode();
+
+        // Decode the array size.
+        auto arraySize = arraySizeAndFlag & 127;
+        auto popElements = arraySizeAndFlag & 128;
+
+        // Refetch the frame data
+        auto array = Array::basicNativeNew(arraySize);
+        fetchFrameData();
+
+        // Pop elements into the array.
+        if(popElements)
+        {
+            auto data = reinterpret_cast<Oop*> (array->getFirstFieldPointer());
+            for(auto i = 0; i < arraySize; ++i)
+                data[i] = popOop();
+        }
+
+        // Push the array.
+        pushOop(Oop::fromPointer(array));
 	}
 
 	void interpretSend()
@@ -707,37 +764,88 @@ private:
 
 	void interpretPopStoreTemporalVariable()
 	{
-		LODTALK_UNIMPLEMENTED();
+        // Fetch the instruction data.
+        auto temporalIndex = fetchByte();
+        fetchNextInstructionOpcode();
+
+        // Set the temporary
+        setTemporary(temporalIndex, popOop());
 	}
 
 	void interpretStoreReceiverVariable()
 	{
-		LODTALK_UNIMPLEMENTED();
+        // Fetch the instruction data.
+        auto variableIndex = fetchByte() + extendA*256;
+        fetchNextInstructionOpcode();
+        extendA = 0;
+
+        setInstanceVariable(variableIndex, stackOopAt(0));
 	}
 
 	void interpretStoreLiteralVariable()
 	{
-		LODTALK_UNIMPLEMENTED();
+        // Fetch the instruction data.
+        auto literalVariableIndex = fetchByte() + extendA*256;
+        fetchNextInstructionOpcode();
+        extendA = 0;
+
+        storeLiteralVariable(literalVariableIndex, stackOopAt(0));
 	}
 
 	void interpretStoreTemporalVariable()
 	{
-		LODTALK_UNIMPLEMENTED();
+        auto temporalIndex = fetchByte();
+        fetchNextInstructionOpcode();
+
+        setTemporary(temporalIndex, stackOopAt(0));
 	}
 
     void interpretPushTemporaryInVector()
     {
-        LODTALK_UNIMPLEMENTED();
+        // Fetch the instruction data.
+        auto temporalIndex = fetchByte();
+        auto vectorIndex = fetchByte();
+        fetchNextInstructionOpcode();
+
+        // Get the temporary vector
+        Oop vector = getTemporary(vectorIndex);
+        assert(classIndexOf(vector) == SCI_Array);
+
+        // Get the temporary.
+        auto vectorData = reinterpret_cast<Oop*> (vector.getFirstFieldPointer());
+        pushOop(vectorData[temporalIndex]);
     }
 
     void interpretStoreTemporalInVector()
     {
-        LODTALK_UNIMPLEMENTED();
+        // Fetch the instruction data.
+        auto temporalIndex = fetchByte();
+        auto vectorIndex = fetchByte();
+        fetchNextInstructionOpcode();
+
+        // Get the temporary vector
+        Oop vector = getTemporary(vectorIndex);
+        assert(classIndexOf(vector) == SCI_Array);
+
+        // Set the temporary.
+        auto vectorData = reinterpret_cast<Oop*> (vector.getFirstFieldPointer());
+        vectorData[temporalIndex] = stackOopAt(0);
     }
 
     void interpretPopStoreTemporalInVector()
     {
-        LODTALK_UNIMPLEMENTED();
+        // Fetch the instruction data.
+        auto temporalIndex = fetchByte();
+        auto vectorIndex = fetchByte();
+        fetchNextInstructionOpcode();
+
+        // Get the temporary vector
+        Oop vector = getTemporary(vectorIndex);
+        assert(classIndexOf(vector) == SCI_Array);
+
+        // Set the temporary.
+        auto vectorData = reinterpret_cast<Oop*> (vector.getFirstFieldPointer());
+        vectorData[temporalIndex] = popOop();
     }
 
     void interpretPushClosure()
