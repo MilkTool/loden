@@ -157,12 +157,12 @@ class HashedCollection: public Collection
 {
 	LODTALK_NATIVE_CLASS();
 public:
-	HashedCollection()
-	{
-		capacityObject = Oop::encodeSmallInteger(0);
-		tallyObject = Oop::encodeSmallInteger(0);
-		keyValues = (Array*)&NilObject;
-	}
+    void initialize()
+    {
+        capacityObject = Oop::encodeSmallInteger(0);
+        tallyObject = Oop::encodeSmallInteger(0);
+        keyValues = (Array*)&NilObject;
+    }
 
 	size_t getCapacity() const
 	{
@@ -464,11 +464,6 @@ class IdentityDictionary: public Dictionary
 public:
 	struct End {};
 
-	IdentityDictionary()
-	{
-		object_header_ = ObjectHeader::specialNativeClass(generateIdentityHash(this), SCI_IdentityDictionary, 3);
-	}
-
 	void putAssociation(Oop assoc)
 	{
 		internalPutKeyValue(assoc, getLookupKeyKey, identityHashOf, identityOopEquals);
@@ -499,10 +494,7 @@ class SystemDictionary: public IdentityDictionary
 public:
 	struct End {};
 
-	SystemDictionary()
-	{
-		object_header_ = ObjectHeader::specialNativeClass(generateIdentityHash(this), SCI_SystemDictionary, 3);
-	}
+    static SystemDictionary *create();
 };
 
 } // End of namespace Lodtalk

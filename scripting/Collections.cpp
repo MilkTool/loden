@@ -295,6 +295,12 @@ LODTALK_END_CLASS_TABLE()
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(IdentityDictionary, Dictionary, OF_FIXED_SIZE, 3);
 
 // SystemDictionary
+SystemDictionary *SystemDictionary::create()
+{
+    auto res = reinterpret_cast<SystemDictionary*> (newObject(3, 0, OF_FIXED_SIZE, SCI_SystemDictionary));
+    res->initialize();
+    return res;
+}
 LODTALK_BEGIN_CLASS_SIDE_TABLE(SystemDictionary)
 LODTALK_END_CLASS_SIDE_TABLE()
 

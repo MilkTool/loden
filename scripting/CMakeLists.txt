@@ -13,6 +13,7 @@ set(Lodtalk_SRC
      InputOutput.cpp
      Method.cpp
      MethodBuilder.cpp
+     MemoryManager.cpp
      Object.cpp
      ObjectModel.cpp
      ParserScannerInterface.cpp
@@ -26,4 +27,3 @@ add_library(Lodtalk SHARED ${Lodtalk_SRC})
 
 add_executable(LodtalkRunner Runner.cpp)
 target_link_libraries(LodtalkRunner Lodtalk)
-

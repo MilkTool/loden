@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include <math.h>
 #include "StackMemory.hpp"
 #include "StackInterpreter.hpp"
 #include "PreprocessorHacks.hpp"
@@ -824,7 +825,7 @@ private:
         }
         else
         {
-            sendSpecialArgumentCount(SpecialMessageSelector::Add, 1);
+            sendSpecialArgumentCount(SpecialMessageSelector::Minus, 1);
         }
     }
 
@@ -1058,17 +1059,162 @@ private:
 
     void interpretSpecialMessageMultiply()
     {
-        LODTALK_UNIMPLEMENTED();
+        Oop a = stackOopAt(1);
+        Oop b = stackOopAt(0);
+
+        if(a.isSmallInteger() && b.isSmallInteger())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ia = a.decodeSmallInteger();
+            auto ib = b.decodeSmallInteger();
+
+            if(!ia || !ib)
+            {
+                pushOop(Oop::encodeSmallInteger(0));
+            }
+            else
+            {
+                auto signA = ia < 0 ? -1 : 1;
+                auto signB = ib < 0 ? -1 : 1;
+                if(signA == signB)
+                {
+                    // Positive result
+                    if(ia > SmallIntegerMax / ib)
+                    {
+                        // Overflow
+                        LODTALK_UNIMPLEMENTED();
+                    }
+                    else
+                    {
+                        pushOop(Oop::encodeSmallInteger(ia*ib));
+                    }
+                }
+                else if(signA == -1)
+                {
+                    // A is negative, B is positive
+                    if(ia < SmallIntegerMin / ib)
+                    {
+                        // Underflow
+                        LODTALK_UNIMPLEMENTED();
+                    }
+                    else
+                    {
+                        pushOop(Oop::encodeSmallInteger(ia*ib));
+                    }
+                }
+                else
+                {
+                    // A is positive, B is negative
+                    if(ib < SmallIntegerMin / ia)
+                    {
+                        // Underflow
+                        LODTALK_UNIMPLEMENTED();
+                    }
+                    else
+                    {
+                        pushOop(Oop::encodeSmallInteger(ia*ib));
+                    }
+                }
+            }
+        }
+        else if(a.isCharacter() && b.isCharacter())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ca = a.decodeCharacter();
+            auto cb = b.decodeCharacter();
+            pushOop(Oop::encodeCharacter(ca * cb));
+        }
+        else if(a.isSmallFloat() && b.isSmallFloat())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto fa = a.decodeSmallFloat();
+            auto fb = b.decodeSmallFloat();
+            pushFloatObject(fa * fb);
+        }
+        else
+        {
+            sendSpecialArgumentCount(SpecialMessageSelector::Multiply, 1);
+        }
     }
 
     void interpretSpecialMessageDivide()
     {
-        LODTALK_UNIMPLEMENTED();
+        Oop a = stackOopAt(1);
+        Oop b = stackOopAt(0);
+
+        if(a.isSmallInteger() && b.isSmallInteger())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ia = a.decodeSmallInteger();
+            auto ib = b.decodeSmallInteger();
+            if(ia % ib == 0)
+            {
+                pushOop(Oop::encodeSmallInteger(ia / ib));
+            }
+            else
+            {
+                // TODO: Make a fraction.
+                LODTALK_UNIMPLEMENTED();
+            }
+        }
+        else if(a.isSmallFloat() && b.isSmallFloat())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto fa = a.decodeSmallFloat();
+            auto fb = b.decodeSmallFloat();
+            pushFloatObject(fa / fb);
+        }
+        else
+        {
+            sendSpecialArgumentCount(SpecialMessageSelector::Divide, 1);
+        }
     }
 
     void interpretSpecialMessageRemainder()
     {
-        LODTALK_UNIMPLEMENTED();
+        Oop a = stackOopAt(1);
+        Oop b = stackOopAt(0);
+
+        if(a.isSmallInteger() && b.isSmallInteger())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ia = a.decodeSmallInteger();
+            auto ib = b.decodeSmallInteger();
+            if(ia % ib == 0)
+            {
+                pushOop(Oop::encodeSmallInteger(ia % ib));
+            }
+            else
+            {
+                // TODO: Make a fraction.
+                LODTALK_UNIMPLEMENTED();
+            }
+        }
+        else if(a.isSmallFloat() && b.isSmallFloat())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto fa = a.decodeSmallFloat();
+            auto fb = b.decodeSmallFloat();
+            pushFloatObject(fa - floor(fa/fb)*fb);
+        }
+        else
+        {
+            sendSpecialArgumentCount(SpecialMessageSelector::Remainder, 1);
+        }
     }
 
     void interpretSpecialMessageMakePoint()
@@ -1078,12 +1224,56 @@ private:
 
     void interpretSpecialMessageBitShift()
     {
-        LODTALK_UNIMPLEMENTED();
+        Oop a = stackOopAt(1);
+        Oop b = stackOopAt(0);
+
+        if(a.isSmallInteger() && b.isSmallInteger())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ia = a.decodeSmallInteger();
+            auto ib = b.decodeSmallInteger();
+            auto result = ib > 0 ? ia << ib : ia >> (-ib);
+            pushOop(Oop::encodeSmallInteger(result));
+        }
+        else
+        {
+            sendSpecialArgumentCount(SpecialMessageSelector::BitShift, 1);
+        }
+
     }
 
     void interpretSpecialMessageIntegerDivision()
     {
-        LODTALK_UNIMPLEMENTED();
+        Oop a = stackOopAt(1);
+        Oop b = stackOopAt(0);
+
+        if(a.isSmallInteger() && b.isSmallInteger())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto ia = a.decodeSmallInteger();
+            auto ib = b.decodeSmallInteger();
+            auto div = ia / ib;
+            if(ib * div > ia)
+                --div;
+            pushOop(Oop::encodeSmallInteger(div));
+        }
+        else if(a.isSmallFloat() && b.isSmallFloat())
+        {
+            fetchNextInstructionOpcode();
+            popMultiplesOops(2);
+
+            auto fa = a.decodeSmallFloat();
+            auto fb = b.decodeSmallFloat();
+            pushFloatObject(floor(fa/fb));
+        }
+        else
+        {
+            sendSpecialArgumentCount(SpecialMessageSelector::IntegerDivision, 1);
+        }
     }
 
     void interpretSpecialMessageBitAnd()

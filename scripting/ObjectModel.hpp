@@ -21,6 +21,8 @@ namespace Lodtalk
 struct ObjectTag
 {
 #ifdef OBJECT_MODEL_SPUR_64
+    static const uintptr_t TagBits = 3;
+
 	static const uintptr_t PointerMask = 7;
 	static const uintptr_t Pointer = 0;
 
@@ -36,6 +38,8 @@ struct ObjectTag
 	static const uintptr_t SmallFloatMask = 7;
 	static const uintptr_t SmallFloatShift = 3;
 #else
+    static const uintptr_t TagBits = 2;
+
 	static const uintptr_t PointerMask = 3;
 	static const uintptr_t Pointer = 0;
 
@@ -248,7 +252,7 @@ inline size_t variableSlotDivisor(ObjectFormat format)
 
 inline constexpr unsigned int generateIdentityHash(void *ptr)
 {
-	return (unsigned int)(reinterpret_cast<uintptr_t> (ptr) & IdentityHashMask);
+	return (unsigned int)((reinterpret_cast<uintptr_t> (ptr) >> ObjectTag::TagBits) & IdentityHashMask);
 }
 
 struct ObjectHeader
@@ -877,6 +881,8 @@ void enableGC();
 
 void registerGCRoot(Oop *gcroot, size_t size);
 void unregisterGCRoot(Oop *gcroot);
+
+void registerNativeObject(Oop object);
 
 class WithoutGC
 {

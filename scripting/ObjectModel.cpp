@@ -1,7 +1,4 @@
-#include <vector>
 #include <list>
-#include <utility>
-#include <mutex>
 #include <string.h>
 #include "Common.hpp"
 #include "ObjectModel.hpp"
@@ -11,6 +8,7 @@
 
 #include "Compiler.hpp"
 #include "InputOutput.hpp"
+#include "MemoryManager.hpp"
 #include "StackMemory.hpp"
 
 namespace Lodtalk
@@ -132,331 +130,25 @@ void SpecialRuntimeObjects::createSpecialClassTable()
 #undef SPECIAL_CLASS_NAME
 }
 
-// Garbage collector
-class GarbageCollector
-{
-public:
-	enum Color
-	{
-		White = 0,
-		Gray,
-		Black,
-	};
-
-	GarbageCollector();
-	~GarbageCollector();
-
-    void initialize();
-
-	uint8_t *allocateObjectMemory(size_t objectSize);
-
-	void performCollection();
-
-	void registerOopReference(OopRef *ref);
-	void unregisterOopReference(OopRef *ref);
-
-	void registerGCRoot(Oop *gcroot, size_t size);
-	void unregisterGCRoot(Oop *gcroot);
-
-    void enable();
-    void disable();
-
-private:
-	template<typename FT>
-	void onRootsDo(const FT &f)
-	{
-		// Traverse the root pointers
-		for(auto &rootSize : rootPointers)
-		{
-			auto roots = rootSize.first;
-			auto size = rootSize.second;
-			for(size_t i = 0; i < size; ++i)
-				f(roots[i]);
-		}
-
-		// Traverse the stacks
-		for(auto stack : currentStacks)
-		{
-			stack->stackFramesDo([&](StackFrame &stackFrame) {
-				stackFrame.oopElementsDo(f);
-			});
-		}
-
-		// Traverse the oop reference
-		OopRef *pos = firstReference;
-		for(; pos; pos = pos->nextReference_)
-		{
-			f(pos->oop);
-		}
-	}
-
-	void mark();
-	void markObject(Oop objectPointer);
-	void sweep();
-
-	std::mutex controlMutex;
-	std::vector<std::pair<Oop*, size_t>> rootPointers;
-	std::list<Oop> allocatedObjects;
-	std::vector<StackMemory*> currentStacks;
-	OopRef *firstReference;
-	OopRef *lastReference;
-    int disableCount;
-};
-
-static GarbageCollector *theGarbageCollector = nullptr;
-
-static GarbageCollector *getGC()
-{
-	if(!theGarbageCollector)
-    {
-		theGarbageCollector = new GarbageCollector();
-        theGarbageCollector->initialize();
-    }
-	return theGarbageCollector;
-}
-
-GarbageCollector::GarbageCollector()
-	: firstReference(nullptr), lastReference(nullptr), disableCount(0)
-{
-}
-
-GarbageCollector::~GarbageCollector()
-{
-}
-
-void GarbageCollector::initialize()
+void registerRuntimeGCRoots()
 {
     auto specialObjects = getSpecialRuntimeObjects();
 
-	// Register the special objects table.
+
+    // Register the runtime GC  objects table.
 	registerGCRoot(&specialObjects->specialObjectTable[0], specialObjects->specialObjectTable.size());
 
 	// Register the special classes table.
 	registerGCRoot((Oop*)&specialObjects->specialClassTable[0], specialObjects->specialClassTable.size());
-}
 
-void GarbageCollector::enable()
-{
-    std::unique_lock<std::mutex> l(controlMutex);
-    --disableCount;
-}
+    // nil, true, false
+    registerNativeObject(nilOop());
+    registerNativeObject(trueOop());
+    registerNativeObject(falseOop());
 
-void GarbageCollector::disable()
-{
-    std::unique_lock<std::mutex> l(controlMutex);
-    ++disableCount;
-}
-
-uint8_t *GarbageCollector::allocateObjectMemory(size_t objectSize)
-{
-	performCollection();
-	assert(objectSize >= sizeof(ObjectHeader));
-
-	// TODO: use a proper GCed heap.
-	auto result = (uint8_t*)malloc(objectSize);
-	auto header = reinterpret_cast<ObjectHeader*> (result);
-	*header = {0};
-
-	allocatedObjects.push_back(Oop::fromPointer(result));
-	return result;
-}
-
-void GarbageCollector::registerOopReference(OopRef *ref)
-{
-	std::unique_lock<std::mutex> l(controlMutex);
-	assert(ref);
-
-	// Insert the reference into the beginning doubly linked list.
-	ref->prevReference_ = nullptr;
-	ref->nextReference_ = firstReference;
-	if(firstReference)
-		firstReference->prevReference_ = ref;
-	firstReference = ref;
-
-	// Make sure the last reference is set.
-	if(!lastReference)
-		lastReference = firstReference;
-}
-
-void GarbageCollector::unregisterOopReference(OopRef *ref)
-{
-	std::unique_lock<std::mutex> l(controlMutex);
-	assert(ref);
-
-	// Remove the reference from the double linked list.
-	if(ref->prevReference_)
-		ref->prevReference_->nextReference_ = ref->nextReference_;
-	if(ref->nextReference_)
-		ref->nextReference_->prevReference_ = ref->prevReference_;
-
-	// Check the beginning.
-	if(!ref->prevReference_)
-		firstReference = ref->nextReference_;
-
-	// Check the tail.
-	if(!ref->nextReference_)
-		lastReference = ref->prevReference_;
-}
-
-void GarbageCollector::registerGCRoot(Oop *gcroot, size_t size)
-{
-	std::unique_lock<std::mutex> l(controlMutex);
-	rootPointers.push_back(std::make_pair(gcroot, size));
-}
-
-void GarbageCollector::unregisterGCRoot(Oop *gcroot)
-{
-	std::unique_lock<std::mutex> l(controlMutex);
-	for(size_t i = 0; i < rootPointers.size(); ++i)
-	{
-		if(rootPointers[i].first == gcroot)
-			rootPointers.erase(rootPointers.begin() + i);
-	}
-}
-
-void GarbageCollector::performCollection()
-{
-	std::unique_lock<std::mutex> l(controlMutex);
-    if(disableCount > 0)
-        return;
-
-	// Get the current stacks
-	currentStacks = getAllStackMemories();
-
-	// TODO: Suspend the other GC threads.
-	mark();
-	sweep();
-}
-
-void GarbageCollector::mark()
-{
-	// Mark from the root objects.
-	onRootsDo([this](Oop root) {
-		markObject(root);
-	});
-}
-
-void GarbageCollector::markObject(Oop objectPointer)
-{
-	// TODO: Use the schorr-waite algorithm.
-
-	// mark pointer objects.
-	if(!objectPointer.isPointer())
-		return;
-
-	// Get the object header.
-	auto header = reinterpret_cast<ObjectHeader*> (objectPointer.pointer);
-	if(header->gcColor)
-		return;
-
-	// Mark gray
-	header->gcColor = Gray;
-
-	// Mark recursively the children
-	auto format = header->objectFormat;
-	if(format == OF_FIXED_SIZE ||
-	   format == OF_VARIABLE_SIZE_NO_IVARS ||
-	   format == OF_VARIABLE_SIZE_IVARS)
-	{
-		auto slotCount = header->slotCount;
-		auto headerSize = sizeof(ObjectHeader);
-		if(slotCount == 255)
-		{
-			auto bigHeader = reinterpret_cast<BigObjectHeader*> (header);
-			slotCount = bigHeader->slotCount;
-			headerSize += 8;
-		}
-
-		// Traverse the slots.
-		auto slots = reinterpret_cast<Oop*> (objectPointer.pointer + headerSize);
-		for(size_t i = 0; i < slotCount; ++i)
-			markObject(slots[i]);
-	}
-
-	// Special handilng of compiled method literals
-	if(format >= OF_COMPILED_METHOD)
-	{
-		auto compiledMethod = reinterpret_cast<CompiledMethod*> (objectPointer.pointer);
-		auto literalCount = compiledMethod->getLiteralCount();
-		auto literals = compiledMethod->getFirstLiteralPointer();
-		for(size_t i = 0; i < literalCount; ++i)
-			markObject(literals[i]);
-	}
-
-	// Mark as black before ending.
-	header->gcColor = Black;
-}
-
-void GarbageCollector::sweep()
-{
-	// Sweep the allocated objects.
-	auto it = allocatedObjects.begin();
-	for(; it != allocatedObjects.end(); )
-	{
-		auto &obj = *it;
-		auto header = reinterpret_cast<ObjectHeader*> (obj.pointer);
-		if(header->gcColor == White)
-		{
-			// TODO: free the unreachable object.
-			//printf("free garbage %p %s\n", header, getClassNameOfObject(obj).c_str());
-			fflush(stdout);
-			free(header);
-			allocatedObjects.erase(it++);
-		}
-		else
-		{
-			header->gcColor = White;
-			++it;
-		}
-	}
-
-	// Some roots were not allocated by myself. Clear their marks
-	onRootsDo([this](Oop root) {
-		if(!root.isPointer())
-			return;
-
-		auto header = reinterpret_cast<ObjectHeader*> (root.pointer);
-		header->gcColor = White;
-	});
-
-}
-
-
-// OopRef
-void OopRef::registerSelf()
-{
-	getGC()->registerOopReference(this);
-}
-
-void OopRef::unregisterSelf()
-{
-	getGC()->unregisterOopReference(this);
-}
-
-// GC collector public interface
-void disableGC()
-{
-    getGC()->disable();
-}
-
-void enableGC()
-{
-    getGC()->enable();
-}
-
-void registerGCRoot(Oop *gcroot, size_t size)
-{
-	getGC()->registerGCRoot(gcroot, size);
-}
-
-void unregisterGCRoot(Oop *gcroot)
-{
-	getGC()->unregisterGCRoot(gcroot);
-}
-
-uint8_t *allocateObjectMemory(size_t objectSize)
-{
-	return getGC()->allocateObjectMemory(objectSize);
+    // Special classes aren't created in the managed heap
+    for(auto &specialClass : specialObjects->specialClassTable)
+        registerNativeObject(Oop::fromPointer(specialClass));
 }
 
 ObjectHeader *newObject(size_t fixedSlotCount, size_t indexableSize, ObjectFormat format, int classIndex, int identityHash)
@@ -716,7 +408,7 @@ static SystemDictionary *getGlobalDictionary()
 {
 	if(!theGlobalDictionary)
 	{
-		theGlobalDictionary = new SystemDictionary();
+		theGlobalDictionary = SystemDictionary::create();
 		registerGCRoot((Oop*)&theGlobalDictionary, 1);
 	}
 
