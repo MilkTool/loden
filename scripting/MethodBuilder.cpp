@@ -88,14 +88,12 @@ public:
 			*buffer++ = BytecodeSet::PushReceiverVariableShortFirst + index;
 			return buffer;
 		}
-		if(index < 256)
-		{
-			*buffer++ = BytecodeSet::PushReceiverVariable;
-			*buffer++ = index;
-			return buffer;
-		}
 
-		LODTALK_UNIMPLEMENTED();
+        buffer = encodeExtA(buffer, index / 256);
+
+		*buffer++ = BytecodeSet::PushReceiverVariable;
+		*buffer++ = index % 256;
+		return buffer;
 	}
 
 protected:
@@ -103,10 +101,32 @@ protected:
 	{
 		if(index < BytecodeSet::PushReceiverVariableShortRangeSize)
 			return 1;
-		if(index < 256)
-			return 2;
+        return 2 + sizeofExtA(index / 256);
+	}
 
-		LODTALK_UNIMPLEMENTED();
+private:
+	int index;
+};
+
+// StoreReceiverVariable
+class StoreReceiverVariable: public InstructionNode
+{
+public:
+	StoreReceiverVariable(int index)
+		: index(index) {}
+
+	virtual uint8_t *encode(uint8_t *buffer)
+	{
+        buffer = encodeExtA(buffer, index / 256);
+        *buffer++ = BytecodeSet::StoreReceiverVariable;
+        *buffer++ = index % 256;
+        return buffer;
+	}
+
+protected:
+	virtual size_t computeMaxSize()
+	{
+        return 2 + sizeofExtA(index / 256);
 	}
 
 private:
@@ -173,6 +193,31 @@ private:
 	int index;
 };
 
+// StoreLiteralVariable
+class StoreLiteralVariable: public InstructionNode
+{
+public:
+	StoreLiteralVariable(int index)
+		: index(index) {}
+
+	virtual uint8_t *encode(uint8_t *buffer)
+	{
+        buffer = encodeExtA(buffer, index / 256);
+        *buffer++ = BytecodeSet::StoreLiteralVariable;
+        *buffer++ = index % 256;
+        return buffer;
+	}
+
+protected:
+	virtual size_t computeMaxSize()
+	{
+        return 2 + sizeofExtA(index / 256);
+	}
+
+private:
+	int index;
+};
+
 // Push temporal
 class PushTemporal: public InstructionNode
 {
@@ -201,6 +246,156 @@ protected:
 
 private:
 	int index;
+};
+
+// StoreTemporal
+class StoreTemporal: public InstructionNode
+{
+public:
+	StoreTemporal(int index)
+		: index(index) {}
+
+	virtual uint8_t *encode(uint8_t *buffer)
+	{
+        *buffer++ = BytecodeSet::StoreTemporalVariable;
+        *buffer++ = index;
+        return buffer;
+	}
+
+protected:
+	virtual size_t computeMaxSize()
+	{
+        return 2;
+	}
+
+private:
+	int index;
+};
+
+// Push a new array
+class PushArray: public InstructionNode
+{
+public:
+	PushArray(int count)
+		: count(count) {}
+
+	virtual uint8_t *encode(uint8_t *buffer)
+	{
+        *buffer++ = BytecodeSet::PushArrayWithElements;
+        *buffer++ = count;
+        return buffer;
+	}
+
+protected:
+	virtual size_t computeMaxSize()
+	{
+		return 2;
+	}
+
+private:
+	int count;
+};
+
+// Push temporal in vector
+class PushTemporalInVector: public InstructionNode
+{
+public:
+	PushTemporalInVector(int index, int vectorIndex)
+		: index(index), vectorIndex(vectorIndex) {}
+
+	virtual uint8_t *encode(uint8_t *buffer)
+	{
+        *buffer++ = BytecodeSet::PushTemporaryInVector;
+        *buffer++ = index;
+        *buffer++ = vectorIndex;
+        return buffer;
+	}
+
+protected:
+	virtual size_t computeMaxSize()
+	{
+		return 3;
+	}
+
+private:
+	int index;
+    int vectorIndex;
+};
+
+// Store temporal in vector
+class StoreTemporalInVector: public InstructionNode
+{
+public:
+	StoreTemporalInVector(int index, int vectorIndex)
+		: index(index), vectorIndex(vectorIndex) {}
+
+	virtual uint8_t *encode(uint8_t *buffer)
+	{
+        *buffer++ = BytecodeSet::StoreTemporalInVector;
+        *buffer++ = index;
+        *buffer++ = vectorIndex;
+        return buffer;
+	}
+
+protected:
+	virtual size_t computeMaxSize()
+	{
+		return 3;
+	}
+
+private:
+	int index;
+    int vectorIndex;
+};
+
+// Pop and store temporal in vector
+class PopStoreTemporalInVector: public InstructionNode
+{
+public:
+	PopStoreTemporalInVector(int index, int vectorIndex)
+		: index(index), vectorIndex(vectorIndex) {}
+
+	virtual uint8_t *encode(uint8_t *buffer)
+	{
+        *buffer++ = BytecodeSet::PopStoreTemporalInVector;
+        *buffer++ = index;
+        *buffer++ = vectorIndex;
+        return buffer;
+	}
+
+protected:
+	virtual size_t computeMaxSize()
+	{
+		return 3;
+	}
+
+private:
+	int index;
+    int vectorIndex;
+};
+
+// Push n closure temporals
+class PushNClosureTemps: public InstructionNode
+{
+public:
+	PushNClosureTemps(int count)
+		: count(count) {}
+
+	virtual uint8_t *encode(uint8_t *buffer)
+	{
+        *buffer++ = BytecodeSet::PushNTemps;
+        *buffer++ = count;
+        return buffer;
+	}
+
+protected:
+	virtual size_t computeMaxSize()
+	{
+		return 2;
+	}
+
+private:
+	int count;
 };
 
 // Push closure
@@ -538,6 +733,51 @@ InstructionNode *Assembler::pushLiteralVariableIndex(int literalVariableIndex)
 InstructionNode *Assembler::pushTemporal(int temporalIndex)
 {
 	return addInstruction(new PushTemporal(temporalIndex));
+}
+
+InstructionNode *Assembler::pushNewArray(int arraySize)
+{
+    return addInstruction(new PushArray(arraySize));
+}
+
+InstructionNode *Assembler::pushTemporalInVector(int temporalIndex, int vectorIndex)
+{
+    return addInstruction(new PushTemporalInVector(temporalIndex, vectorIndex));
+}
+
+InstructionNode *Assembler::storeReceiverVariableIndex(int variableIndex)
+{
+    return addInstruction(new StoreReceiverVariable(variableIndex));
+}
+
+InstructionNode *Assembler::storeLiteralVariableIndex(int literalVariableIndex)
+{
+    return addInstruction(new StoreLiteralVariable(literalVariableIndex));
+}
+
+InstructionNode *Assembler::storeTemporal(int temporalIndex)
+{
+    return addInstruction(new StoreTemporal(temporalIndex));
+}
+
+InstructionNode *Assembler::storeLiteralVariable(Oop literalVariable)
+{
+    return storeLiteralVariableIndex(addLiteral(literalVariable));
+}
+
+InstructionNode *Assembler::pushNClosureTemps(int temporalCount)
+{
+    return addInstruction(new PushNClosureTemps(temporalCount));
+}
+
+InstructionNode *Assembler::storeTemporalInVector(int temporalIndex, int vectorIndex)
+{
+    return addInstruction(new StoreTemporalInVector(temporalIndex, vectorIndex));
+}
+
+InstructionNode *Assembler::popStoreTemporalInVector(int temporalIndex, int vectorIndex)
+{
+    return addInstruction(new PopStoreTemporalInVector(temporalIndex, vectorIndex));
 }
 
 InstructionNode *Assembler::pushClosure(int numCopied, int numArgs, Label *blockEnd, int numExtensions)

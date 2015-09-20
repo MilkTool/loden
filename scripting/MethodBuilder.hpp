@@ -135,6 +135,17 @@ public:
 	InstructionNode *pushLiteralVariableIndex(int literalVariableIndex);
 	InstructionNode *pushTemporal(int temporalIndex);
 
+    InstructionNode *storeReceiverVariableIndex(int variableIndex);
+	InstructionNode *storeLiteralVariableIndex(int literalVariableIndex);
+	InstructionNode *storeTemporal(int temporalIndex);
+    InstructionNode *storeLiteralVariable(Oop literalVariable);
+
+    InstructionNode *pushNewArray(int arraySize);
+    InstructionNode *pushTemporalInVector(int temporalIndex, int vectorIndex);
+    InstructionNode *pushNClosureTemps(int temporalCount);
+    InstructionNode *storeTemporalInVector(int temporalIndex, int vectorIndex);
+    InstructionNode *popStoreTemporalInVector(int temporalIndex, int vectorIndex);
+
     InstructionNode *pushClosure(int numCopied, int numArgs, Label *blockEnd, int numExtensions);
 
 	InstructionNode *pushReceiver();

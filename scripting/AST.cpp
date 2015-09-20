@@ -392,6 +392,22 @@ const FunctionalNode::LocalVariables &FunctionalNode::getLocalVariables() const
     return localVariables;
 }
 
+int FunctionalNode::getBlockDepth() const
+{
+    return blockDepth;
+}
+
+void FunctionalNode::setBlockDepth(int newDepth)
+{
+    blockDepth = newDepth;
+}
+
+size_t FunctionalNode::getArgumentCount() const
+{
+    auto arguments = getArgumentList();
+    return arguments ? arguments->getArguments().size() : 0;
+}
+
 // Method header
 MethodHeader::MethodHeader(const std::string &selector, ArgumentList *arguments)
 	: selector(selector), arguments(arguments)
@@ -449,6 +465,11 @@ MethodHeader *MethodAST::getHeader() const
 SequenceNode *MethodAST::getBody() const
 {
 	return body;
+}
+
+ArgumentList *MethodAST::getArgumentList() const
+{
+    return header ? header->getArgumentList() : nullptr;
 }
 
 const Ref<MethodASTHandle> &MethodAST::getHandle()

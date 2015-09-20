@@ -301,8 +301,15 @@ public:
     void setLocalVariables(const LocalVariables &newLocalVariables);
     const LocalVariables &getLocalVariables() const;
 
+    int getBlockDepth() const;
+    void setBlockDepth(int newDepth);
+
+    virtual ArgumentList *getArgumentList() const = 0;
+    size_t getArgumentCount() const;
+
 private:
     LocalVariables localVariables;
+    int blockDepth;
 };
 
 /**
@@ -360,6 +367,8 @@ public:
 
 	MethodHeader *getHeader() const;
 	SequenceNode *getBody() const;
+
+    virtual ArgumentList *getArgumentList() const;
 
 	const Ref<MethodASTHandle> &getHandle();
 

@@ -31,7 +31,8 @@ public:
 	virtual Oop getValue() = 0;
 	virtual void setValue(Oop newValue) = 0;
 
-	virtual void generateLoad( MethodAssembler::Assembler &gen) const = 0;
+	virtual void generateLoad( MethodAssembler::Assembler &gen, FunctionalNode *functionalContext) const = 0;
+    virtual void generateStore( MethodAssembler::Assembler &gen, FunctionalNode *functionalContext) const = 0;
 };
 
 // Evaluation scope class
@@ -97,9 +98,14 @@ public:
 		variable->value = newValue;
 	}
 
-	virtual void generateLoad(MethodAssembler::Assembler &gen) const
+	virtual void generateLoad(MethodAssembler::Assembler &gen, FunctionalNode *functionalContext) const
 	{
 		gen.pushLiteralVariable(variable.getOop());
+	}
+
+    virtual void generateStore(MethodAssembler::Assembler &gen, FunctionalNode *functionalContext) const
+	{
+		gen.storeLiteralVariable(variable.getOop());
 	}
 
 	Ref<LiteralVariable> variable;
@@ -128,9 +134,14 @@ public:
 		abort();
 	}
 
-	virtual void generateLoad(MethodAssembler::Assembler &gen) const
+	virtual void generateLoad(MethodAssembler::Assembler &gen, FunctionalNode *functionalContext) const
 	{
 		gen.pushReceiverVariableIndex(instanceVariableIndex);
+	}
+
+    virtual void generateStore(MethodAssembler::Assembler &gen, FunctionalNode *functionalContext) const
+	{
+		gen.storeReceiverVariableIndex(instanceVariableIndex);
 	}
 
 	int instanceVariableIndex;
@@ -141,7 +152,7 @@ class TemporalVariableLookup: public VariableLookup
 {
 public:
 	TemporalVariableLookup(Node *localContext, bool isMutable_)
-		: temporalIndex(-1), localContext(localContext), isMutable_(isMutable_), isCapturedInClosure_(false) {}
+		: temporalIndex(-1), temporalVectorIndex(-1), localContext(localContext), isMutable_(isMutable_), isCapturedInClosure_(false) {}
 	~TemporalVariableLookup() {}
 
     virtual bool isTemporal() const
@@ -164,21 +175,51 @@ public:
 		abort();
 	}
 
-	virtual void generateLoad(MethodAssembler::Assembler &gen) const
+	virtual void generateLoad(MethodAssembler::Assembler &gen, FunctionalNode *functionalContext) const
 	{
         assert(temporalIndex >= 0);
-		gen.pushTemporal(temporalIndex);
+        if(temporalVectorIndex >= 0)
+        {
+            gen.pushTemporalInVector(temporalIndex, temporalVectorIndex);
+        }
+        else
+        {
+            gen.pushTemporal(temporalIndex);
+        }
 	}
 
-	/*virtual void generateStore(MethodAssembler::Assembler &gen) const
-	{
-		assert(isMutable());
-		gen.storeTemporalVariable(temporalIndex);
-	}*/
+    virtual void generateStore(MethodAssembler::Assembler &gen, FunctionalNode *functionalContext) const
+    {
+        assert(isMutable());
+        assert(temporalIndex >= 0);
+        if(temporalVectorIndex >= 0)
+        {
+            gen.storeTemporalInVector(temporalIndex, temporalVectorIndex);
+        }
+        else
+        {
+            gen.storeTemporal(temporalIndex);
+        }
+    }
 
     void setTemporalIndex(int newIndex)
     {
         temporalIndex = newIndex;
+    }
+
+    int getTemporalIndex()
+    {
+        return temporalIndex;
+    }
+
+    void setTemporalVectorIndex(int newTemporalVectorIndex)
+    {
+        temporalVectorIndex = newTemporalVectorIndex;
+    }
+
+    int getTemporalVectorIndex()
+    {
+        return temporalVectorIndex;
     }
 
     Node *getLocalContext()
@@ -199,6 +240,7 @@ public:
 private:
 
 	int temporalIndex;
+    int temporalVectorIndex;
     Node *localContext;
 	bool isMutable_;
     bool isCapturedInClosure_;
@@ -564,6 +606,7 @@ private:
 
     MethodAST::LocalVariables localVariables;
     Node *localContext;
+    int blockDepth;
 };
 
 Oop MethodSemanticAnalysis::visitArgument(Argument *node)
@@ -584,6 +627,17 @@ Oop MethodSemanticAnalysis::visitAssignmentExpression(AssignmentExpression *node
     // Visit the value.
     node->getValue()->acceptVisitor(this);
 
+    // Ensure the reference is an identifier expression.
+    auto reference = node->getReference();
+    if(!reference->isIdentifierExpression())
+        LODTALK_UNIMPLEMENTED();
+
+    // Ensure the variable is mutable.
+    auto identExpr = static_cast<AST::IdentifierExpression*> (reference);
+    auto variable = identExpr-> getVariable();
+    if(!variable->isMutable())
+        error(node, "cannot perform an assignment into an immutable variable.");
+
     return Oop();
 }
 
@@ -592,6 +646,8 @@ Oop MethodSemanticAnalysis::visitBlockExpression(BlockExpression *node)
     // Store the local context.
     auto oldLocalContext = localContext;
     localContext = node;
+    ++blockDepth;
+    node->setBlockDepth(blockDepth);
     FunctionalNode::LocalVariables oldLocalVariables;
     oldLocalVariables.swap(localVariables);
 
@@ -628,6 +684,7 @@ Oop MethodSemanticAnalysis::visitBlockExpression(BlockExpression *node)
     // Restore the local context.
     localContext = oldLocalContext;
     oldLocalVariables.swap(localVariables);
+    --blockDepth;
 
     return Oop();
 }
@@ -693,6 +750,8 @@ Oop MethodSemanticAnalysis::visitMethodAST(MethodAST *node)
 {
     // Set the local context.
     localContext = node;
+    blockDepth = 0;
+    node->setBlockDepth(blockDepth);
 
     // Get the method header.
 	auto header = node->getHeader();
@@ -811,6 +870,8 @@ private:
 	OopRef selector;
 	OopRef classBinding;
 	MethodAssembler::Assembler gen;
+    FunctionalNode *localContext;
+    int temporalVectorCount;
 };
 
 // Method compiler.
@@ -826,11 +887,28 @@ Oop MethodCompiler::visitArgumentList(ArgumentList *node)
 
 Oop MethodCompiler::visitAssignmentExpression(AssignmentExpression *node)
 {
-	LODTALK_UNIMPLEMENTED();
+    // Generate the value
+    auto value = node->getValue();
+    value->acceptVisitor(this);
+
+    // Ensure the reference is an identifier expression.
+    auto reference = node->getReference();
+    if(!reference->isIdentifierExpression())
+        LODTALK_UNIMPLEMENTED();
+
+    // Perform the assignment.
+    auto identExpr = static_cast<AST::IdentifierExpression*> (reference);
+    auto variable = identExpr->getVariable();
+    variable->generateStore(gen, localContext);
+
+    return Oop();
 }
 
 Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
 {
+    // Store the local context
+    auto oldLocalContext = localContext;
+    localContext = node;
 
     auto blockEnd = gen.makeLabel();
 
@@ -840,19 +918,43 @@ Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
     if(argumentList)
         argumentCount = argumentList->getArguments().size();
 
-    // The count of temporal vectors.
-    auto temporalVectorCount = 0;
-
-    // TODO: Push the captured temporal vectors.
-
-    // Prepare the local variables of the block.
-    auto &blockLocals  = node->getLocalVariables();
-    size_t numCopied = 0;
-    size_t numLocals = 0;
-
+    // Count the captured variables.
+    auto &blockLocals = node->getLocalVariables();
+    auto capturedCount = 0;
     for(size_t i = 0; i < blockLocals.size(); ++i)
     {
         auto &localVar = blockLocals[i];
+        if(localVar->isCapturedInClosure())
+        {
+            localVar->setTemporalVectorIndex(temporalVectorCount + 1);
+            localVar->setTemporalIndex(capturedCount++);
+        }
+    }
+
+    // Push the captured temporal vectors.
+    size_t numCopied = temporalVectorCount;
+    size_t numLocals = 0;
+    if(temporalVectorCount)
+    {
+        auto oldArgumentCount = oldLocalContext->getArgumentCount();
+        for(auto i = 0; i < temporalVectorCount; ++i)
+            gen.pushTemporal(oldArgumentCount + i);
+
+        // Reserve space for the inner temporal vector.
+        if(capturedCount)
+            ++numLocals;
+    }
+
+    if(capturedCount)
+        ++temporalVectorCount;
+
+    // Prepare the local variables of the block.
+    for(size_t i = 0; i < blockLocals.size(); ++i)
+    {
+        auto &localVar = blockLocals[i];
+        if(localVar->isCapturedInClosure())
+            continue;
+
         if(i < argumentCount)
         {
             localVar->setTemporalIndex(i);
@@ -862,14 +964,32 @@ Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
             localVar->setTemporalIndex(argumentCount + numLocals + temporalVectorCount);
             ++numLocals;
             ++numCopied;
-            gen.pushNil();
         }
     }
+
+    // Reserve space for the locals.
+    if(numLocals)
+        gen.pushNClosureTemps(numLocals);
 
     // Push the block.
     gen.pushClosure(numCopied, argumentCount, blockEnd, 0);
 
-    // TODO: Generate the inner temporal vector.
+    // Generate the inner temporal vector.
+    if(capturedCount)
+    {
+        gen.pushNewArray(capturedCount);
+
+        // Copy the captured arguments into the temp vector
+        for(size_t i = 0; i < argumentCount; ++i)
+        {
+            auto &localVar = blockLocals[i];
+            if(localVar->isCapturedInClosure())
+            {
+                gen.pushTemporal(i);
+                gen.popStoreTemporalInVector(localVar->getTemporalIndex(), localVar->getTemporalVectorIndex());
+            }
+        }
+    }
 
     auto closureBeginInstruction = gen.getLastInstruction();
 
@@ -888,6 +1008,12 @@ Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
     // Finish the block.
     gen.putLabel(blockEnd);
 
+    // Restore the local context
+    localContext = oldLocalContext;
+
+    if(capturedCount)
+        --temporalVectorCount;
+
 	return Oop();
 }
 
@@ -900,7 +1026,7 @@ Oop MethodCompiler::visitIdentifierExpression(IdentifierExpression *node)
 		error(node, "undeclared identifier '%s'.", node->getIdentifier().c_str());
 
 	// Generate the load.
-	variable->generateLoad(gen);
+	variable->generateLoad(gen, localContext);
 
 	return Oop();
 }
@@ -964,7 +1090,10 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
 {
     size_t temporalCount = 0;
     size_t argumentCount = 0;
-    size_t capturedCount = 0;
+
+    // Set the local context
+    localContext = node;
+    temporalVectorCount = 0;
 
 	// Get the method selector.
 	auto header = node->getHeader();
@@ -974,14 +1103,53 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
 	auto argumentList = header->getArgumentList();
     argumentCount = 0;
 	if(argumentList)
-        argumentCount = argumentList->getArguments().size();;
+        argumentCount = argumentList->getArguments().size();
+
+    // Count the captured variables.
+    auto &blockLocals = node->getLocalVariables();
+    size_t capturedCount = 0;
+    for(size_t i = 0; i < blockLocals.size(); ++i)
+    {
+        auto &localVar = blockLocals[i];
+        if(localVar->isCapturedInClosure())
+        {
+            localVar->setTemporalVectorIndex(temporalVectorCount + 1);
+            localVar->setTemporalIndex(capturedCount++);
+        }
+    }
+
+    if(capturedCount)
+        ++temporalVectorCount;
 
     // Compute the local variables indices.
     auto &localVars = node->getLocalVariables();
     for(size_t i = 0; i < localVars.size(); ++i)
     {
         auto &localVar = localVars[i];
-        localVar->setTemporalIndex(i);
+        if(!localVar->isCapturedInClosure())
+        {
+            if(i < argumentCount)
+                localVar->setTemporalIndex(i);
+            else
+                localVar->setTemporalIndex(i + temporalVectorCount);
+        }
+    }
+
+    // Create the temporal vector
+    if(capturedCount)
+    {
+        gen.pushNewArray(capturedCount);
+
+        // Copy the captured arguments into the temp vector
+        for(size_t i = 0; i < argumentCount; ++i)
+        {
+            auto &localVar = blockLocals[i];
+            if(localVar->isCapturedInClosure())
+            {
+                gen.pushTemporal(i);
+                gen.popStoreTemporalInVector(localVar->getTemporalIndex(), localVar->getTemporalVectorIndex());
+            }
+        }
     }
 
 	// Visit the method body
@@ -996,7 +1164,6 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
 
 	// Set the class binding.
 	gen.addLiteral(classBinding);
-
 	return Oop::fromPointer(gen.generate(temporalCount, argumentCount));
 }
 

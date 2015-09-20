@@ -223,3 +223,6 @@ SISTAV1_INSTRUCTION(StoreTemporalVariable, 245)
 
 // 3 Byte instructions
 SISTAV1_INSTRUCTION(PushClosure, 250)
+SISTAV1_INSTRUCTION(PushTemporaryInVector, 251)
+SISTAV1_INSTRUCTION(StoreTemporalInVector, 252)
+SISTAV1_INSTRUCTION(PopStoreTemporalInVector, 253)

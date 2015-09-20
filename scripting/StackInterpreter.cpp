@@ -725,6 +725,21 @@ private:
 		LODTALK_UNIMPLEMENTED();
 	}
 
+    void interpretPushTemporaryInVector()
+    {
+        LODTALK_UNIMPLEMENTED();
+    }
+
+    void interpretStoreTemporalInVector()
+    {
+        LODTALK_UNIMPLEMENTED();
+    }
+
+    void interpretPopStoreTemporalInVector()
+    {
+        LODTALK_UNIMPLEMENTED();
+    }
+
     void interpretPushClosure()
     {
         // Fetch some arguments.
