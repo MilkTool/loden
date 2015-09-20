@@ -1,0 +1,34 @@
+"Behavior methods"
+self class: Behavior.
+
+self category: 'accessing'.
+
+self method [
+superclass
+    ^ superclass
+].
+
+self method [
+methodDict
+    ^ methodDict
+].
+
+self method [
+format
+    ^ format
+].
+
+self method [
+fixedVariableCount
+    ^ fixedVariableCount
+].
+
+self method [
+layout
+    ^ layout
+].
+
+self method [
+>> selector
+    ^ methodDict atOrNil: selector
+].

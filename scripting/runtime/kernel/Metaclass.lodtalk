@@ -1,0 +1,18 @@
+"Metaclass methods"
+self class: Metaclass.
+
+self category: 'accessing'.
+self method [
+thisClass
+    ^ thisClass
+].
+
+self method [
+traitComposition
+    ^ traitComposition
+].
+
+self method [
+localSelectors
+    ^ localSelectors
+].

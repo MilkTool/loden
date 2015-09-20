@@ -1,4 +1,8 @@
-self executeFileNamed: 'Class.lodtalk';
+self
+    executeFileNamed: 'Behavior.lodtalk';
+    executeFileNamed: 'ClassDescription.lodtalk';
+    executeFileNamed: 'Class.lodtalk';
+    executeFileNamed: 'Metaclass.lodtalk';
     executeFileNamed: 'ProtoObject.lodtalk';
     executeFileNamed: 'Object.lodtalk';
     executeFileNamed: 'Boolean.lodtalk';

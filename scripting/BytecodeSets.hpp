@@ -1,6 +1,8 @@
 #ifndef LODTALK_BYTECODE_SETS_HPP
 #define LODTALK_BYTECODE_SETS_HPP
 
+#include <string>
+
 namespace Lodtalk
 {
 
@@ -38,6 +40,10 @@ constexpr int PushClosure_NumArgsShift = 0;
 };
 
 namespace BytecodeSet = SistaV1BytecodeSet;
+
+const std::string &getSistaBytecodeName(int bytecode);
+int getSistaBytecodeSize(int bytecode);
+void dumpSistaBytecode(uint8_t *buffer, size_t size);
 
 } // End of namespace Lodtalk
 

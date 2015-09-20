@@ -247,7 +247,7 @@ protected:
 
     virtual size_t computeBetterSize()
 	{
-		return 3 + sizeofExtA(extendAValue()) + sizeofExtB(blockSize());
+		return 3 + sizeofExtA(extendAValue()) + sizeofExtB(extendBValue());
 	}
 
 private:
@@ -446,6 +446,9 @@ CompiledMethod *Assembler::generate(size_t temporalCount, size_t argumentCount, 
 			abort();
 		}
 	}
+
+    if(instructionBuffer < instructionBufferEnd)
+        printf("extra size %zu\n", instructionBufferEnd - instructionBuffer);
 
 	return compiledMethod;
 }

@@ -57,6 +57,11 @@ public:
 		return getFirstBCPointer() - reinterpret_cast<uint8_t*> (this);
 	}
 
+    size_t getByteDataSize()
+    {
+        return getNumberOfElements() - getFirstPC();
+    }
+
 	Oop *getFirstLiteralPointer()
 	{
 		return reinterpret_cast<Oop *> (getFirstFieldPointer() + sizeof(void*));
@@ -75,6 +80,8 @@ public:
 		auto classBindingIndex = getLiteralCount() - 1;
 		return getFirstLiteralPointer()[classBindingIndex];
 	}
+
+    Oop dump();
 };
 
 /**

@@ -2,6 +2,7 @@
 #include <map>
 #include <vector>
 #include "Collections.hpp"
+#include "Method.hpp"
 
 namespace Lodtalk
 {
@@ -281,6 +282,8 @@ LODTALK_BEGIN_CLASS_SIDE_TABLE(MethodDictionary)
 LODTALK_END_CLASS_SIDE_TABLE()
 
 LODTALK_BEGIN_CLASS_TABLE(MethodDictionary)
+    LODTALK_METHOD("atOrNil:", &MethodDictionary::atOrNil)
+    LODTALK_METHOD("at:put:", &MethodDictionary::atPut)
 LODTALK_END_CLASS_TABLE()
 
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(MethodDictionary, Dictionary, OF_FIXED_SIZE, 4);

@@ -2,6 +2,7 @@
 #include "Collections.hpp"
 #include "Method.hpp"
 #include "StackInterpreter.hpp"
+#include "BytecodeSets.hpp"
 
 namespace Lodtalk
 {
@@ -67,11 +68,18 @@ static Oop newMethodHeader(Oop clazz, Oop numberOfBytes, Oop headerWord)
 	return nilOop();
 }
 
+Oop CompiledMethod::dump()
+{
+    dumpSistaBytecode(getFirstBCPointer(), getByteDataSize());
+    return selfOop();
+}
+
 LODTALK_BEGIN_CLASS_SIDE_TABLE(CompiledMethod)
 	LODTALK_METHOD("newMethod:header:", newMethodHeader)
 LODTALK_END_CLASS_SIDE_TABLE()
 
 LODTALK_BEGIN_CLASS_TABLE(CompiledMethod)
+    LODTALK_METHOD("dump", &CompiledMethod::dump)
 LODTALK_END_CLASS_TABLE()
 
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(CompiledMethod, ByteArray, OF_COMPILED_METHOD, 0);
