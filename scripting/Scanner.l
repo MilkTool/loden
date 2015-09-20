@@ -66,12 +66,12 @@ thisContext                     { return KTHIS_CONTEXT; }
     return BLOCK_ARGUMENT;
 }
 
-#[_a-zA-Z][_a-zA-Z0-9]*          {
+#(?:[_a-zA-Z][_a-zA-Z0-9]*\:)+   {
     yylval->stringValue = strdup(yytext + 1);
     return SYMBOL;
 }
 
-#(?:[_a-zA-Z][_a-zA-Z0-9]\:)+   {
+#[_a-zA-Z][_a-zA-Z0-9]*          {
     yylval->stringValue = strdup(yytext + 1);
     return SYMBOL;
 }

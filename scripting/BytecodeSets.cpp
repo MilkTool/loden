@@ -14,7 +14,7 @@ const std::string &getSistaBytecodeName(int bytecode)
 
         #define SISTAV1_INSTRUCTION_RANGE(name, range_first, range_end) \
         for(int i = range_first; i <= range_end; ++i) {\
-            sprintf(buffer, #name "%d", i - range_first); \
+            sprintf(buffer, #name ": %d", i - range_first); \
             sistaByteCodeNames[i] = buffer; \
         }
         #define SISTAV1_INSTRUCTION(name, opcode) \
