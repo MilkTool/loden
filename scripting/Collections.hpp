@@ -271,8 +271,9 @@ protected:
 		auto position = findKeyPosition(keyFunction(keyValue), keyFunction, hashFunction, equalityFunction);
 		if(position < 0)
 		{
+            OopRef keyValueRef = keyValue;
 			increaseCapacity(keyFunction, hashFunction, equalityFunction);
-			return internalPutKeyValue(keyValue, keyFunction, hashFunction, equalityFunction);
+			return internalPutKeyValue(keyValueRef.oop, keyFunction, hashFunction, equalityFunction);
 		}
 
 		// Put the key and value.
@@ -405,8 +406,10 @@ protected:
 		auto position = findKeyPosition(key, identityFunction<Oop>, identityHashOf, identityOopEquals);
 		if(position < 0)
 		{
+            OopRef keyRef = key;
+            OopRef valueRef = value;
 			increaseCapacity();
-			return internalAtPut(key, value);
+            return internalAtPut(keyRef.oop, valueRef.oop);
 		}
 
 		// Put the key and value.

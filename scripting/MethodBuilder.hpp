@@ -106,6 +106,9 @@ public:
 	size_t addLiteral(Oop newLiteral);
 	size_t addLiteral(const OopRef &newLiteral);
 
+    size_t addLiteralAlways(Oop newLiteral);
+	size_t addLiteralAlways(const OopRef &newLiteral);
+
 	Label *makeLabel();
 	Label *makeLabelHere();
 	void putLabel(Label *label);

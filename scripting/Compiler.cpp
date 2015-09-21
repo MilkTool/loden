@@ -180,7 +180,7 @@ public:
         assert(temporalIndex >= 0);
         if(temporalVectorIndex >= 0)
         {
-            gen.pushTemporalInVector(temporalIndex, temporalVectorIndex);
+            gen.pushTemporalInVector(temporalIndex, temporalVectorIndex + functionalContext->getArgumentCount());
         }
         else
         {
@@ -194,7 +194,7 @@ public:
         assert(temporalIndex >= 0);
         if(temporalVectorIndex >= 0)
         {
-            gen.storeTemporalInVector(temporalIndex, temporalVectorIndex);
+            gen.storeTemporalInVector(temporalIndex, temporalVectorIndex + functionalContext->getArgumentCount());
         }
         else
         {
@@ -928,7 +928,7 @@ Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
         auto &localVar = blockLocals[i];
         if(localVar->isCapturedInClosure())
         {
-            localVar->setTemporalVectorIndex(argumentCount + temporalVectorCount);
+            localVar->setTemporalVectorIndex(temporalVectorCount);
             localVar->setTemporalIndex(capturedCount++);
         }
     }
@@ -942,13 +942,16 @@ Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
         for(auto i = 0; i < temporalVectorCount; ++i)
             gen.pushTemporal(oldArgumentCount + i);
 
-        // Reserve space for the inner temporal vector.
-        if(capturedCount)
-            ++numLocals;
     }
 
     if(capturedCount)
+    {
         ++temporalVectorCount;
+
+        // Reserve space for the inner temporal vector.
+        ++numLocals;
+        ++numCopied;
+    }
 
     // Prepare the local variables of the block.
     for(size_t i = 0; i < blockLocals.size(); ++i)
@@ -963,7 +966,7 @@ Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
         }
         else
         {
-            localVar->setTemporalIndex(argumentCount + numLocals + temporalVectorCount);
+            localVar->setTemporalIndex(argumentCount + numCopied);
             ++numLocals;
             ++numCopied;
         }
@@ -1115,7 +1118,7 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
         auto &localVar = blockLocals[i];
         if(localVar->isCapturedInClosure())
         {
-            localVar->setTemporalVectorIndex(argumentCount + temporalVectorCount);
+            localVar->setTemporalVectorIndex(temporalVectorCount);
             localVar->setTemporalIndex(capturedCount++);
         }
     }
@@ -1156,7 +1159,7 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
             if(localVar->isCapturedInClosure())
             {
                 gen.pushTemporal(i);
-                gen.popStoreTemporalInVector(localVar->getTemporalIndex(), localVar->getTemporalVectorIndex());
+                gen.popStoreTemporalInVector(localVar->getTemporalIndex(), argumentCount + localVar->getTemporalVectorIndex());
             }
         }
     }
@@ -1169,10 +1172,10 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
 		gen.returnReceiver();
 
 	// Set the method selector
-	gen.addLiteral(selector);
+	gen.addLiteralAlways(selector);
 
 	// Set the class binding.
-	gen.addLiteral(classBinding);
+	gen.addLiteralAlways(classBinding);
 	return Oop::fromPointer(gen.generate(temporalCount, argumentCount));
 }
 

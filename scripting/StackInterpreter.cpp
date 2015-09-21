@@ -341,6 +341,7 @@ private:
 		if(calledMethodOop.isNil())
 		{
 			// TODO: Send a DNU
+            printf("TODO: Send DNU  #%s [%s]%p\n", getByteSymbolData(selector).c_str(), getClassNameOfObject(newReceiver).c_str(), newReceiver.pointer);
 			LODTALK_UNIMPLEMENTED();
 		}
 

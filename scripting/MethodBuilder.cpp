@@ -606,6 +606,18 @@ size_t Assembler::addLiteral(const OopRef &newLiteral)
 	return addLiteral(newLiteral.oop);
 }
 
+size_t Assembler::addLiteralAlways(Oop newLiteral)
+{
+    auto ret = literals.size();
+	literals.push_back(newLiteral);
+	return ret;
+}
+
+size_t Assembler::addLiteralAlways(const OopRef &newLiteral)
+{
+    return addLiteralAlways(newLiteral.oop);
+}
+
 Label *Assembler::makeLabel()
 {
 	return new Label();
