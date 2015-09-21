@@ -1,0 +1,118 @@
+"The main program"
+self category: 'Program Function'.
+
+self function [
+printString: string
+    OSIO write: string offset: 0 size: string size to: OSIO stdout
+].
+
+self function [
+newLine
+    self printString: '
+'
+].
+
+self function [
+printLine: line
+    self printString: line asString;
+         newLine
+].
+
+self function [
+closureMaker
+    ^ []
+].
+
+self function [
+closureRetArg: a
+    ^ [ a ]
+].
+
+self function [
+closureRetTemp: a
+    | b |
+    b := 5.
+    ^ [ b ]
+].
+
+self function [
+makeCounter
+    | a |
+    a := -1.
+    ^ [ a := a + 1 ]
+].
+
+self function [
+printClosureMaker
+    ^ [
+        self printLine: 'Hello World';
+            printLine: Object name.
+    ]
+].
+
+self function [
+dumpFunction: selector
+    self
+        printString: 'Method dump of #';
+        printLine: selector.
+    (self class >> selector) dump.
+    self newLine.
+].
+
+self function [
+select: condition a: a b: b
+    ^ condition ifTrue: [a] ifFalse: [b]
+].
+
+self function [
+while: a
+    [a] whileTrue: [ OSIO print: '$']
+].
+
+self function [
+loop
+    self printLine: (1 to: 8 do: [:i |
+        self printString: i asString;
+            printString: ' '
+    ]).
+].
+
+self function [
+main
+    | counter |
+    self printLine: true;
+        printLine: self == self;
+        printLine: 1 < 2;
+        printLine: 2 < 1;
+        printLine: -1234;
+        newLine.
+
+    self dumpFunction: #closureRetArg:.
+    self printLine: (self closureRetArg: 3) value.
+
+    self dumpFunction: #closureRetTemp:.
+    self printLine: (self closureRetTemp: 3) value.
+
+    self dumpFunction: #makeCounter.
+
+    counter := self makeCounter.
+    self
+        printLine: counter value;
+        printLine: counter value;
+        printLine: counter value;
+        printLine: counter value.
+
+    (Number >> #to:do:) dump.
+
+    self newLine.
+    self dumpFunction: #select:a:b:.
+
+    self newLine.
+    self dumpFunction: #while:.
+
+    self newLine.
+    self dumpFunction: #loop.
+    self loop.
+
+    self printLine: self printClosureMaker value "outerContext closureOrNil name"
+].
