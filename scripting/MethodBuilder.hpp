@@ -139,6 +139,7 @@ public:
 	InstructionNode *storeLiteralVariableIndex(int literalVariableIndex);
 	InstructionNode *storeTemporal(int temporalIndex);
     InstructionNode *storeLiteralVariable(Oop literalVariable);
+    InstructionNode *popStoreTemporal(int temporalIndex);
 
     InstructionNode *pushNewArray(int arraySize);
     InstructionNode *pushTemporalInVector(int temporalIndex, int vectorIndex);

@@ -148,7 +148,10 @@ public:
 			return buffer;
 		}
 
-		LODTALK_UNIMPLEMENTED();
+        buffer = encodeExtA(buffer, index / 256);
+        *buffer++ = BytecodeSet::PushLiteral;
+        *buffer++ = index % 256;
+        return buffer;
 	}
 
 protected:
@@ -156,7 +159,7 @@ protected:
 	{
 		if(index < BytecodeSet::PushLiteralShortRangeSize)
 			return 1;
-		LODTALK_UNIMPLEMENTED();
+		return 2 + sizeofExtA(index / 256);
 	}
 
 private:
@@ -178,7 +181,10 @@ public:
 			return buffer;
 		}
 
-		assert(0 && "unimplemented");
+        buffer = encodeExtA(buffer, index / 256);
+        *buffer++ = BytecodeSet::PushLiteralVariable;
+        *buffer++ = index % 256;
+        return buffer;
 	}
 
 protected:
@@ -186,7 +192,7 @@ protected:
 	{
 		if(index < BytecodeSet::PushLiteralVariableShortRangeSize)
 			return 1;
-		assert(0 && "unimplemented");
+		return 2 + sizeofExtA(index / 256);
 	}
 
 private:
@@ -265,6 +271,38 @@ public:
 protected:
 	virtual size_t computeMaxSize()
 	{
+        return 2;
+	}
+
+private:
+	int index;
+};
+
+// StoreTemporal
+class PopStoreTemporal: public InstructionNode
+{
+public:
+	PopStoreTemporal(int index)
+		: index(index) {}
+
+	virtual uint8_t *encode(uint8_t *buffer)
+	{
+        if(index < BytecodeSet::PopStoreTemporalVariableShortRangeSize)
+        {
+            *buffer++ = BytecodeSet::PopStoreTemporalVariableShortFirst + index;
+            return buffer;
+        }
+
+        *buffer++ = BytecodeSet::PopStoreTemporalVariable;
+        *buffer++ = index;
+        return buffer;
+	}
+
+protected:
+	virtual size_t computeMaxSize()
+	{
+        if(index < BytecodeSet::PopStoreTemporalVariableShortRangeSize)
+            return 1;
         return 2;
 	}
 
@@ -758,6 +796,11 @@ InstructionNode *Assembler::storeLiteralVariableIndex(int literalVariableIndex)
 InstructionNode *Assembler::storeTemporal(int temporalIndex)
 {
     return addInstruction(new StoreTemporal(temporalIndex));
+}
+
+InstructionNode *Assembler::popStoreTemporal(int temporalIndex)
+{
+    return addInstruction(new PopStoreTemporal(temporalIndex));
 }
 
 InstructionNode *Assembler::storeLiteralVariable(Oop literalVariable)

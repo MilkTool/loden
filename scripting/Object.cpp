@@ -374,10 +374,39 @@ LODTALK_END_CLASS_TABLE()
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(Integer, Number, OF_EMPTY, 0);
 
 // SmallInteger
+static Oop SmallInteger_printString(Oop self)
+{
+    if(!self.isSmallInteger())
+        nativeError("expected a small integer.");
+
+    char buffer[128];
+    size_t dest = 0;
+    auto temp = self.decodeSmallInteger();
+    bool negative = temp < 0;
+
+    // Extract the integer characters.
+    do
+    {
+        auto d = (temp % 10);
+        if(d <0)
+            d = -d;
+
+        buffer[dest++] = '0' + d;
+        temp /= 10;
+    } while(temp != 0);
+
+    // Put the minus sign.
+    if(negative)
+        buffer[dest++] = '-';
+
+    return Oop::fromPointer(ByteString::fromNativeReverseRange(buffer, dest));
+}
+
 LODTALK_BEGIN_CLASS_SIDE_TABLE(SmallInteger)
 LODTALK_END_CLASS_SIDE_TABLE()
 
 LODTALK_BEGIN_CLASS_TABLE(SmallInteger)
+    LODTALK_METHOD("printString", SmallInteger_printString)
 LODTALK_END_CLASS_TABLE()
 
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(SmallInteger, Integer, OF_EMPTY, 0);

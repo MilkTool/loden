@@ -630,7 +630,9 @@ Oop MethodSemanticAnalysis::visitAssignmentExpression(AssignmentExpression *node
     // Ensure the reference is an identifier expression.
     auto reference = node->getReference();
     if(!reference->isIdentifierExpression())
+    {
         LODTALK_UNIMPLEMENTED();
+    }
 
     // Ensure the variable is mutable.
     auto identExpr = static_cast<AST::IdentifierExpression*> (reference);
@@ -926,7 +928,7 @@ Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
         auto &localVar = blockLocals[i];
         if(localVar->isCapturedInClosure())
         {
-            localVar->setTemporalVectorIndex(temporalVectorCount + 1);
+            localVar->setTemporalVectorIndex(argumentCount + temporalVectorCount);
             localVar->setTemporalIndex(capturedCount++);
         }
     }
@@ -978,6 +980,7 @@ Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
     if(capturedCount)
     {
         gen.pushNewArray(capturedCount);
+        gen.popStoreTemporal(argumentCount + temporalVectorCount - 1);
 
         // Copy the captured arguments into the temp vector
         for(size_t i = 0; i < argumentCount; ++i)
@@ -1101,7 +1104,6 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
 
 	// Process the arguments
 	auto argumentList = header->getArgumentList();
-    argumentCount = 0;
 	if(argumentList)
         argumentCount = argumentList->getArguments().size();
 
@@ -1113,13 +1115,16 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
         auto &localVar = blockLocals[i];
         if(localVar->isCapturedInClosure())
         {
-            localVar->setTemporalVectorIndex(temporalVectorCount + 1);
+            localVar->setTemporalVectorIndex(argumentCount + temporalVectorCount);
             localVar->setTemporalIndex(capturedCount++);
         }
     }
 
     if(capturedCount)
+    {
         ++temporalVectorCount;
+        ++temporalCount;
+    }
 
     // Compute the local variables indices.
     auto &localVars = node->getLocalVariables();
@@ -1131,7 +1136,10 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
             if(i < argumentCount)
                 localVar->setTemporalIndex(i);
             else
+            {
                 localVar->setTemporalIndex(i + temporalVectorCount);
+                ++temporalCount;
+            }
         }
     }
 
@@ -1139,6 +1147,7 @@ Oop MethodCompiler::visitMethodAST(MethodAST *node)
     if(capturedCount)
     {
         gen.pushNewArray(capturedCount);
+        gen.popStoreTemporal(argumentCount);
 
         // Copy the captured arguments into the temp vector
         for(size_t i = 0; i < argumentCount; ++i)
@@ -1271,7 +1280,7 @@ Oop executeScriptFromFileNamed(const std::string &filename)
 
 	std::string basePathString = dirname(filename);
 
-	return 	executeScriptFromFile(file, filename, basePathString);
+	return executeScriptFromFile(file, filename, basePathString);
 }
 
 // ScriptContext

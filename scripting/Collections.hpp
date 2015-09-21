@@ -99,7 +99,8 @@ class ByteString: public String
 public:
 	static ByteString *basicNativeNew(size_t indexableSize);
 
-	static ByteString *fromNativeRange(const char *star, size_t size);
+	static ByteString *fromNativeRange(const char *start, size_t size);
+    static ByteString *fromNativeReverseRange(const char *start, ptrdiff_t size);
 	static Ref<ByteString> fromNative(const std::string &native);
 
 	Ref<Array> splitVariableNames();

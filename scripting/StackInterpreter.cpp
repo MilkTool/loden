@@ -511,6 +511,7 @@ private:
 	{
         fetchNextInstructionOpcode();
         auto temporalIndex = currentOpcode & 7;
+
         setTemporary(temporalIndex, popOop());
 	}
 

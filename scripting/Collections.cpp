@@ -112,6 +112,15 @@ ByteString *ByteString::fromNativeRange(const char *start, size_t size)
 	return reinterpret_cast<ByteString*> (result);
 }
 
+ByteString *ByteString::fromNativeReverseRange(const char *start, ptrdiff_t size)
+{
+    auto result = basicNativeNew(size);
+    auto dest = result->getFirstFieldPointer();
+    for(ptrdiff_t i = 0; i < size; ++i)
+        dest[i] = start[size - i - 1];
+	return reinterpret_cast<ByteString*> (result);
+}
+
 std::string ByteString::getString()
 {
 	auto begin = getFirstFieldPointer();
