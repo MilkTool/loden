@@ -34,6 +34,8 @@ public:
     size_t blockActivationSelectorCount;
     size_t specialMessageSelectorFirst;
     size_t specialMessageSelectorCount;
+    size_t compilerMessageSelectorFirst;
+    size_t compilerMessageSelectorCount;
 };
 
 static SpecialRuntimeObjects *theSpecialRuntimeObjects = nullptr;
@@ -119,6 +121,30 @@ void SpecialRuntimeObjects::createSpecialObjectTable()
 
     specialMessageSelectorCount = specialObjectTable.size() - specialMessageSelectorFirst;
     assert(specialMessageSelectorCount == (size_t)SpecialMessageSelector::SpecialMessageCount);
+
+    compilerMessageSelectorFirst = specialObjectTable.size();
+    specialObjectTable.push_back(makeSelector("ifTrue:"));
+    specialObjectTable.push_back(makeSelector("ifFalse:"));
+    specialObjectTable.push_back(makeSelector("ifTrue:ifFalse:"));
+    specialObjectTable.push_back(makeSelector("ifFalse:ifTrue:"));
+    specialObjectTable.push_back(makeSelector("ifNil:"));
+    specialObjectTable.push_back(makeSelector("ifNotNil:"));
+    specialObjectTable.push_back(makeSelector("ifNil:ifNotNil:"));
+    specialObjectTable.push_back(makeSelector("ifNotNil:ifNil:"));
+
+    // Loops
+    specialObjectTable.push_back(makeSelector("whileTrue:"));
+    specialObjectTable.push_back(makeSelector("whileFalse:"));
+    specialObjectTable.push_back(makeSelector("repeat"));
+    specialObjectTable.push_back(makeSelector("doWhileTrue:"));
+    specialObjectTable.push_back(makeSelector("doWhileFalse:"));
+
+    // Iteration
+    specialObjectTable.push_back(makeSelector("to:by:do:"));
+    specialObjectTable.push_back(makeSelector("to:do:"));
+
+    compilerMessageSelectorCount = specialObjectTable.size() - compilerMessageSelectorFirst;
+    assert(compilerMessageSelectorCount == (size_t)CompilerOptimizedSelector::CompilerMessageCount);
 }
 
 void SpecialRuntimeObjects::createSpecialClassTable()
@@ -503,5 +529,25 @@ Oop getSpecialMessageSelector(SpecialMessageSelector selectorIndex)
     auto specialObjects = getSpecialRuntimeObjects();
     return specialObjects->specialObjectTable[specialObjects->specialMessageSelectorFirst + (size_t)selectorIndex];
 }
+
+Oop getCompilerOptimizedSelector(CompilerOptimizedSelector selectorIndex)
+{
+    auto specialObjects = getSpecialRuntimeObjects();
+    return specialObjects->specialObjectTable[specialObjects->compilerMessageSelectorFirst + (size_t)selectorIndex];
+}
+
+CompilerOptimizedSelector getCompilerOptimizedSelectorId(Oop selector)
+{
+    auto specialObjects = getSpecialRuntimeObjects();
+    for(int i = 0; i < (int)CompilerOptimizedSelector::CompilerMessageCount; ++i)
+    {
+        if(specialObjects->specialObjectTable[specialObjects->compilerMessageSelectorFirst + i] == selector)
+            return CompilerOptimizedSelector(i);
+    }
+
+    return CompilerOptimizedSelector::Invalid;
+
+}
+
 
 } // End of namespace Lodtalk

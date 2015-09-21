@@ -603,11 +603,27 @@ public:
     virtual Oop visitThisContextReference(ThisContextReference *node);
 
 private:
+    bool optimizeMessage(MessageSendNode *node, CompilerOptimizedSelector selectorId);
+    void inlineBlock(Node *node, int argumentCount);
 
     MethodAST::LocalVariables localVariables;
     Node *localContext;
-    int blockDepth;
 };
+
+void MethodSemanticAnalysis::inlineBlock(Node *node, int argumentCount)
+{
+    if(node->isBlockExpression())
+    {
+        auto block = reinterpret_cast<BlockExpression*> (node);
+        if(argumentCount >= 0 && (int)block->getArgumentCount() != argumentCount)
+            error(node, "this block has an invalid number of parameters.");
+
+        if(block)
+            block->setInlined(true);
+    }
+
+    node->acceptVisitor(this);
+}
 
 Oop MethodSemanticAnalysis::visitArgument(Argument *node)
 {
@@ -645,16 +661,45 @@ Oop MethodSemanticAnalysis::visitAssignmentExpression(AssignmentExpression *node
 
 Oop MethodSemanticAnalysis::visitBlockExpression(BlockExpression *node)
 {
+    auto argumentList = node->getArgumentList();
+
+    if(node->isInlined())
+    {
+        if(argumentList)
+        {
+            auto &arguments = argumentList->getArguments();
+            auto argumentCount = arguments.size();
+
+            // Create the arguments scope.
+            auto argumentScope = std::make_shared<LocalScope> (currentScope);
+            for(size_t i = 0; i < argumentCount; ++i)
+            {
+                auto &arg = arguments[i];
+                auto res = argumentScope->addArgument(arg->getSymbolOop(), localContext);
+                if(!res)
+                    error(arg, "the argument has the same name as another argument.");
+                node->addInlineArgument(res);
+                localVariables.push_back(res);
+            }
+
+            pushScope(argumentScope);
+        }
+
+        // Visit the method body
+        node->getBody()->acceptVisitor(this);
+
+        if(argumentList)
+            popScope();
+        return Oop();
+    }
+
     // Store the local context.
     auto oldLocalContext = localContext;
     localContext = node;
-    ++blockDepth;
-    node->setBlockDepth(blockDepth);
     FunctionalNode::LocalVariables oldLocalVariables;
     oldLocalVariables.swap(localVariables);
 
     // Process the arguments
-	auto argumentList = node->getArgumentList();
 	if(argumentList)
 	{
 		auto &arguments = argumentList->getArguments();
@@ -686,7 +731,6 @@ Oop MethodSemanticAnalysis::visitBlockExpression(BlockExpression *node)
     // Restore the local context.
     localContext = oldLocalContext;
     oldLocalVariables.swap(localVariables);
-    --blockDepth;
 
     return Oop();
 }
@@ -728,11 +772,25 @@ Oop MethodSemanticAnalysis::visitLocalDeclaration(LocalDeclaration *node)
 
 Oop MethodSemanticAnalysis::visitMessageSendNode(MessageSendNode *node)
 {
-    // Visit the receiver.
-	node->getReceiver()->acceptVisitor(this);
-
 	// Visit the arguments in reverse order.
 	auto &chained = node->getChainedMessages();
+
+    // Only try to optimize some message when they aren't in a chain.
+    if(chained.empty())
+    {
+        auto selector = node->getSelectorOop();
+
+        // If this is an optimized message, implement inlined.
+        auto optimizedSelector = getCompilerOptimizedSelectorId(selector);
+        if(optimizedSelector != CompilerOptimizedSelector::Invalid)
+        {
+            if(optimizeMessage(node, optimizedSelector))
+                return Oop();
+        }
+    }
+
+    // Visit the receiver.
+	node->getReceiver()->acceptVisitor(this);
 
 	// Send each message in the chain
 	for(int i = -1; i < (int)chained.size(); ++i)
@@ -748,12 +806,81 @@ Oop MethodSemanticAnalysis::visitMessageSendNode(MessageSendNode *node)
 	return Oop();
 }
 
+bool MethodSemanticAnalysis::optimizeMessage(MessageSendNode *node, CompilerOptimizedSelector selectorId)
+{
+    auto receiver = node->getReceiver();
+    auto arguments = node->getArguments();
+
+    switch(selectorId)
+    {
+    case CompilerOptimizedSelector::IfTrue:
+    case CompilerOptimizedSelector::IfFalse:
+        {
+            auto thenBlock = arguments[0];
+            receiver->acceptVisitor(this);
+            inlineBlock(thenBlock, 0);
+        }
+        break;
+    case CompilerOptimizedSelector::IfTrueIfFalse:
+    case CompilerOptimizedSelector::IfFalseIfTrue:
+        {
+            auto thenBlock = arguments[0];
+            auto elseBlock = arguments[1];
+            receiver->acceptVisitor(this);
+            inlineBlock(thenBlock, 0);
+            inlineBlock(elseBlock, 0);
+        }
+        break;
+    case CompilerOptimizedSelector::WhileTrue:
+    case CompilerOptimizedSelector::WhileFalse:
+        {
+            if(!receiver->isBlockExpression())
+                return false;
+            auto conditionBlock = receiver;
+            auto bodyBlock = arguments[0];
+            inlineBlock(conditionBlock, 0);
+            inlineBlock(bodyBlock, 0);
+        }
+        break;
+    case CompilerOptimizedSelector::ToDo:
+        {
+            auto startValue = receiver;
+            auto stopValue = arguments[0];
+            auto bodyBlock = arguments[1];
+            if(!bodyBlock->isBlockExpression())
+                return false;
+
+            startValue->acceptVisitor(this);
+            stopValue->acceptVisitor(this);
+            inlineBlock(bodyBlock, 1);
+        }
+        break;
+    case CompilerOptimizedSelector::ToByDo:
+        {
+            auto startValue = receiver;
+            auto stopValue = arguments[0];
+            auto stepValue = arguments[1];
+            auto bodyBlock = arguments[2];
+            if(!bodyBlock->isBlockExpression())
+                return false;
+
+            startValue->acceptVisitor(this);
+            stopValue->acceptVisitor(this);
+            stepValue->acceptVisitor(this);
+            inlineBlock(bodyBlock, 1);
+        }
+        break;
+    default:
+        LODTALK_UNIMPLEMENTED();
+    }
+
+    return true;
+}
+
 Oop MethodSemanticAnalysis::visitMethodAST(MethodAST *node)
 {
     // Set the local context.
     localContext = node;
-    blockDepth = 0;
-    node->setBlockDepth(blockDepth);
 
     // Get the method header.
 	auto header = node->getHeader();
@@ -869,6 +996,13 @@ public:
 	virtual Oop visitThisContextReference(ThisContextReference *node);
 
 private:
+    bool generateOptimizedMessage(MessageSendNode *node, CompilerOptimizedSelector optimizedSelector);
+    void generateIf(MessageSendNode *node, Oop trueValue, Node *receiver, Node *trueBranch);
+    void generateIfElse(MessageSendNode *node, Oop trueValue, Node *receiver, Node *trueBranch, Node *falseBranch);
+    void generateWhile(MessageSendNode *node, Oop trueValue, Node *receiver, Node *bodyNode);
+    void generateToDo(MessageSendNode *node, Node *receiver, Node *stopNode, Node *bodyNode);
+    void generateToByDo(MessageSendNode *node, Node *receiver, Node *stopNode, Node *stepNode, Node *bodyNode);
+
 	OopRef selector;
 	OopRef classBinding;
 	MethodAssembler::Assembler gen;
@@ -908,6 +1042,12 @@ Oop MethodCompiler::visitAssignmentExpression(AssignmentExpression *node)
 
 Oop MethodCompiler::visitBlockExpression(BlockExpression *node)
 {
+    if(node->isInlined())
+    {
+        // Visit the method body
+        return node->getBody()->acceptVisitor(this);
+    }
+
     // Store the local context
     auto oldLocalContext = localContext;
     localContext = node;
@@ -1053,14 +1193,215 @@ Oop MethodCompiler::visitLocalDeclaration(LocalDeclaration *node)
 	LODTALK_UNIMPLEMENTED();
 }
 
+bool MethodCompiler::generateOptimizedMessage(MessageSendNode *node, CompilerOptimizedSelector optimizedSelector)
+{
+    auto arguments = node->getArguments();
+    auto receiver = node->getReceiver();
+
+    switch(optimizedSelector)
+    {
+    case CompilerOptimizedSelector::IfTrue:
+        generateIf(node, trueOop(), receiver, arguments[0]);
+        break;
+    case CompilerOptimizedSelector::IfFalse:
+        generateIf(node, falseOop(), receiver, arguments[0]);
+        break;
+    case CompilerOptimizedSelector::IfTrueIfFalse:
+        generateIfElse(node, trueOop(), receiver, arguments[0], arguments[1]);
+        break;
+    case CompilerOptimizedSelector::IfFalseIfTrue:
+        generateIfElse(node, falseOop(), receiver, arguments[0], arguments[1]);
+        break;
+    case CompilerOptimizedSelector::WhileTrue:
+        if(!receiver->isBlockExpression())
+            return false;
+        generateWhile(node, trueOop(), receiver, arguments[0]);
+        break;
+    case CompilerOptimizedSelector::WhileFalse:
+        if(!receiver->isBlockExpression())
+            return false;
+        generateWhile(node, falseOop(), receiver, arguments[0]);
+        break;
+    case CompilerOptimizedSelector::ToDo:
+        if(!arguments[1]->isBlockExpression())
+            return false;
+        generateToDo(node, receiver, arguments[0], arguments[1]);
+        break;
+    case CompilerOptimizedSelector::ToByDo:
+        if(!arguments[2]->isBlockExpression())
+            return false;
+        generateToByDo(node, receiver, arguments[0], arguments[1], arguments[2]);
+        break;
+    default:
+        LODTALK_UNIMPLEMENTED();
+    }
+
+    return true;
+}
+
+void MethodCompiler::generateIf(MessageSendNode *node, Oop trueValue, Node *receiver, Node *trueBranch)
+{
+    generateIfElse(node, trueValue, receiver, trueBranch, nullptr);
+}
+
+void MethodCompiler::generateIfElse(MessageSendNode *node, Oop trueValue, Node *receiver, Node *trueBranch, Node *falseBranch)
+{
+    auto elseLabel = gen.makeLabel();
+    auto mergeLabel = gen.makeLabel();
+
+    // Evaluate the condition.
+    receiver->acceptVisitor(this);
+
+    // Compare the condition to the true value.
+    if(trueValue == trueOop())
+    {
+        gen.jumpOnFalse(elseLabel);
+    }
+    else if(trueValue == falseOop())
+    {
+        gen.jumpOnTrue(elseLabel);
+    }
+    else
+    {
+        gen.pushLiteral(trueValue);
+        gen.identityEqual();
+        gen.jumpOnTrue(elseLabel);
+    }
+
+    // Generate the true branch.
+    trueBranch->acceptVisitor(this);
+    if(!trueBranch->isBlockExpression())
+        gen.sendValue();
+    gen.jump(mergeLabel);
+
+    // Generate the false branch.
+    gen.putLabel(elseLabel);
+    if(falseBranch)
+    {
+        falseBranch->acceptVisitor(this);
+        if(!falseBranch->isBlockExpression())
+            gen.sendValue();
+    }
+    else
+        gen.pushNil();
+
+    // Merge the control flow.
+    gen.putLabel(mergeLabel);
+}
+
+void MethodCompiler::generateWhile(MessageSendNode *node, Oop trueValue, Node *receiver, Node *bodyNode)
+{
+    // Enter into the loop.
+    auto *entry = gen.makeLabelHere();
+    auto *exit = gen.makeLabel();
+
+    // Evaluate the condition.
+    receiver->acceptVisitor(this);
+
+    // Compare the condition to the true value.
+    if(trueValue == trueOop())
+    {
+        gen.jumpOnFalse(exit);
+    }
+    else if(trueValue == falseOop())
+    {
+        gen.jumpOnTrue(exit);
+    }
+    else
+    {
+        gen.pushLiteral(trueValue);
+        gen.identityEqual();
+        gen.jumpOnTrue(exit);
+    }
+
+    // Enter into the loop body.
+    bodyNode->acceptVisitor(this);
+
+    // Pop the last value.
+    gen.popStackTop();
+
+    // Go back.
+    gen.jump(entry);
+
+    // Continue after the loop.
+    gen.putLabel(exit);
+    gen.pushNil();
+}
+
+void MethodCompiler::generateToDo(MessageSendNode *node, Node *receiver, Node *stopNode, Node *bodyNode)
+{
+    // Get the data from the body.
+    assert(bodyNode->isBlockExpression());
+    auto bodyBlock = reinterpret_cast<BlockExpression*> (bodyNode);
+    auto &bodyArguments = bodyBlock->getInlineArguments();
+    assert(bodyBlock->getArgumentCount() == 1);
+    assert(bodyArguments.size() == 1);
+    auto &iterationVariable = bodyArguments[0];
+
+    // Generate the starting value.
+    receiver->acceptVisitor(this);
+    iterationVariable->generateStore(gen, localContext);
+
+    // Generate the end value.
+    stopNode->acceptVisitor(this);
+
+    // The loop condition.
+    auto loopCondition = gen.makeLabelHere();
+    auto loopEnd = gen.makeLabel();
+
+    // Check the loop condition.
+    gen.duplicateStackTop();
+    iterationVariable->generateLoad(gen, localContext);
+    gen.greaterEqual();
+    gen.jumpOnFalse(loopEnd);
+
+    // The loop body.
+    bodyNode->acceptVisitor(this);
+    if(!bodyNode->isBlockExpression())
+        gen.sendValueWithArg();
+    gen.popStackTop();
+
+    // Increase the value by one.
+    iterationVariable->generateLoad(gen, localContext);
+    gen.pushOne();
+    gen.add();
+    iterationVariable->generateStore(gen, localContext);
+    gen.popStackTop();
+    gen.jump(loopCondition);
+
+    // End of the loop.
+    gen.putLabel(loopEnd);
+    gen.popStackTop(); // The stop value
+}
+
+void MethodCompiler::generateToByDo(MessageSendNode *node, Node *receiver, Node *stopNode, Node *stepNode, Node *bodyNode)
+{
+    LODTALK_UNIMPLEMENTED();
+}
+
 Oop MethodCompiler::visitMessageSendNode(MessageSendNode *node)
 {
 	// Visit the receiver.
-	node->getReceiver()->acceptVisitor(this);
-    bool isSuper = node->getReceiver()->isSuperReference();
+	bool isSuper = node->getReceiver()->isSuperReference();
 
 	// Visit the arguments in reverse order.
 	auto &chained = node->getChainedMessages();
+
+    // Only try to optimize some message when they aren't in a chain.
+    if(chained.empty())
+    {
+        auto selector = node->getSelectorOop();
+
+        // If this is an optimized message, try to optimize
+        auto optimizedSelector = getCompilerOptimizedSelectorId(selector);
+        if(optimizedSelector != CompilerOptimizedSelector::Invalid)
+        {
+            if(generateOptimizedMessage(node, optimizedSelector))
+                return Oop();
+        }
+    }
+
+    node->getReceiver()->acceptVisitor(this);
 
 	// Send each message in the chain
 	bool first = true;

@@ -28,6 +28,11 @@ bool Node::isSuperReference() const
     return false;
 }
 
+bool Node::isBlockExpression() const
+{
+    return false;
+}
+
 // Identifier expression
 IdentifierExpression::IdentifierExpression(const std::string &identifier)
 	: identifier(identifier)
@@ -381,6 +386,32 @@ SequenceNode *BlockExpression::getBody() const
 {
 	return body;
 }
+
+bool BlockExpression::isBlockExpression() const
+{
+    return true;
+}
+
+bool BlockExpression::isInlined() const
+{
+    return isInlined_;
+}
+
+void BlockExpression::setInlined(bool newInlined)
+{
+    isInlined_ = newInlined;
+}
+
+void BlockExpression::addInlineArgument(const TemporalVariableLookupPtr &variable)
+{
+    inlineArguments.push_back(variable);
+}
+
+const BlockExpression::InlineArguments &BlockExpression::getInlineArguments() const
+{
+    return inlineArguments;
+}
+
 // FunctionalNode
 void FunctionalNode::setLocalVariables(const LocalVariables &newLocalVariables)
 {
@@ -390,16 +421,6 @@ void FunctionalNode::setLocalVariables(const LocalVariables &newLocalVariables)
 const FunctionalNode::LocalVariables &FunctionalNode::getLocalVariables() const
 {
     return localVariables;
-}
-
-int FunctionalNode::getBlockDepth() const
-{
-    return blockDepth;
-}
-
-void FunctionalNode::setBlockDepth(int newDepth)
-{
-    blockDepth = newDepth;
 }
 
 size_t FunctionalNode::getArgumentCount() const

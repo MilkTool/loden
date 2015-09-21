@@ -465,7 +465,7 @@ protected:
 
     int blockSize()
     {
-        return blockEnd->getPosition() - getPosition() - getLastSize();
+        return blockEnd->getLastPosition() - getLastPosition() - getSize();
     }
 
     int extendBValue()
@@ -516,10 +516,10 @@ public:
 		}
 
 		if(argumentCount > BytecodeSet::Send_ArgumentCountMask)
-			assert(0 && "unimplemented");
+			LODTALK_UNIMPLEMENTED();
 
 		if(selectorIndex > BytecodeSet::Send_LiteralIndexMask)
-			assert(0 && "unimplemented");
+			LODTALK_UNIMPLEMENTED();
 
 		*buffer++ = BytecodeSet::Send;
 		*buffer++ = (argumentCount & BytecodeSet::Send_ArgumentCountMask) |
@@ -538,10 +538,10 @@ protected:
 		size_t count = 2;
 
 		if(argumentCount > BytecodeSet::Send_ArgumentCountMask)
-			assert(0 && "unimplemented");
+			LODTALK_UNIMPLEMENTED();
 
  		if(selectorIndex > BytecodeSet::Send_LiteralIndexMask)
-			assert(0 && "unimplemented");
+			LODTALK_UNIMPLEMENTED();
 		return count;
 	}
 
@@ -559,18 +559,132 @@ public:
 
 	virtual uint8_t *encode(uint8_t *buffer)
 	{
-		assert(0 && "unimplemented");
+		LODTALK_UNIMPLEMENTED();
 	}
 
 protected:
 	virtual size_t computeMaxSize()
 	{
-		assert(0 && "unimplemented");
+		LODTALK_UNIMPLEMENTED();
 	}
 
 private:
 	int selectorIndex;
 	int argumentCount;
+};
+
+// UnconditionalJump
+class UnconditionalJump: public InstructionNode
+{
+public:
+	UnconditionalJump(Label *destination)
+		: destination(destination) {}
+
+	virtual uint8_t *encode(uint8_t *buffer)
+	{
+        auto delta = jumpDeltaValue();
+        if(delta == 0)
+            return buffer;
+
+        if(1 <= delta && delta <= 8)
+        {
+            *buffer++ = BytecodeSet::JumpShortFirst + delta - 1;
+            return buffer;
+        }
+
+        buffer = encodeExtB(buffer, delta / 256);
+        *buffer++ = BytecodeSet::Jump;
+        *buffer++ = delta % 256;
+		return buffer;
+	}
+
+protected:
+    ptrdiff_t jumpDeltaValue()
+    {
+        return destination->getPosition() - getPosition() - getSize();
+    }
+
+    ptrdiff_t lastJumpDeltaValue()
+    {
+        return destination->getLastPosition() - getLastPosition() - getLastSize();
+    }
+
+	virtual size_t computeMaxSize()
+	{
+		return 2 + ExtensibleBytecodeSizeMax;
+	}
+
+    virtual size_t computeBetterSize()
+	{
+        auto delta = lastJumpDeltaValue();
+        if(delta == 0)
+            return 0;
+        if(1 <= delta && delta <= 8)
+            return 1;
+        return 2 + sizeofExtB(delta / 256);
+	}
+
+private:
+	Label *destination;
+};
+
+// ConditionalJump
+class ConditionalJump: public InstructionNode
+{
+public:
+	ConditionalJump(Label *destination, bool condition)
+		: destination(destination), condition(condition) {}
+
+	virtual uint8_t *encode(uint8_t *buffer)
+	{
+        auto delta = jumpDeltaValue();
+        if(delta == 0)
+            return buffer;
+
+        if(1 <= delta && delta <= 8)
+        {
+            if(condition)
+                *buffer++ = BytecodeSet::JumpOnTrueShortFirst + delta - 1;
+            else
+                *buffer++ = BytecodeSet::JumpOnFalseShortFirst + delta - 1;
+            return buffer;
+        }
+
+        buffer = encodeExtB(buffer, delta / 256);
+        *buffer++ = condition ? BytecodeSet::JumpOnTrue : BytecodeSet::JumpOnFalse;
+        *buffer++ = delta % 256;
+		return buffer;
+	}
+
+protected:
+    ptrdiff_t jumpDeltaValue()
+    {
+        return destination->getPosition() - getPosition() - getSize();
+    }
+
+    ptrdiff_t lastJumpDeltaValue()
+    {
+        return destination->getLastPosition() - getLastPosition() - getLastSize();
+    }
+
+	virtual size_t computeMaxSize()
+	{
+		return 2 + ExtensibleBytecodeSizeMax;
+	}
+
+    virtual size_t computeBetterSize()
+	{
+        auto delta = lastJumpDeltaValue();
+        if(delta == 0)
+            return 0;
+        if(1 <= delta && delta <= 8)
+            return 1;
+        return 2 + sizeofExtB(delta / 256);
+	}
+
+private:
+	Label *destination;
+    bool condition;
 };
 
 // The assembler
@@ -647,7 +761,7 @@ size_t Assembler::computeInstructionsSize()
 
 	// Compute the optimal iteratively.
 	size_t oldSize = maxSize;
-	size_t currentSize = 0;
+	size_t currentSize = maxSize;
 	do
 	{
 		oldSize = currentSize;
@@ -757,6 +871,17 @@ InstructionNode *Assembler::duplicateStackTop()
 
 InstructionNode *Assembler::pushLiteral(Oop literal)
 {
+    if(literal == nilOop())
+        return pushNil();
+    if(literal == trueOop())
+        return pushTrue();
+    if(literal == falseOop())
+        return pushFalse();
+    if(literal == Oop::encodeSmallInteger(1))
+        return pushOne();
+    if(literal == Oop::encodeSmallInteger(0))
+        return pushZero();
+
 	return pushLiteralIndex(addLiteral(literal));
 }
 
@@ -875,6 +1000,56 @@ InstructionNode *Assembler::pushZero()
 	return addInstruction(new SingleBytecodeInstruction(BytecodeSet::PushZero, false));
 }
 
+InstructionNode *Assembler::sendValue()
+{
+    return addInstruction(new SingleBytecodeInstruction(BytecodeSet::SpecialMessageValue, false));
+}
+
+InstructionNode *Assembler::sendValueWithArg()
+{
+    return addInstruction(new SingleBytecodeInstruction(BytecodeSet::SpecialMessageValueArg, false));
+}
+
+InstructionNode *Assembler::add()
+{
+    return addInstruction(new SingleBytecodeInstruction(BytecodeSet::SpecialMessageAdd, false));
+}
+
+InstructionNode *Assembler::greaterThan()
+{
+    return addInstruction(new SingleBytecodeInstruction(BytecodeSet::SpecialMessageGreaterThan, false));
+}
+
+InstructionNode *Assembler::greaterEqual()
+{
+    return addInstruction(new SingleBytecodeInstruction(BytecodeSet::SpecialMessageGreaterEqual, false));
+}
+
+InstructionNode *Assembler::lessEqual()
+{
+    return addInstruction(new SingleBytecodeInstruction(BytecodeSet::SpecialMessageLessEqual, false));
+}
+
+InstructionNode *Assembler::lessThan()
+{
+    return addInstruction(new SingleBytecodeInstruction(BytecodeSet::SpecialMessageLessThan, false));
+}
+
+InstructionNode *Assembler::equal()
+{
+    return addInstruction(new SingleBytecodeInstruction(BytecodeSet::SpecialMessageEqual, false));
+}
+
+InstructionNode *Assembler::notEqual()
+{
+    return addInstruction(new SingleBytecodeInstruction(BytecodeSet::SpecialMessageNotEqual, false));
+}
+
+InstructionNode *Assembler::identityEqual()
+{
+    return addInstruction(new SingleBytecodeInstruction(BytecodeSet::SpecialMessageIdentityEqual, false));
+}
+
 InstructionNode *Assembler::send(Oop selector, int argumentCount)
 {
     for(int i = 0; i < (int)SpecialMessageSelector::SpecialMessageCount; ++i)
@@ -891,5 +1066,19 @@ InstructionNode *Assembler::superSend(Oop selector, int argumentCount)
 	return addInstruction(new SuperSendMessage(addLiteral(selector), argumentCount));
 }
 
+InstructionNode *Assembler::jump(Label *destination)
+{
+    return addInstruction(new UnconditionalJump(destination));
+}
+
+InstructionNode *Assembler::jumpOnTrue(Label *destination)
+{
+    return addInstruction(new ConditionalJump(destination, true));
+}
+
+InstructionNode *Assembler::jumpOnFalse(Label *destination)
+{
+    return addInstruction(new ConditionalJump(destination, false));
+}
 } // End of namespace MethodAssembler
 } // End of namespace Lodtalk

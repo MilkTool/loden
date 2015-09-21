@@ -73,6 +73,7 @@ public:
 	virtual Oop acceptVisitor(ASTVisitor *visitor) = 0;
 
 	virtual bool isIdentifierExpression() const;
+    virtual bool isBlockExpression() const;
 	virtual bool isReturnStatement() const;
     virtual bool isSuperReference() const;
 };
@@ -301,15 +302,11 @@ public:
     void setLocalVariables(const LocalVariables &newLocalVariables);
     const LocalVariables &getLocalVariables() const;
 
-    int getBlockDepth() const;
-    void setBlockDepth(int newDepth);
-
     virtual ArgumentList *getArgumentList() const = 0;
     size_t getArgumentCount() const;
 
 private:
     LocalVariables localVariables;
-    int blockDepth;
 };
 
 /**
@@ -318,17 +315,30 @@ private:
 class BlockExpression: public FunctionalNode
 {
 public:
+    typedef std::vector<TemporalVariableLookupPtr> InlineArguments;
+
 	BlockExpression(ArgumentList *argumentList, SequenceNode *body);
 	~BlockExpression();
 
 	virtual Oop acceptVisitor(ASTVisitor *visitor);
 
+    virtual bool isBlockExpression() const;
+
+    virtual bool isInlined() const;
+    virtual void setInlined(bool newInlined);
+
 	ArgumentList *getArgumentList() const;
 	SequenceNode *getBody() const;
 
+    void addInlineArgument(const TemporalVariableLookupPtr &variable);
+    const InlineArguments &getInlineArguments() const;
+    
 private:
 	ArgumentList *argumentList;
 	SequenceNode *body;
+    bool isInlined_;
+
+    InlineArguments inlineArguments;
 };
 
 /**

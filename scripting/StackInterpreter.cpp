@@ -161,7 +161,7 @@ private:
 		return stackOopAtOffset(index*sizeof(Oop));
 	}
 
-	bool condJumpOnNotBoolean(bool jumpType)
+	void condJumpOnNotBoolean(bool jumpType)
 	{
 		LODTALK_UNIMPLEMENTED();
 	}
@@ -312,6 +312,14 @@ private:
         literalVar->value = value;
     }
 
+    void backwardJump(int delta)
+    {
+        pc += delta;
+        fetchNextInstructionOpcode();
+
+        // TODO: This is an opportunity to stop myself.
+    }
+
 	void sendSelectorArgumentCount(Oop selector, int argumentCount)
 	{
 		assert((size_t)argumentCount <= CompiledMethodHeader::ArgumentMask);
@@ -459,6 +467,7 @@ private:
 	{
 		auto delta = (currentOpcode & 7) + 1;
 		pc += delta;
+        fetchNextInstructionOpcode();
 	}
 
 	void interpretJumpOnTrueShort()
@@ -477,6 +486,7 @@ private:
 		else if(condition != falseOop())
 		{
 			// If the condition is not a boolean, trap
+            pushOop(condition);
 			condJumpOnNotBoolean(true);
 		}
 	}
@@ -497,6 +507,7 @@ private:
 		else if(condition != trueOop())
 		{
 			// If the condition is not a boolean, trap
+            pushOop(condition);
 			condJumpOnNotBoolean(false);
 		}
 	}
@@ -741,17 +752,72 @@ private:
 
 	void interpretJump()
 	{
-		LODTALK_UNIMPLEMENTED();
+        auto delta = fetchSByte() + extendB*256;
+        extendB = 0;
+
+        if(delta < 0)
+        {
+            backwardJump(delta);
+        }
+        else
+        {
+            pc += delta;
+            fetchNextInstructionOpcode();
+        }
 	}
 
 	void interpretJumpOnTrue()
 	{
-		LODTALK_UNIMPLEMENTED();
+        auto delta = fetchSByte() + extendB*256 - 1;
+        extendB = 0;
+        fetchNextInstructionOpcode();
+
+        auto condition = popOop();
+        if(condition == trueOop())
+        {
+            if(delta < 0)
+            {
+                backwardJump(delta);
+            }
+            else
+            {
+                pc += delta;
+                fetchNextInstructionOpcode();
+            }
+        }
+        else if(condition != trueOop())
+		{
+			// If the condition is not a boolean, trap
+            pushOop(condition);
+			condJumpOnNotBoolean(true);
+		}
 	}
 
 	void interpretJumpOnFalse()
 	{
-		LODTALK_UNIMPLEMENTED();
+        auto delta = fetchSByte() + extendB*256 - 1;
+        extendB = 0;
+        fetchNextInstructionOpcode();
+
+        auto condition = popOop();
+        if(condition == falseOop())
+        {
+            if(delta < 0)
+            {
+                backwardJump(delta);
+            }
+            else
+            {
+                pc += delta;
+                fetchNextInstructionOpcode();
+            }
+        }
+        else if(condition != trueOop())
+		{
+			// If the condition is not a boolean, trap
+            pushOop(condition);
+			condJumpOnNotBoolean(false);
+		}
 	}
 
 	void interpretPopStoreReceiverVariable()

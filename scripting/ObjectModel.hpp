@@ -139,6 +139,37 @@ enum class SpecialMessageSelector
     ArithmeticMessageCount = BitOr - FirstArithmeticMessage,
 };
 
+/**
+ * Special selectors that are optimized by the compilers.
+ */
+enum class CompilerOptimizedSelector
+{
+    Invalid = -1,
+
+    // Branches
+    IfTrue = 0,
+    IfFalse,
+    IfTrueIfFalse,
+    IfFalseIfTrue,
+    IfNil,
+    IfNotNil,
+    IfNilIfNotNil,
+    IfNotNilIfNil,
+
+    // Loops
+    WhileTrue,
+    WhileFalse,
+    Repeat,
+    DoWhileTrue,
+    DoWhileFalse,
+
+    // Iteration
+    ToByDo,
+    ToDo,
+
+    CompilerMessageCount,
+};
+
 inline size_t variableSlotSizeFor(ObjectFormat format)
 {
 	switch(format)
@@ -919,6 +950,8 @@ std::string getByteStringData(Oop object);
 // Other special objects.
 Oop getBlockActivationSelector(size_t argumentCount);
 Oop getSpecialMessageSelector(SpecialMessageSelector selectorIndex);
+Oop getCompilerOptimizedSelector(CompilerOptimizedSelector selectorIndex);
+CompilerOptimizedSelector getCompilerOptimizedSelectorId(Oop selector);
 
 // Message sending
 template<typename... Args>

@@ -30,6 +30,11 @@ public:
 		return position;
 	}
 
+    size_t getLastPosition()
+	{
+		return lastPosition;
+	}
+
     size_t getLastSize()
     {
         return lastSize;
@@ -43,6 +48,7 @@ public:
     void commitSize()
     {
         lastSize = size;
+        lastPosition = position;
     }
 
 	size_t computeMaxSizeForPosition(size_t newPosition)
@@ -74,8 +80,9 @@ protected:
 
 private:
 	size_t position;
-    size_t lastSize;
 	size_t size;
+    size_t lastPosition;
+    size_t lastSize;
 };
 
 class Label: public InstructionNode
@@ -160,8 +167,23 @@ public:
 	InstructionNode *pushOne();
 	InstructionNode *pushZero();
 
+    InstructionNode *sendValue();
+    InstructionNode *sendValueWithArg();
 	InstructionNode *send(Oop selector, int argumentCount);
 	InstructionNode *superSend(Oop selector, int argumentCount);
+
+    InstructionNode *add();
+    InstructionNode *greaterEqual();
+    InstructionNode *greaterThan();
+    InstructionNode *lessEqual();
+    InstructionNode *lessThan();
+    InstructionNode *equal();
+    InstructionNode *notEqual();
+    InstructionNode *identityEqual();
+
+    InstructionNode *jump(Label *destination);
+    InstructionNode *jumpOnTrue(Label *destination);
+    InstructionNode *jumpOnFalse(Label *destination);
 
 private:
 	size_t computeInstructionsSize();
