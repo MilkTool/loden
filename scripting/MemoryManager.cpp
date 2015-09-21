@@ -35,6 +35,7 @@ ClassTable *ClassTable::get()
 
 ClassDescription *ClassTable::getClassFromIndex(size_t index)
 {
+    ReadLock<SharedMutex> l(sharedMutex);
     if(index >= size)
         return reinterpret_cast<ClassDescription*> (&NilObject);
 
@@ -45,6 +46,7 @@ ClassDescription *ClassTable::getClassFromIndex(size_t index)
 
 void ClassTable::registerClass(Oop clazz)
 {
+    WriteLock<SharedMutex> l(sharedMutex);
     auto pageIndex = size / OopsPerPage;
     auto elementIndex = size % OopsPerPage;
     if(elementIndex == 0 && pageIndex == pageTable.size())
@@ -56,6 +58,7 @@ void ClassTable::registerClass(Oop clazz)
 
 void ClassTable::addSpecialClass(ClassDescription *description, size_t index)
 {
+    WriteLock<SharedMutex> l(sharedMutex);
     auto pageIndex = index / OopsPerPage;
     auto elementIndex = index % OopsPerPage;
 

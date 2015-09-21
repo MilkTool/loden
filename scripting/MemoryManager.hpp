@@ -8,6 +8,7 @@
 
 #include "StackMemory.hpp"
 #include "ObjectModel.hpp"
+#include "Synchronization.hpp"
 
 namespace Lodtalk
 {
@@ -41,6 +42,7 @@ private:
 
     friend class GarbageCollector;
 
+    SharedMutex sharedMutex;
     std::vector<Oop*> pageTable;
     size_t size;
 };
