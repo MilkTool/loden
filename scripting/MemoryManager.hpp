@@ -18,12 +18,39 @@ static constexpr size_t DefaultMaxVMHeapSize = size_t(512)*1024*1024; // 512 MB
 #endif
 
 /**
+ * The class table
+ */
+class ClassTable
+{
+public:
+    ~ClassTable();
+
+    ClassDescription *getClassFromIndex(size_t index);
+
+    void registerClass(Oop clazz);
+    void addSpecialClass(ClassDescription *description, size_t index);
+
+    static ClassTable *get();
+
+private:
+    ClassTable();
+
+    void allocatePage();
+
+    static ClassTable *uniqueInstance;
+
+    friend class GarbageCollector;
+
+    std::vector<Oop*> pageTable;
+    size_t size;
+};
+
+/**
  * The VM heap allocator
  */
 class VMHeap
 {
 public:
-    VMHeap();
     ~VMHeap();
 
     size_t getMaxCapacity();
@@ -44,6 +71,7 @@ public:
     }
 
 private:
+    VMHeap();
     void initialize();
 
     std::mutex mutex;
@@ -104,6 +132,14 @@ private:
 			for(size_t i = 0; i < size; ++i)
 				f(roots[i]);
 		}
+
+        // Traverse the classTable
+        auto classTable = ClassTable::get();
+        for(auto &classTablePage : classTable->pageTable)
+        {
+            for(size_t i = 0; i < OopsPerPage; ++i)
+                f(classTablePage[i]);
+        }
 
 		// Traverse the stacks
 		for(auto stack : currentStacks)

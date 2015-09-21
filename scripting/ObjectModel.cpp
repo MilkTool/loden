@@ -154,12 +154,16 @@ void SpecialRuntimeObjects::createSpecialClassTable()
 	specialClassTable.push_back(className::MetaclassObject);
 #include "SpecialClasses.inc"
 #undef SPECIAL_CLASS_NAME
+
+    // Register the special classes in the class table.
+    auto classTable = ClassTable::get();
+    for(size_t i = 0; i < specialClassTable.size(); ++i)
+        classTable->addSpecialClass(specialClassTable[i], i);
 }
 
 void registerRuntimeGCRoots()
 {
     auto specialObjects = getSpecialRuntimeObjects();
-
 
     // Register the runtime GC  objects table.
 	registerGCRoot(&specialObjects->specialObjectTable[0], specialObjects->specialObjectTable.size());
@@ -310,21 +314,14 @@ double floatValueOf(Oop object)
 // Get a class from its index
 Oop getClassFromIndex(int classIndex)
 {
-	// TODO: Use a proper class index manager
-	auto specialObjects = getSpecialRuntimeObjects();
-	if((size_t)classIndex >= specialObjects->specialClassTable.size())
-	{
-		LODTALK_UNIMPLEMENTED();
-	}
-
-	return Oop::fromPointer(specialObjects->specialClassTable[classIndex]);
+    auto clazz = ClassTable::get()->getClassFromIndex(classIndex);
+	return Oop::fromPointer(clazz);
 }
 
 Oop getClassFromOop(Oop oop)
 {
 	return getClassFromIndex(classIndexOf(oop));
 }
-
 
 bool isClassOrMetaclass(Oop oop)
 {

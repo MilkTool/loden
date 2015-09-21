@@ -1,16 +1,75 @@
 #ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #else
 #include <unistd.h>
 #include <sys/mman.h>
 #endif
 
+#include <algorithm>
 #include <string.h>
 #include "Method.hpp"
 #include "MemoryManager.hpp"
 
 namespace Lodtalk
 {
+// The class table
+ClassTable::ClassTable()
+    : size(0)
+{
+}
+
+ClassTable::~ClassTable()
+{
+    for(auto &page : pageTable)
+        delete [] page;
+}
+
+ClassTable *ClassTable::uniqueInstance = nullptr;
+ClassTable *ClassTable::get()
+{
+    if(!uniqueInstance)
+        uniqueInstance = new ClassTable();
+    return uniqueInstance;
+}
+
+ClassDescription *ClassTable::getClassFromIndex(size_t index)
+{
+    if(index >= size)
+        return reinterpret_cast<ClassDescription*> (&NilObject);
+
+    auto pageIndex = index / OopsPerPage;
+    auto elementIndex = index % OopsPerPage;
+    return reinterpret_cast<ClassDescription*> (pageTable[pageIndex][elementIndex].pointer);
+}
+
+void ClassTable::registerClass(Oop clazz)
+{
+    auto pageIndex = size / OopsPerPage;
+    auto elementIndex = size % OopsPerPage;
+    if(elementIndex == 0 && pageIndex == pageTable.size())
+        allocatePage();
+
+    pageTable[pageIndex][elementIndex] = clazz;
+    ++size;
+}
+
+void ClassTable::addSpecialClass(ClassDescription *description, size_t index)
+{
+    auto pageIndex = index / OopsPerPage;
+    auto elementIndex = index % OopsPerPage;
+
+    for(size_t i = pageTable.size(); i < pageIndex + 1; ++i)
+        allocatePage();
+
+    pageTable[pageIndex][elementIndex] = Oop::fromPointer(description);
+    size = std::max(size, index + 1);
+}
+
+void ClassTable::allocatePage()
+{
+    pageTable.push_back(new Oop[OopsPerPage]);
+}
 
 // Extra forwarding pointer used for compaction
 struct AllocatedObject

@@ -13,6 +13,8 @@ const size_t PageSize = 4096;
 const size_t PageSizeMask = PageSize - 1;
 const size_t PageSizeShift = 12;
 
+const size_t OopsPerPage = PageSize / sizeof(void*);
+
 }
 
 #endif // LODTALK_COMMON_HPP
