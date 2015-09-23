@@ -75,7 +75,7 @@ while: a
 
 self method [
 loop
-    self printLine: (1 to: 8 do: [:i |
+    self printLine: (1 to: 40 do: [:i |
         self printString: i asString;
             printString: ' '
     ]).

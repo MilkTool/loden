@@ -362,7 +362,7 @@ void ArgumentList::appendArgument(Argument *argument)
 
 // Block expression
 BlockExpression::BlockExpression(ArgumentList *argumentList, SequenceNode *body)
-	: argumentList(argumentList), body(body)
+	: argumentList(argumentList), body(body), isInlined_(false)
 {
 }
 
