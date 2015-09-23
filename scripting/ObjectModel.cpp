@@ -323,6 +323,11 @@ Oop getClassFromOop(Oop oop)
 	return getClassFromIndex(classIndexOf(oop));
 }
 
+void registerClassInTable(Oop clazz)
+{
+    ClassTable::get()->registerClass(clazz);
+}
+
 bool isClassOrMetaclass(Oop oop)
 {
 	auto classIndex = classIndexOf(oop);
@@ -404,7 +409,7 @@ Oop makeByteString(const std::string &content)
 
 Oop makeByteSymbol(const std::string &content)
 {
-	return ByteSymbol::fromNative(content).getOop();
+	return ByteSymbol::fromNative(content);
 }
 
 Oop makeSelector(const std::string &content)
@@ -431,6 +436,11 @@ static SystemDictionary *getGlobalDictionary()
 	{
 		theGlobalDictionary = SystemDictionary::create();
 		registerGCRoot((Oop*)&theGlobalDictionary, 1);
+
+        // Store the smalltalk image in the global dictionary.
+        Ref<SmalltalkImage> smalltalk = SmalltalkImage::create();
+        smalltalk->globals = Oop::fromPointer(theGlobalDictionary);
+        setGlobalVariable(makeByteSymbol("Smalltalk"), smalltalk.getOop());
 	}
 
 	return theGlobalDictionary;
@@ -438,7 +448,7 @@ static SystemDictionary *getGlobalDictionary()
 
 Oop setGlobalVariable(const char *name, Oop value)
 {
-	return setGlobalVariable(ByteSymbol::fromNative(name).getOop(), value);
+	return setGlobalVariable(ByteSymbol::fromNative(name), value);
 }
 
 Oop setGlobalVariable(Oop symbol, Oop value)
@@ -471,7 +481,7 @@ Oop getGlobalFromSymbol(Oop symbol)
 
 Oop getGlobalValueFromName(const char *name)
 {
-	return getGlobalValueFromSymbol(ByteSymbol::fromNative(name).getOop());
+	return getGlobalValueFromSymbol(ByteSymbol::fromNative(name));
 }
 
 Oop getGlobalValueFromSymbol(Oop symbol)

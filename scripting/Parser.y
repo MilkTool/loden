@@ -238,7 +238,7 @@ literal: INTEGER    { $$ = new LiteralNode(signedInt64ObjectFor($1)); }
     | REAL          { $$ = new LiteralNode(floatObjectFor($1)); }
     | STRING        { $$ = new LiteralNode(ByteString::fromNative(readStringValue($1)).getOop()); }
     | CHARACTER     { $$ = new LiteralNode(Oop::encodeCharacter($1)); }
-    | SYMBOL        { $$ = new LiteralNode(ByteSymbol::fromNative(readStringValue($1)).getOop()); }
+    | SYMBOL        { $$ = new LiteralNode(ByteSymbol::fromNative(readStringValue($1))); }
     ;
 
 binarySelector: BINARY_SELECTOR { $$ = $1; }

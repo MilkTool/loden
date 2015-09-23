@@ -28,17 +28,17 @@ class ProtoObject
 	LODTALK_NATIVE_CLASS();
 public:
 	ObjectHeader object_header_;
-	
+
 	Oop selfOop()
 	{
 		return Oop::fromPointer(this);
 	}
-	
+
 	Oop nativePerformWithArguments(Oop selector, int argumentCount, Oop *arguments)
 	{
 		return sendMessage(selfOop(), selector, argumentCount, arguments);
 	}
-	
+
 	uint8_t *getFirstFieldPointer()
 	{
 		uint8_t *result = reinterpret_cast<uint8_t *> (&object_header_);
@@ -52,12 +52,12 @@ public:
 	{
 		return selfOop().getNumberOfElements();
 	}
-	
+
 	int identityHashValue() const
 	{
 		return object_header_.identityHash;
 	}
-	
+
 };
 
 /**
@@ -80,9 +80,9 @@ public:
 class Behavior: public Object
 {
 	LODTALK_NATIVE_CLASS();
-public:	
+public:
 	static constexpr int BehaviorVariableCount = 5;
-	
+
 	Behavior* superclass;
 	MethodDictionary *methodDict;
 	Oop format;
@@ -99,7 +99,9 @@ public:
 	Oop lookupSelector(Oop selector);
 
 	Oop getBinding();
-				
+
+    Oop registerInClassTable();
+
 protected:
 	Behavior(Behavior* superclass, MethodDictionaryBuilder methodDictBuilder, ObjectFormat format, int fixedVariableCount)
 		: superclass(superclass), methodDict(methodDictBuilder()), format(Oop::encodeSmallInteger((int)format)), fixedVariableCount(Oop::encodeSmallInteger(fixedVariableCount))
@@ -113,7 +115,7 @@ protected:
  */
 class ClassDescription: public Behavior
 {
-	LODTALK_NATIVE_CLASS();	
+	LODTALK_NATIVE_CLASS();
 protected:
 	ClassDescription(Behavior* superclass, MethodDictionaryBuilder methodDictBuilder, ObjectFormat format, int fixedVariableCount, const char *instanceVariableNames)
 		: Behavior(superclass, methodDictBuilder, format, fixedVariableCount)
@@ -124,13 +126,13 @@ protected:
 
 public:
 	static constexpr int ClassDescriptionVariableCount = BehaviorVariableCount + 2;
-	
+
 	Oop instanceVariables;
 	Oop organization;
-	
+
 protected:
 	static Oop splitVariableNames(const char *instanceVariableNames);
-	
+
 };
 
 /**
@@ -149,11 +151,11 @@ public:
 		name = makeByteSymbol(className);
 		setGlobalVariable(name, Oop::fromPointer(this));
 	}
-	
+
 	std::string getNameString();
-	
+
 	Oop getBinding();
-	
+
 	Oop subclasses;
 	Oop name;
 	Oop classPool;
@@ -172,16 +174,16 @@ class Metaclass: public ClassDescription
 	LODTALK_NATIVE_CLASS();
 public:
 	static constexpr int MetaclassVariableCount = ClassDescriptionVariableCount + 3;
-	
+
 	Metaclass(unsigned int classId, Behavior* superclass, MethodDictionaryBuilder methodDictBuilder, int fixedVariableCount, const char *instanceVariableNames, ClassDescription *thisClassPointer)
 		: ClassDescription(superclass, methodDictBuilder, OF_FIXED_SIZE, Class::ClassVariableCount + fixedVariableCount, instanceVariableNames)
 	{
 		object_header_ = ObjectHeader::specialNativeClass(classId, SCI_Metaclass, MetaclassVariableCount);
 		thisClass = Oop::fromPointer(thisClassPointer);
 	}
-	
+
 	Oop getBinding();
-	
+
 	Oop thisClass;
 	Oop traitComposition;
 	Oop localSelectors;
@@ -304,7 +306,7 @@ public:
 
 inline Oop getLookupKeyKey(const Oop lookupKey)
 {
-	return reinterpret_cast<LookupKey*> (lookupKey.pointer)->key; 
+	return reinterpret_cast<LookupKey*> (lookupKey.pointer)->key;
 }
 
 /**
@@ -316,12 +318,12 @@ class Association: public LookupKey
 	Association() {}
 public:
 	static Association *newNativeKeyValue(int clazzId, Oop key, Oop value);
-	
+
 	static Association* make(Oop key, Oop value)
 	{
 		return newNativeKeyValue(SCI_Association, key, value);
 	}
-	
+
 	Oop value;
 };
 
@@ -369,14 +371,26 @@ class GlobalContext: public Object
 	LODTALK_NATIVE_CLASS();
 };
 
+/**
+ * The smalltalk image
+ */
+class SmalltalkImage: public Object
+{
+	LODTALK_NATIVE_CLASS();
+public:
+    static SmalltalkImage *create();
+
+    Oop globals;
+};
+
 // Class method dictionary.
 #define LODTALK_BEGIN_CLASS_TABLE(className) \
 static MethodDictionary *className ## _class_methodDictBuilder() { \
 	Ref<MethodDictionary> methodDict(MethodDictionary::basicNativeNew()); \
 
 #define LODTALK_METHOD(selector, methodImplementation) \
-	methodDict->addMethod(makeNativeMethodDescriptor(selector, methodImplementation));	
- 
+	methodDict->addMethod(makeNativeMethodDescriptor(selector, methodImplementation));
+
 #define LODTALK_END_CLASS_TABLE() \
 	return methodDict.get(); \
 }

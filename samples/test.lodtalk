@@ -1,48 +1,52 @@
+"The program class"
+Object subclass: #Program category: 'Program'.
+
 "The main program"
+self class: Program.
 self category: 'Program Function'.
 
-self function [
+self method [
 printString: string
     OSIO write: string offset: 0 size: string size to: OSIO stdout
 ].
 
-self function [
+self method [
 newLine
     self printString: '
 '
 ].
 
-self function [
+self method [
 printLine: line
     self printString: line asString;
          newLine
 ].
 
-self function [
+self method [
 closureMaker
     ^ []
 ].
 
-self function [
+self method [
 closureRetArg: a
     ^ [ a ]
 ].
 
-self function [
+self method [
 closureRetTemp: a
     | b |
     b := 5.
     ^ [ b ]
 ].
 
-self function [
+self method [
 makeCounter
     | a |
     a := -1.
     ^ [ a := a + 1 ]
 ].
 
-self function [
+self method [
 printClosureMaker
     ^ [
         self printLine: 'Hello World';
@@ -50,7 +54,7 @@ printClosureMaker
     ]
 ].
 
-self function [
+self method [
 dumpFunction: selector
     self
         printString: 'Method dump of #';
@@ -59,17 +63,17 @@ dumpFunction: selector
     self newLine.
 ].
 
-self function [
+self method [
 select: condition a: a b: b
     ^ condition ifTrue: [a] ifFalse: [b]
 ].
 
-self function [
+self method [
 while: a
     [a] whileTrue: [ OSIO print: '$']
 ].
 
-self function [
+self method [
 loop
     self printLine: (1 to: 8 do: [:i |
         self printString: i asString;
@@ -77,7 +81,7 @@ loop
     ]).
 ].
 
-self function [
+self method [
 main
     | counter |
     self printLine: true;
@@ -116,3 +120,9 @@ main
 
     self printLine: self printClosureMaker value "outerContext closureOrNil name"
 ].
+
+
+self function [
+main
+    Program new main
+]

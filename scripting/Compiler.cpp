@@ -815,6 +815,8 @@ bool MethodSemanticAnalysis::optimizeMessage(MessageSendNode *node, CompilerOpti
     {
     case CompilerOptimizedSelector::IfTrue:
     case CompilerOptimizedSelector::IfFalse:
+    case CompilerOptimizedSelector::IfNil:
+    case CompilerOptimizedSelector::IfNotNil:
         {
             auto thenBlock = arguments[0];
             receiver->acceptVisitor(this);
@@ -823,6 +825,9 @@ bool MethodSemanticAnalysis::optimizeMessage(MessageSendNode *node, CompilerOpti
         break;
     case CompilerOptimizedSelector::IfTrueIfFalse:
     case CompilerOptimizedSelector::IfFalseIfTrue:
+    case CompilerOptimizedSelector::IfNotNilIfNil:
+    case CompilerOptimizedSelector::IfNilIfNotNil:
+
         {
             auto thenBlock = arguments[0];
             auto elseBlock = arguments[1];
@@ -997,8 +1002,8 @@ public:
 
 private:
     bool generateOptimizedMessage(MessageSendNode *node, CompilerOptimizedSelector optimizedSelector);
-    void generateIf(MessageSendNode *node, Oop trueValue, Node *receiver, Node *trueBranch);
-    void generateIfElse(MessageSendNode *node, Oop trueValue, Node *receiver, Node *trueBranch, Node *falseBranch);
+    void generateIf(MessageSendNode *node, Oop trueValue, Node *receiver, Node *trueBranch, bool negated = false);
+    void generateIfElse(MessageSendNode *node, Oop trueValue, Node *receiver, Node *trueBranch, Node *falseBranch, bool negated = false);
     void generateWhile(MessageSendNode *node, Oop trueValue, Node *receiver, Node *bodyNode);
     void generateToDo(MessageSendNode *node, Node *receiver, Node *stopNode, Node *bodyNode);
     void generateToByDo(MessageSendNode *node, Node *receiver, Node *stopNode, Node *stepNode, Node *bodyNode);
@@ -1206,11 +1211,23 @@ bool MethodCompiler::generateOptimizedMessage(MessageSendNode *node, CompilerOpt
     case CompilerOptimizedSelector::IfFalse:
         generateIf(node, falseOop(), receiver, arguments[0]);
         break;
+    case CompilerOptimizedSelector::IfNil:
+        generateIf(node, nilOop(), receiver, arguments[0]);
+        break;
+    case CompilerOptimizedSelector::IfNotNil:
+        generateIf(node, nilOop(), receiver, arguments[0], true);
+        break;
     case CompilerOptimizedSelector::IfTrueIfFalse:
         generateIfElse(node, trueOop(), receiver, arguments[0], arguments[1]);
         break;
     case CompilerOptimizedSelector::IfFalseIfTrue:
         generateIfElse(node, falseOop(), receiver, arguments[0], arguments[1]);
+        break;
+    case CompilerOptimizedSelector::IfNilIfNotNil:
+        generateIfElse(node, nilOop(), receiver, arguments[0], arguments[1]);
+        break;
+    case CompilerOptimizedSelector::IfNotNilIfNil:
+        generateIfElse(node, nilOop(), receiver, arguments[0], arguments[1], true);
         break;
     case CompilerOptimizedSelector::WhileTrue:
         if(!receiver->isBlockExpression())
@@ -1239,12 +1256,12 @@ bool MethodCompiler::generateOptimizedMessage(MessageSendNode *node, CompilerOpt
     return true;
 }
 
-void MethodCompiler::generateIf(MessageSendNode *node, Oop trueValue, Node *receiver, Node *trueBranch)
+void MethodCompiler::generateIf(MessageSendNode *node, Oop trueValue, Node *receiver, Node *trueBranch, bool negated)
 {
-    generateIfElse(node, trueValue, receiver, trueBranch, nullptr);
+    generateIfElse(node, trueValue, receiver, trueBranch, nullptr, negated);
 }
 
-void MethodCompiler::generateIfElse(MessageSendNode *node, Oop trueValue, Node *receiver, Node *trueBranch, Node *falseBranch)
+void MethodCompiler::generateIfElse(MessageSendNode *node, Oop trueValue, Node *receiver, Node *trueBranch, Node *falseBranch, bool negated)
 {
     auto elseLabel = gen.makeLabel();
     auto mergeLabel = gen.makeLabel();
@@ -1265,7 +1282,10 @@ void MethodCompiler::generateIfElse(MessageSendNode *node, Oop trueValue, Node *
     {
         gen.pushLiteral(trueValue);
         gen.identityEqual();
-        gen.jumpOnTrue(elseLabel);
+        if(negated)
+            gen.jumpOnTrue(elseLabel);
+        else
+            gen.jumpOnFalse(elseLabel);
     }
 
     // Generate the true branch.

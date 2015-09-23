@@ -53,6 +53,7 @@ void ClassTable::registerClass(Oop clazz)
         allocatePage();
 
     pageTable[pageIndex][elementIndex] = clazz;
+    clazz.header->identityHash = (unsigned int)size;
     ++size;
 }
 

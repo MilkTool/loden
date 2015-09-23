@@ -1,4 +1,5 @@
 self
+    executeFileNamed: 'Bootstrap.lodtalk';
     executeFileNamed: 'Behavior.lodtalk';
     executeFileNamed: 'ClassDescription.lodtalk';
     executeFileNamed: 'Class.lodtalk';

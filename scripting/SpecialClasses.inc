@@ -63,3 +63,5 @@ SPECIAL_CLASS_NAME(GlobalContext)
 SPECIAL_CLASS_NAME(MethodASTHandle)
 
 SPECIAL_CLASS_NAME(StackMemoryCommitedPage)
+
+SPECIAL_CLASS_NAME(SmalltalkImage)

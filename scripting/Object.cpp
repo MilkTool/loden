@@ -245,12 +245,20 @@ Oop Behavior::getBinding()
 	LODTALK_UNIMPLEMENTED();
 }
 
+Oop Behavior::registerInClassTable()
+{
+    assert(selfOop().isPointer());
+    registerClassInTable(selfOop());
+    return selfOop();
+}
+
 LODTALK_BEGIN_CLASS_SIDE_TABLE(Behavior)
 LODTALK_END_CLASS_SIDE_TABLE()
 
 LODTALK_BEGIN_CLASS_TABLE(Behavior)
 	LODTALK_METHOD("basicNew", static_cast<Oop (Behavior::*)()> (&Behavior::basicNew))
 	LODTALK_METHOD("basicNew:", static_cast<Oop (Behavior::*)(Oop)> (&Behavior::basicNew))
+    LODTALK_METHOD("registerInClassTable", &Behavior::registerInClassTable)
 LODTALK_END_CLASS_TABLE()
 
 LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(Behavior, Object, OF_FIXED_SIZE, Behavior::BehaviorVariableCount, "superclass methodDict format fixedVariableCount layout");
@@ -258,7 +266,7 @@ LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(Behavior, Object, OF_FIXED_SIZE, Beh
 // ClassDescription
 Oop ClassDescription::splitVariableNames(const char *instanceVariableNames)
 {
-	return ByteString::splitVariableNames(instanceVariableNames).getOop();
+	return ByteString::splitVariableNames(instanceVariableNames);
 }
 
 LODTALK_BEGIN_CLASS_SIDE_TABLE(ClassDescription)
@@ -499,5 +507,21 @@ LODTALK_BEGIN_CLASS_TABLE(GlobalContext)
 LODTALK_END_CLASS_TABLE()
 
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(GlobalContext, Object, OF_EMPTY, 0);
+
+// Smalltalk image
+SmalltalkImage *SmalltalkImage::create()
+{
+    return reinterpret_cast<SmalltalkImage*> (newObject(1, 0, OF_FIXED_SIZE, SCI_SmalltalkImage));
+}
+
+LODTALK_BEGIN_CLASS_SIDE_TABLE(SmalltalkImage)
+LODTALK_END_CLASS_SIDE_TABLE()
+
+LODTALK_BEGIN_CLASS_TABLE(SmalltalkImage)
+LODTALK_END_CLASS_TABLE()
+
+LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(SmalltalkImage, Object, OF_FIXED_SIZE, 1,
+"globals");
+
 
 } // End of namespace Lodtalk

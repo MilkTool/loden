@@ -103,8 +103,8 @@ public:
     static ByteString *fromNativeReverseRange(const char *start, ptrdiff_t size);
 	static Ref<ByteString> fromNative(const std::string &native);
 
-	Ref<Array> splitVariableNames();
-	static Ref<Array> splitVariableNames(const std::string &string);
+	Oop stSplitVariableNames();
+	static Oop splitVariableNames(const std::string &string);
 
 	std::string getString();
 };
@@ -136,8 +136,8 @@ class ByteSymbol: public Symbol
 public:
 	static Object *basicNativeNew(size_t indexableSize);
 
-	static Ref<ByteSymbol> fromNative(const std::string &native);
-	static Ref<ByteSymbol> fromNativeRange(const char *star, size_t size);
+	static Oop fromNative(const std::string &native);
+	static Oop fromNativeRange(const char *star, size_t size);
 
 	std::string getString();
 };
@@ -468,9 +468,10 @@ class IdentityDictionary: public Dictionary
 public:
 	struct End {};
 
-	void putAssociation(Oop assoc)
+	Oop putAssociation(Oop assoc)
 	{
 		internalPutKeyValue(assoc, getLookupKeyKey, identityHashOf, identityOopEquals);
+        return assoc;
 	}
 
 	Oop getAssociationOrNil(Oop key)

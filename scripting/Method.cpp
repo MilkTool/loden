@@ -158,7 +158,7 @@ LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(MessageSend, Object, OF_FIXED_SIZE, 
 // Native method descriptor
 Oop NativeMethodDescriptor::getSelector() const
 {
-	selector = ByteSymbol::fromNative(selectorString).getOop();
+	selector = ByteSymbol::fromNative(selectorString);
 	return selector.oop;
 }
 

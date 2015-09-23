@@ -127,7 +127,7 @@ std::string ByteString::getString()
 	return std::string(begin, begin + getNumberOfElements());
 }
 
-Ref<Array> ByteString::splitVariableNames(const std::string &string)
+Oop ByteString::splitVariableNames(const std::string &string)
 {
 	std::vector<std::pair<int, int>> varNameIndices;
 
@@ -166,13 +166,13 @@ Ref<Array> ByteString::splitVariableNames(const std::string &string)
 		auto &startSize = varNameIndices[i];
 		auto subString = ByteSymbol::fromNativeRange((char*)data + startSize.first, startSize.second);
 		auto resultData = reinterpret_cast<Oop*> (result->getFirstFieldPointer());
-		resultData[i] = subString.getOop();
+		resultData[i] = subString;
 	}
 
-	return result;
+	return result.getOop();
 }
 
-Ref<Array> ByteString::splitVariableNames()
+Oop ByteString::stSplitVariableNames()
 {
 	return splitVariableNames(getString());
 }
@@ -181,6 +181,7 @@ LODTALK_BEGIN_CLASS_SIDE_TABLE(ByteString)
 LODTALK_END_CLASS_SIDE_TABLE()
 
 LODTALK_BEGIN_CLASS_TABLE(ByteString)
+    LODTALK_METHOD("splitForVariableNames", &ByteString::stSplitVariableNames)
 LODTALK_END_CLASS_TABLE()
 
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(ByteString, String, OF_INDEXABLE_8, 0);
@@ -218,7 +219,7 @@ LODTALK_END_CLASS_TABLE()
 
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(ByteSymbol, Symbol, OF_INDEXABLE_8, 0);
 
-typedef std::map<std::string, Ref<ByteSymbol> > ByteSymbolDictionary;
+typedef std::map<std::string, OopRef > ByteSymbolDictionary;
 static ByteSymbolDictionary *byteSymbolDictionary;
 
 Object *ByteSymbol::basicNativeNew(size_t indexableSize)
@@ -226,7 +227,7 @@ Object *ByteSymbol::basicNativeNew(size_t indexableSize)
 	return reinterpret_cast<Object*> (newObject(0, indexableSize, OF_INDEXABLE_8, SCI_ByteSymbol));
 }
 
-Ref<ByteSymbol> ByteSymbol::fromNative(const std::string &native)
+Oop ByteSymbol::fromNative(const std::string &native)
 {
 	if(!byteSymbolDictionary)
 		byteSymbolDictionary = new ByteSymbolDictionary();
@@ -234,19 +235,19 @@ Ref<ByteSymbol> ByteSymbol::fromNative(const std::string &native)
 	// Find existing internation
 	auto it = byteSymbolDictionary->find(native);
 	if(it != byteSymbolDictionary->end())
-		return it->second;
+		return it->second.oop;
 
 	// Create the byte symbol
 	auto result = basicNativeNew(native.size());
 	memcpy(result->getFirstFieldPointer(), native.data(), native.size());
-	auto ref = Ref<ByteSymbol> (reinterpret_cast<ByteSymbol*> (result));
 
 	// Store in the internation dictionary.
-	(*byteSymbolDictionary)[native] = ref;
-	return ref;
+    auto resultOop = Oop::fromPointer(result);
+	(*byteSymbolDictionary)[native] = resultOop;
+	return resultOop;
 }
 
-Ref<ByteSymbol> ByteSymbol::fromNativeRange(const char *start, size_t size)
+Oop ByteSymbol::fromNativeRange(const char *start, size_t size)
 {
 	return fromNative(std::string(start, start + size));
 }
@@ -267,7 +268,8 @@ LODTALK_END_CLASS_SIDE_TABLE()
 LODTALK_BEGIN_CLASS_TABLE(HashedCollection)
 LODTALK_END_CLASS_TABLE()
 
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(HashedCollection, Collection, OF_FIXED_SIZE, 3);
+LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(HashedCollection, Collection, OF_FIXED_SIZE, 3,
+"capacity tally keyValues");
 
 // Dictionary
 LODTALK_BEGIN_CLASS_SIDE_TABLE(Dictionary)
@@ -276,7 +278,7 @@ LODTALK_END_CLASS_SIDE_TABLE()
 LODTALK_BEGIN_CLASS_TABLE(Dictionary)
 LODTALK_END_CLASS_TABLE()
 
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(Dictionary, HashedCollection, OF_FIXED_SIZE, 4);
+LODTALK_SPECIAL_SUBCLASS_DEFINITION(Dictionary, HashedCollection, OF_FIXED_SIZE, 3);
 
 // MethodDictionary
 MethodDictionary* MethodDictionary::basicNativeNew()
@@ -295,13 +297,16 @@ LODTALK_BEGIN_CLASS_TABLE(MethodDictionary)
     LODTALK_METHOD("at:put:", &MethodDictionary::atPut)
 LODTALK_END_CLASS_TABLE()
 
-LODTALK_SPECIAL_SUBCLASS_DEFINITION(MethodDictionary, Dictionary, OF_FIXED_SIZE, 4);
+LODTALK_SPECIAL_SUBCLASS_INSTANCE_VARIABLES(MethodDictionary, Dictionary, OF_FIXED_SIZE, 4,
+"values");
 
 // IdentityDictionary
 LODTALK_BEGIN_CLASS_SIDE_TABLE(IdentityDictionary)
 LODTALK_END_CLASS_SIDE_TABLE()
 
 LODTALK_BEGIN_CLASS_TABLE(IdentityDictionary)
+    LODTALK_METHOD("putAssociation:", &IdentityDictionary::putAssociation)
+    LODTALK_METHOD("associationAtOrNil:", &IdentityDictionary::getAssociationOrNil)
 LODTALK_END_CLASS_TABLE()
 
 LODTALK_SPECIAL_SUBCLASS_DEFINITION(IdentityDictionary, Dictionary, OF_FIXED_SIZE, 3);

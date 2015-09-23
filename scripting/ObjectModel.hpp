@@ -890,6 +890,8 @@ double floatValueOf(Oop object);
 // Class table
 Oop getClassFromIndex(int classIndex);
 Oop getClassFromOop(Oop oop);
+void registerClassInTable(Oop clazz);
+
 bool isClassOrMetaclass(Oop oop);
 bool isMetaclass(Oop oop);
 bool isClass(Oop oop);
