@@ -44,7 +44,7 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
 		printError("Failed to initialize SDL2\n");
 		return nullptr;
 	}
-	
+
 	// Create the sdl window.
 	auto sdlWindow = SDL_CreateWindow(title.c_str(), x, y, w, h, SDL_WINDOW_OPENGL);
 	if(!sdlWindow)
@@ -52,7 +52,7 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
 		printError("Failed to open window\n");
 		return nullptr;
 	}
-	
+
     // Get the platform.
     agpu_platform *platform;
     agpuGetPlatforms(1, &platform, nullptr);
@@ -68,20 +68,23 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
     SDL_GetWindowWMInfo(sdlWindow, &windowInfo);
 
     // Open the device
+    // Open the device
+    agpu_swap_chain_create_info swapChainCreateInfo;
     agpu_device_open_info openInfo;
     memset(&openInfo, 0, sizeof(openInfo));
+    memset(&swapChainCreateInfo, 0, sizeof(swapChainCreateInfo));
     switch(windowInfo.subsystem)
     {
 #if defined(SDL_VIDEO_DRIVER_WINDOWS)
     case SDL_SYSWM_WINDOWS:
         openInfo.window = (agpu_pointer)windowInfo.info.win.window;
-        openInfo.surface = (agpu_pointer)windowInfo.info.win.hdc;
+        swapChainCreateInfo.surface = (agpu_pointer)windowInfo.info.win.hdc;
         break;
 #endif
 #if defined(SDL_VIDEO_DRIVER_X11)
     case SDL_SYSWM_X11:
         openInfo.display = (agpu_pointer)windowInfo.info.x11.display;
-        openInfo.window = (agpu_pointer)(uintptr_t)windowInfo.info.x11.window;
+        swapChainCreateInfo.window = (agpu_pointer)(uintptr_t)windowInfo.info.x11.window;
         break;
 #endif
     default:
@@ -89,12 +92,11 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
         return nullptr;
     }
 
-    openInfo.red_size = 5;
-    openInfo.blue_size = 5;
-    openInfo.green_size = 5;
-    openInfo.alpha_size = 5;
-    openInfo.depth_size = 16,
-    openInfo.doublebuffer = 1;
+    swapChainCreateInfo.colorbuffer_format = AGPU_TEXTURE_FORMAT_R8G8B8A8_UNORM;
+    swapChainCreateInfo.depth_stencil_format = AGPU_TEXTURE_FORMAT_D16_UNORM;
+    swapChainCreateInfo.width = w;
+    swapChainCreateInfo.height = h;
+    swapChainCreateInfo.doublebuffer = 1;
 #ifdef _DEBUG
     // Use the debug layer when debugging. This is useful for low level backends.
     openInfo.debugLayer = true;
@@ -106,6 +108,14 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
         return nullptr;
 	}
 
+    // Create the swap chain.
+    agpu_ref<agpu_swap_chain> swapChain = device->createSwapChain(&swapChainCreateInfo);
+    if(!swapChain)
+    {
+        printError("Failed to create the swap chain\n");
+        return nullptr;
+    }
+
 	// Create the pipeline state manager
 	auto pipelineStateManager = std::make_shared<PipelineStateManager> (device);
 	auto screenCanvas = AgpuCanvas::create(pipelineStateManager);
@@ -114,7 +124,7 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
 		printError("Failed to create the screen canvas\n");
 		return nullptr;
 	}
-	
+
 	// Create the transformation buffer.
 	agpu_ref<agpu_buffer> transformationBuffer;
 	{
@@ -130,7 +140,7 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
 	// Create the shader bindins.
 	auto shaderBindings = device->createShaderResourceBinding(0);
     shaderBindings->bindUniformBuffer(0, transformationBuffer.get());
-	
+
 	// Create the command list allocator.
 	auto allocator = device->createCommandAllocator();
 	if(!allocator)
@@ -141,20 +151,21 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
 	if(!commandList)
 		return nullptr;
 	commandList->close();
-	
+
 	// Create the window.
 	auto window = SystemWindowPtr(new SystemWindow());
 	window->setPosition(glm::vec2(0, 0));
 	window->setSize(glm::vec2(w, h));
 	window->handle = sdlWindow;
 	window->device = device;
+    window->swapChain = swapChain;
 	window->pipelineStateManager = pipelineStateManager;
 	window->screenCanvas = screenCanvas;
 	window->transformationBuffer = transformationBuffer;
 	window->globalShaderBindings = shaderBindings;
 	window->commandAllocator = allocator;
 	window->commandList = commandList;
-	
+
 	return window;
 }
 
@@ -255,7 +266,7 @@ void SystemWindow::setKeyboardFocusWidget(const WidgetPtr &newKeyboardFocus)
 {
 	auto oldFocus = focusedWidget;
 	focusedWidget = newKeyboardFocus;
-	
+
 	FocusEvent event(oldFocus, newKeyboardFocus);
 	if(oldFocus)
 		oldFocus->handleLostFocus(event);
@@ -267,7 +278,7 @@ void SystemWindow::setMouseFocusWidget(const WidgetPtr &newMouseFocus)
 {
 	auto oldFocus = mouseOverWidget;
 	mouseOverWidget = newMouseFocus;
-	
+
 	MouseFocusEvent event(oldFocus, newMouseFocus);
 	if(oldFocus)
 		oldFocus->handleMouseLeave(event);
@@ -299,20 +310,20 @@ void SystemWindow::renderScreen()
     // Build the main command list
 	commandAllocator->reset();
 	commandList->reset(commandAllocator.get(), nullptr);
-	commandList->beginFrame(device->getCurrentBackBuffer());
+	commandList->beginFrame(swapChain->getCurrentBackBuffer());
 
     // Set the viewport
     commandList->setViewport(0, 0, screenWidth, screenHeight);
     commandList->setScissor(0, 0, screenWidth, screenHeight);
     commandList->setClearColor(0, 0, 0, 0);
     commandList->clear(AGPU_COLOR_BUFFER_BIT);
-	
+
 	// Use the transformation block.
 	commandList->useShaderResources(globalShaderBindings.get());
 
 	// Execute the screen canvas bundle.
 	commandList->executeBundle(screenCanvas->getCommandBundle().get());
-	
+
     // Finish the command list
 	commandList->endFrame();
 	commandList->close();
@@ -320,9 +331,10 @@ void SystemWindow::renderScreen()
 	// Queue the command list
     auto queue = device->getDefaultCommandQueue();
     queue->addCommandList(commandList.get());
+    queue->finishExecution();
 
 	// Swap the buffers.
-	device->swapBuffers();
+	swapChain->swapBuffers();
 }
 
 } // End of namespace GUI

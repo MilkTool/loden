@@ -12,7 +12,7 @@ namespace Loden
 {
 namespace GUI
 {
-	
+
 LODEN_DECLARE_CLASS(SystemWindow);
 LODEN_DECLARE_CLASS(AgpuCanvas);
 /**
@@ -22,7 +22,7 @@ class LODEN_CORE_EXPORT SystemWindow: public ContainerWidget
 {
 public:
 	~SystemWindow();
-	
+
 	static SystemWindowPtr create(const std::string &title, int w, int h, int x = SDL_WINDOWPOS_CENTERED, int y = SDL_WINDOWPOS_CENTERED);
 
 	virtual bool isSystemWindow() const;
@@ -32,30 +32,31 @@ public:
 	void setKeyboardFocusWidget(const WidgetPtr &newKeyboardFocus);
 	void setMouseFocusWidget(const WidgetPtr &newMouseFocus);
 	void setMouseCaptureWidget(const WidgetPtr &widget);
-	
+
 	const PipelineStateManagerPtr &getPipelineStateManager();
-	
+
 	void pumpEvents();
 	void renderScreen();
 
 	virtual void handleKeyDown(KeyboardEvent &event);
 	virtual void handleKeyUp(KeyboardEvent &event);
-	
+
 public:
 	EventSocket<Event> quitEvent;
-	
+
 private:
 	SystemWindow();
-	
+
 	SDL_Window *handle;
 	WidgetPtr focusedWidget;
 	WidgetPtr mouseOverWidget;
 	WidgetPtr mouseCaptureWidget;
 
 	agpu_ref<agpu_device> device;
+    agpu_ref<agpu_swap_chain> swapChain;
 	PipelineStateManagerPtr pipelineStateManager;
 	AgpuCanvasPtr screenCanvas;
-	
+
 	TransformationBlock transformationBlock;
 	agpu_ref<agpu_buffer> transformationBuffer;
 	agpu_ref<agpu_shader_resource_binding> globalShaderBindings;
