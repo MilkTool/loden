@@ -95,6 +95,7 @@ include_directories(
 .
 "${PROJECT_SOURCE_DIR}/include"
 "${PROJECT_SOURCE_DIR}/thirdparty/glm"
+"${PROJECT_SOURCE_DIR}/thirdparty/rapidjson/include"
 "${ZLIB_INCLUDE_DIRS}"
 "${AGPU_INCLUDE_DIR}"
 )
