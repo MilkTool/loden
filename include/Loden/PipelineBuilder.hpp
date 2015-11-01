@@ -18,16 +18,18 @@ public:
 	PipelineBuilder(PipelineStateManager *manager, const agpu_ref<agpu_pipeline_builder> &builder);
 	~PipelineBuilder();
 
-	PipelineBuilder &setGeometryShader(const std::string &name);	
+    PipelineBuilder &setShaderSignatureNamed(const std::string &name);
+
+	PipelineBuilder &setGeometryShader(const std::string &name);
 	PipelineBuilder &setFragmentShader(const std::string &name);
 	PipelineBuilder &setVertexShader(const std::string &name);
 
 	PipelineBuilder &setRenderTargetCount(int count);
 	PipelineBuilder &setPrimitiveType(agpu_primitive_type type);
 	PipelineBuilder &setVertexLayout(size_t vertexBufferCount, size_t layoutSize, agpu_vertex_attrib_description *layout);
-	
+
 	agpu_pipeline_state *finish();
-	
+
 private:
 	PipelineStateManager *manager;
 	agpu_ref<agpu_pipeline_builder> builder;

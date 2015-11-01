@@ -1,2 +1,0 @@
-self executeFileNamed: 'Array.lodtalk';
-    executeFileNamed: 'String.lodtalk'

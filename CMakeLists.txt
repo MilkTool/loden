@@ -100,9 +100,6 @@ include_directories(
 "${AGPU_INCLUDE_DIR}"
 )
 
-# Build the scripting library
-add_subdirectory(scripting)
-
 # Build the core library
 add_subdirectory(core)
 

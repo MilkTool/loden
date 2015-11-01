@@ -13,12 +13,18 @@ PipelineBuilder::~PipelineBuilder()
 {
 }
 
+PipelineBuilder &PipelineBuilder::setShaderSignatureNamed(const std::string &name)
+{
+    builder->setShaderSignature(manager->getShaderSignature(name).get());
+    return *this;
+}
+
 PipelineBuilder &PipelineBuilder::setGeometryShader(const std::string &name)
 {
 	builder->attachShader(manager->getShaderFromFile(name, AGPU_GEOMETRY_SHADER).get());
 	return *this;
 }
-	
+
 PipelineBuilder &PipelineBuilder::setFragmentShader(const std::string &name)
 {
 	builder->attachShader(manager->getShaderFromFile(name, AGPU_FRAGMENT_SHADER).get());
@@ -47,7 +53,7 @@ PipelineBuilder &PipelineBuilder::setVertexLayout(size_t vertexBufferCount, size
 {
 	auto vlayout = manager->getVertexLayout(vertexBufferCount, layoutSize, layout);
 	builder->setVertexLayout(vlayout.get());
-	return *this; 
+	return *this;
 }
 
 agpu_pipeline_state *PipelineBuilder::finish()
@@ -55,9 +61,9 @@ agpu_pipeline_state *PipelineBuilder::finish()
 	auto result = builder->build();
 	if(!result)
 	{
-		
+
 	}
-	
+
 	return result;
 }
 

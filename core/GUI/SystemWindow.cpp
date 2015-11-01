@@ -13,6 +13,8 @@ namespace GUI
 SystemWindow::SystemWindow()
 {
 	handle = nullptr;
+    frameCount = 3;
+    frameIndex = 0;
 	setBackgroundColor(glm::vec4(0.0, 0.0, 0.0, 1.0));
 }
 
@@ -68,7 +70,6 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
     SDL_GetWindowWMInfo(sdlWindow, &windowInfo);
 
     // Open the device
-    // Open the device
     agpu_swap_chain_create_info swapChainCreateInfo;
     agpu_device_open_info openInfo;
     memset(&openInfo, 0, sizeof(openInfo));
@@ -108,65 +109,124 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
         return nullptr;
 	}
 
+    // Get the main command queue.
+    agpu_ref<agpu_command_queue> commandQueue = device->getDefaultCommandQueue();
+    if(!commandQueue)
+    {
+        printError("Failed to get the default AGPU command queue\n");
+        return nullptr;
+    }
+
     // Create the swap chain.
-    agpu_ref<agpu_swap_chain> swapChain = device->createSwapChain(&swapChainCreateInfo);
+    agpu_ref<agpu_swap_chain> swapChain = device->createSwapChain(commandQueue.get(), &swapChainCreateInfo);
     if(!swapChain)
     {
         printError("Failed to create the swap chain\n");
         return nullptr;
     }
 
-	// Create the pipeline state manager
-	auto pipelineStateManager = std::make_shared<PipelineStateManager> (device);
-	auto screenCanvas = AgpuCanvas::create(pipelineStateManager);
-	if(!screenCanvas)
-	{
-		printError("Failed to create the screen canvas\n");
-		return nullptr;
-	}
-
-	// Create the transformation buffer.
-	agpu_ref<agpu_buffer> transformationBuffer;
-	{
-	    agpu_buffer_description desc;
-	    desc.size = sizeof(TransformationBlock);
-	    desc.usage = AGPU_DYNAMIC;
-	    desc.binding = AGPU_UNIFORM_BUFFER;
-	    desc.mapping_flags = AGPU_MAP_DYNAMIC_STORAGE_BIT | AGPU_MAP_WRITE_BIT;
-	    desc.stride = 0;
-	    transformationBuffer = device->createBuffer(&desc, nullptr);
-	}
-
-	// Create the shader bindins.
-	auto shaderBindings = device->createShaderResourceBinding(0);
-    shaderBindings->bindUniformBuffer(0, transformationBuffer.get());
-
-	// Create the command list allocator.
-	auto allocator = device->createCommandAllocator();
-	if(!allocator)
-		return nullptr;
-
-	// Create the command list.
-	auto commandList = device->createCommandList(allocator, nullptr);
-	if(!commandList)
-		return nullptr;
-	commandList->close();
-
-	// Create the window.
+    // Create the window.
 	auto window = SystemWindowPtr(new SystemWindow());
 	window->setPosition(glm::vec2(0, 0));
 	window->setSize(glm::vec2(w, h));
 	window->handle = sdlWindow;
 	window->device = device;
     window->swapChain = swapChain;
-	window->pipelineStateManager = pipelineStateManager;
-	window->screenCanvas = screenCanvas;
-	window->transformationBuffer = transformationBuffer;
-	window->globalShaderBindings = shaderBindings;
-	window->commandAllocator = allocator;
-	window->commandList = commandList;
+    window->commandQueue = commandQueue;
+
+    if(!window->initialize())
+        return nullptr;
 
 	return window;
+}
+
+bool SystemWindow::initialize()
+{
+    // Create the pipeline state manager.
+    pipelineStateManager = std::make_shared<PipelineStateManager> (device);
+    if(!pipelineStateManager->initialize())
+    {
+        printError("Failed to initialize the pipeline state manager.\n");
+        return false;
+    }
+
+    // Create the transformation buffer.
+    {
+        agpu_buffer_description desc;
+        desc.size = sizeof(TransformationBlock)*3;
+        desc.usage = AGPU_DYNAMIC;
+        desc.binding = AGPU_UNIFORM_BUFFER;
+        desc.mapping_flags = AGPU_MAP_WRITE_BIT | AGPU_MAP_PERSISTENT_BIT | AGPU_MAP_COHERENT_BIT;
+        desc.stride = 0;
+        transformationBuffer = device->createBuffer(&desc, nullptr);
+        if(!transformationBuffer)
+        {
+            printError("Failed to create an uniform buffer object.\n");
+            return false;
+        }
+
+        transformationBlockData = (TransformationBlock*)transformationBuffer->mapBuffer(AGPU_WRITE_ONLY);
+        if(!transformationBlockData)
+        {
+            printError("Failed to map an uniform buffer object.\n");
+            return false;
+        }
+    }
+
+    // Get the gui shader signature.
+    shaderSignature = pipelineStateManager->getShaderSignature("GUI");
+    if(!shaderSignature)
+    {
+        printError("Failed to retrieve the GUI shader signature.\n");
+        return false;
+    }
+
+    // Create the command lists and allocators
+    frameCount = 3;
+    frameIndex = 0;
+    for(int i = 0; i < frameCount; ++i)
+    {
+        commandAllocators[i] = device->createCommandAllocator();
+        if(!commandAllocators[i])
+        {
+            printError("Failed to create a command allocator.\n");
+            return false;
+        }
+
+        commandLists[i] = device->createCommandList(commandAllocators[i].get(), nullptr);
+    	if(!commandLists[i])
+        {
+            printError("Failed to create a command list. \n");
+            return false;
+        }
+
+        commandLists[i]->close();
+
+        frameFences[i] = device->createFence();
+        if(!frameFences[i])
+        {
+            printError("Failed to create a command list. \n");
+            return false;
+        }
+
+        screenCanvases[i] = AgpuCanvas::create(pipelineStateManager);
+        if(!screenCanvases[i])
+        {
+            printError("Failed to create the screen canvas.\n");
+            return false;
+        }
+
+        // Create the shader bindings.
+        globalShaderBindings[i] = shaderSignature->createShaderResourceBinding(0);
+        globalShaderBindings[i]->bindUniformBufferRange(0, transformationBuffer.get(), sizeof(TransformationBlock)*i, sizeof(TransformationBlock));
+        if(!globalShaderBindings[i])
+        {
+            printError("Failed to create GUI shader resource binding\n");
+            return false;
+        }
+    }
+
+    return true;
 }
 
 const PipelineStateManagerPtr &SystemWindow::getPipelineStateManager()
@@ -294,23 +354,31 @@ void SystemWindow::setMouseCaptureWidget(const WidgetPtr &widget)
 
 void SystemWindow::renderScreen()
 {
+    //printf("Render frame %d\n", frameIndex);
+    auto& commandAllocator = commandAllocators[frameIndex];
+    auto& commandList = commandLists[frameIndex];
+    auto& screenCanvas = screenCanvases[frameIndex];
+
+    // Ensure the frame data is not pending.
+    frameFences[frameIndex]->waitOnClient();
+
 	// Fill the screen canvas.
 	screenCanvas->reset();
 	drawOn(screenCanvas.get());
 	screenCanvas->close();
 
     // Compute the screen projection matrix
+    auto &transformationBlock = transformationBlockData[frameIndex];
 	auto screenWidth = getWidth();
 	auto screenHeight = getHeight();
     transformationBlock.projectionMatrix = glm::ortho(0.0f, screenWidth, screenHeight, 0.0f, -2.0f, 2.0f);
 
-    // Upload the transformation state.
-    transformationBuffer->uploadBufferData(0, sizeof(transformationBlock), &transformationBlock);
-
     // Build the main command list
+    agpu_ref<agpu_framebuffer> backBuffer = swapChain->getCurrentBackBuffer();
 	commandAllocator->reset();
 	commandList->reset(commandAllocator.get(), nullptr);
-	commandList->beginFrame(swapChain->getCurrentBackBuffer());
+    commandList->setShaderSignature(shaderSignature.get());
+	commandList->beginFrame(backBuffer.get());
 
     // Set the viewport
     commandList->setViewport(0, 0, screenWidth, screenHeight);
@@ -319,7 +387,7 @@ void SystemWindow::renderScreen()
     commandList->clear(AGPU_COLOR_BUFFER_BIT);
 
 	// Use the transformation block.
-	commandList->useShaderResources(globalShaderBindings.get());
+	commandList->useShaderResources(globalShaderBindings[frameIndex].get());
 
 	// Execute the screen canvas bundle.
 	commandList->executeBundle(screenCanvas->getCommandBundle().get());
@@ -329,12 +397,13 @@ void SystemWindow::renderScreen()
 	commandList->close();
 
 	// Queue the command list
-    auto queue = device->getDefaultCommandQueue();
-    queue->addCommandList(commandList.get());
-    queue->finishExecution();
+    commandQueue->addCommandList(commandList.get());
 
 	// Swap the buffers.
 	swapChain->swapBuffers();
+    commandQueue->signalFence(frameFences[frameIndex].get());
+
+    frameIndex = (frameIndex + 1) % frameCount;
 }
 
 } // End of namespace GUI

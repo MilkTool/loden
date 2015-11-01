@@ -46,6 +46,7 @@ public:
 
 private:
 	SystemWindow();
+    bool initialize();
 
 	SDL_Window *handle;
 	WidgetPtr focusedWidget;
@@ -53,16 +54,21 @@ private:
 	WidgetPtr mouseCaptureWidget;
 
 	agpu_ref<agpu_device> device;
+    agpu_ref<agpu_command_queue> commandQueue;
     agpu_ref<agpu_swap_chain> swapChain;
+    agpu_ref<agpu_shader_signature> shaderSignature;
 	PipelineStateManagerPtr pipelineStateManager;
-	AgpuCanvasPtr screenCanvas;
 
-	TransformationBlock transformationBlock;
 	agpu_ref<agpu_buffer> transformationBuffer;
-	agpu_ref<agpu_shader_resource_binding> globalShaderBindings;
+    TransformationBlock *transformationBlockData;
 
-	agpu_ref<agpu_command_allocator> commandAllocator;
-	agpu_ref<agpu_command_list> commandList;
+	agpu_ref<agpu_command_allocator> commandAllocators[3];
+	agpu_ref<agpu_command_list> commandLists[3];
+    agpu_ref<agpu_fence> frameFences[3];
+    agpu_ref<agpu_shader_resource_binding> globalShaderBindings[3];
+    AgpuCanvasPtr screenCanvases[3];
+    int frameCount;
+    int frameIndex;
 };
 
 } // End of namespace GUI
