@@ -1,8 +1,8 @@
 #ifndef LODEN_EVENT_HPP_
 #define LODEN_EVENT_HPP_
 
-#include "SDL.h"
 #include "Loden/Common.hpp"
+#include "SDL.h"
 
 namespace Loden
 {

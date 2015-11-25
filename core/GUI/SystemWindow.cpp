@@ -1,9 +1,8 @@
-#include <glm/gtc/matrix_transform.hpp>
-
-#include "SDL_syswm.h"
 #include "Loden/Printing.hpp"
 #include "Loden/GUI/SystemWindow.hpp"
 #include "Loden/GUI/AgpuCanvas.hpp"
+#include "SDL_syswm.h"
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace Loden
 {
@@ -78,7 +77,7 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
     {
 #if defined(SDL_VIDEO_DRIVER_WINDOWS)
     case SDL_SYSWM_WINDOWS:
-        openInfo.window = (agpu_pointer)windowInfo.info.win.window;
+        swapChainCreateInfo.window = (agpu_pointer)windowInfo.info.win.window;
         swapChainCreateInfo.surface = (agpu_pointer)windowInfo.info.win.hdc;
         break;
 #endif
@@ -100,7 +99,7 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
     swapChainCreateInfo.doublebuffer = 1;
 #ifdef _DEBUG
     // Use the debug layer when debugging. This is useful for low level backends.
-    openInfo.debugLayer = true;
+    openInfo.debug_layer = true;
 #endif
 	agpu_ref<agpu_device> device = platform->openDevice(&openInfo);
 	if(!device)
@@ -153,7 +152,7 @@ bool SystemWindow::initialize()
     // Create the transformation buffer.
     {
         agpu_buffer_description desc;
-        desc.size = sizeof(TransformationBlock)*3;
+        desc.size = TransformationBlock_AlignedSize*3;
         desc.usage = AGPU_DYNAMIC;
         desc.binding = AGPU_UNIFORM_BUFFER;
         desc.mapping_flags = AGPU_MAP_WRITE_BIT | AGPU_MAP_PERSISTENT_BIT | AGPU_MAP_COHERENT_BIT;
@@ -165,7 +164,7 @@ bool SystemWindow::initialize()
             return false;
         }
 
-        transformationBlockData = (TransformationBlock*)transformationBuffer->mapBuffer(AGPU_WRITE_ONLY);
+        transformationBlockData = (uint8_t*)transformationBuffer->mapBuffer(AGPU_WRITE_ONLY);
         if(!transformationBlockData)
         {
             printError("Failed to map an uniform buffer object.\n");
@@ -186,14 +185,14 @@ bool SystemWindow::initialize()
     frameIndex = 0;
     for(int i = 0; i < frameCount; ++i)
     {
-        commandAllocators[i] = device->createCommandAllocator();
+        commandAllocators[i] = device->createCommandAllocator(AGPU_COMMAND_LIST_TYPE_DIRECT);
         if(!commandAllocators[i])
         {
             printError("Failed to create a command allocator.\n");
             return false;
         }
 
-        commandLists[i] = device->createCommandList(commandAllocators[i].get(), nullptr);
+        commandLists[i] = device->createCommandList(AGPU_COMMAND_LIST_TYPE_DIRECT, commandAllocators[i].get(), nullptr);
     	if(!commandLists[i])
         {
             printError("Failed to create a command list. \n");
@@ -218,7 +217,7 @@ bool SystemWindow::initialize()
 
         // Create the shader bindings.
         globalShaderBindings[i] = shaderSignature->createShaderResourceBinding(0);
-        globalShaderBindings[i]->bindUniformBufferRange(0, transformationBuffer.get(), sizeof(TransformationBlock)*i, sizeof(TransformationBlock));
+        globalShaderBindings[i]->bindUniformBufferRange(0, transformationBuffer.get(), TransformationBlock_AlignedSize*i, TransformationBlock_AlignedSize);
         if(!globalShaderBindings[i])
         {
             printError("Failed to create GUI shader resource binding\n");
@@ -368,10 +367,12 @@ void SystemWindow::renderScreen()
 	screenCanvas->close();
 
     // Compute the screen projection matrix
-    auto &transformationBlock = transformationBlockData[frameIndex];
-	auto screenWidth = getWidth();
-	auto screenHeight = getHeight();
-    transformationBlock.projectionMatrix = glm::ortho(0.0f, screenWidth, screenHeight, 0.0f, -2.0f, 2.0f);
+    auto transformationBlock = reinterpret_cast<TransformationBlock*> (transformationBlockData + TransformationBlock_AlignedSize*frameIndex);
+	int screenWidth = (int)ceil(getWidth());
+	int screenHeight = (int)ceil(getHeight());
+    transformationBlock->projectionMatrix = glm::ortho(0.0f, (float)screenWidth, (float)screenHeight, 0.0f, -2.0f, 2.0f);
+    transformationBlock->modelMatrix = glm::mat4();
+    transformationBlock->viewMatrix = glm::mat4();
 
     // Build the main command list
     agpu_ref<agpu_framebuffer> backBuffer = swapChain->getCurrentBackBuffer();

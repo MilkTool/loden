@@ -1,12 +1,12 @@
 #ifndef LODEN_GUI_SYSTEM_WINDOW_HPP
 #define LODEN_GUI_SYSTEM_WINDOW_HPP
 
-#include <string>
-#include "AGPU/agpu.hpp"
-#include "SDL.h"
 #include "Loden/GUI/ContainerWidget.hpp"
 #include "Loden/PipelineStateManager.hpp"
 #include "Loden/TransformationBlock.hpp"
+#include "AGPU/agpu.hpp"
+#include "SDL.h"
+#include <string>
 
 namespace Loden
 {
@@ -60,7 +60,7 @@ private:
 	PipelineStateManagerPtr pipelineStateManager;
 
 	agpu_ref<agpu_buffer> transformationBuffer;
-    TransformationBlock *transformationBlockData;
+    uint8_t *transformationBlockData;
 
 	agpu_ref<agpu_command_allocator> commandAllocators[3];
 	agpu_ref<agpu_command_list> commandLists[3];

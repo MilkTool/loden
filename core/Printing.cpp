@@ -1,9 +1,10 @@
+#include "Loden/Printing.hpp"
+
 #include <stdarg.h>
 #include <stdio.h>
 #ifdef _WIN32
 #include <windows.h>
 #endif
-#include "Loden/Printing.hpp"
 
 namespace Loden
 {

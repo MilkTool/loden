@@ -1,3 +1,4 @@
+#include "SDL.h"
 #include "Loden/Application.hpp"
 
 using namespace Loden;

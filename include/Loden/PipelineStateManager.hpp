@@ -1,10 +1,10 @@
 #ifndef LODEN_PIPELINE_STATE_MANAGER_HPP
 #define LODEN_PIPELINE_STATE_MANAGER_HPP
 
-#include <unordered_map>
-#include <map>
 #include "Loden/Common.hpp"
 #include "Loden/PipelineStateFactory.hpp"
+#include <unordered_map>
+#include <map>
 
 namespace Loden
 {

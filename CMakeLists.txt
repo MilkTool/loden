@@ -13,7 +13,7 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 # Output paths.
 set(CMAKE_DEBUG_POSTFIX "_d")
- 
+
 set(CMAKE_INSTALL_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/dist")
 set(Loden_DATA_PREFIX "${CMAKE_CURRENT_BINARY_DIR}/dist/data")
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/;${CMAKE_MODULE_PATH}")
@@ -24,7 +24,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
 else()
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -std=c++11 -pthread")
-	
+
 	# Export symbols from applications.
 	#set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--export-dynamic")
 endif()
@@ -34,14 +34,6 @@ include(${CMAKE_ROOT}/Modules/CheckIncludeFile.cmake)
 include(${CMAKE_ROOT}/Modules/CheckIncludeFileCXX.cmake)
 include(${CMAKE_ROOT}/Modules/CheckFunctionExists.cmake)
 include(${CMAKE_ROOT}/Modules/CheckLibraryExists.cmake)
-
-# Find flex and bison
-find_package(BISON REQUIRED)
-find_package(FLEX REQUIRED)
-
-# Find zlib
-find_package(ZLIB)
-set(Loden_DEP_LIBS ${ZLIB_LIBRARIES})
 
 # Set output dir.
 set(EXECUTABLE_OUTPUT_PATH "${Loden_BINARY_DIR}/dist")
@@ -85,8 +77,9 @@ else()
     else()
 	set(SDL2_MAIN_LIBRARY "")
     endif()
-    
-    set(Loden_DEP_LIBS ${Loden_DEP_LIBS} ${SDL2_LIBRARY} ${SDL2_MAIN_LIBRARY})
+
+    set(Loden_DEP_LIBS ${Loden_DEP_LIBS} ${SDL2_LIBRARY})
+		set(LodenProgram_DEP_LIBS ${Loden_DEP_LIBS} ${SDL2_LIBRARY} ${SDL2_MAIN_LIBRARY})
     include_directories("${SDL2_INCLUDE_DIR}")
 endif()
 
@@ -96,7 +89,6 @@ include_directories(
 "${PROJECT_SOURCE_DIR}/include"
 "${PROJECT_SOURCE_DIR}/thirdparty/glm"
 "${PROJECT_SOURCE_DIR}/thirdparty/rapidjson/include"
-"${ZLIB_INCLUDE_DIRS}"
 "${AGPU_INCLUDE_DIR}"
 )
 

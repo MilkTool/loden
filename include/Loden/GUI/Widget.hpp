@@ -1,14 +1,13 @@
 #ifndef LODEN_GUI_WIDGET_HPP
 #define LODEN_GUI_WIDGET_HPP
 
-#include <glm/vec2.hpp>
-#include <glm/vec4.hpp>
-
 #include "Loden/Common.hpp"
 #include "Loden/Rectangle.hpp"
 #include "Loden/GUI/Canvas.hpp"
 #include "Loden/GUI/EventSocket.hpp"
 #include "Loden/GUI/Events.hpp"
+#include <glm/vec2.hpp>
+#include <glm/vec4.hpp>
 
 namespace Loden
 {

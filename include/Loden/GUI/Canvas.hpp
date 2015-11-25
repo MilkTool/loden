@@ -1,13 +1,13 @@
 #ifndef LODEN_GUI_CANVAS_HPP_
 #define LODEN_GUI_CANVAS_HPP_
 
+#include "Loden/Common.hpp"
+#include "Loden/Rectangle.hpp"
+
 #include <glm/vec2.hpp>
 #include <glm/vec4.hpp>
 #include <glm/mat3x3.hpp>
 #include <functional>
-
-#include "Loden/Common.hpp"
-#include "Loden/Rectangle.hpp"
 
 namespace Loden
 {

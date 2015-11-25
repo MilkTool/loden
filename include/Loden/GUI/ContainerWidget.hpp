@@ -1,8 +1,8 @@
 #ifndef LODEN_GUI_CONTAINER_WIDGET_HPP
 #define LODEN_GUI_CONTAINER_WIDGET_HPP
 
-#include <vector>
 #include "Loden/GUI/Widget.hpp"
+#include <vector>
 
 namespace Loden
 {

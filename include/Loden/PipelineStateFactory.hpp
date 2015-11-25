@@ -2,6 +2,7 @@
 #define LODEN_PIPELINE_STATE_FACTORY_HPP
 
 #include "Loden/PipelineBuilder.hpp"
+#include <functional>
 
 namespace Loden
 {

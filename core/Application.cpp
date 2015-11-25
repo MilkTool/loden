@@ -1,10 +1,9 @@
-#include "SDL.h"
 #include "Loden/Application.hpp"
 
 namespace Loden
 {
 	
-int Application::main(int argc, const char *argv[])
+int Application::main(int argc, const char **argv)
 {
 	// Parse the command line
 	if(!parseCommandLine(argc, argv))
@@ -24,7 +23,7 @@ int Application::main(int argc, const char *argv[])
 	return 0;
 }
 
-bool Application::parseCommandLine(int argc, const char *argv[])
+bool Application::parseCommandLine(int argc, const char **argv)
 {
 	return true;
 }
@@ -62,7 +61,7 @@ bool Application::enterMainLoop(float updateStep)
 		auto newTime = SDL_GetTicks();
 		auto deltaTime = (newTime - lastTime) * 0.001;
 		lastTime = newTime;
-		availableTime += deltaTime;
+		availableTime += (float)deltaTime;
 		
 		// Perform multiples updates in fixed steps for determinism.
 		while(availableTime >= updateStep)

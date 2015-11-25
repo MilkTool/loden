@@ -52,12 +52,12 @@ AgpuCanvasPtr AgpuCanvas::create(const PipelineStateManagerPtr &stateManager)
 		return nullptr;
 
 	// Create the command list allocator.
-	auto allocator = device->createCommandAllocator();
+	auto allocator = device->createCommandAllocator(AGPU_COMMAND_LIST_TYPE_BUNDLE);
 	if(!allocator)
 		return nullptr;
 
 	// Create the command list.
-	auto commandList = device->createCommandListBundle(allocator, nullptr);
+	auto commandList = device->createCommandList(AGPU_COMMAND_LIST_TYPE_BUNDLE, allocator, nullptr);
 	if(!commandList)
 		return nullptr;
 	commandList->close();
@@ -69,6 +69,7 @@ AgpuCanvasPtr AgpuCanvas::create(const PipelineStateManagerPtr &stateManager)
 	canvas->allocator = allocator;
 	canvas->commandList = commandList;
 	canvas->vertexBufferBinding = device->createVertexBinding(layout.get());
+    canvas->shaderSignature = stateManager->getShaderSignature("GUI");
 	canvas->linePipeline = stateManager->getState(canvasLinePipeline);
 	canvas->trianglePipeline = stateManager->getState(canvasTrianglePipeline);
 
@@ -80,7 +81,7 @@ void AgpuCanvas::createVertexBuffer()
 	vertexCapacity = vertices.size();
 
     agpu_buffer_description desc;
-    desc.size = vertexCapacity*sizeof(Vertex);
+    desc.size = agpu_uint(vertexCapacity*sizeof(Vertex));
     desc.usage = AGPU_STREAM;
     desc.binding = AGPU_ARRAY_BUFFER;
     desc.mapping_flags = AGPU_MAP_DYNAMIC_STORAGE_BIT | AGPU_MAP_WRITE_BIT;
@@ -96,7 +97,7 @@ void AgpuCanvas::createIndexBuffer()
 	indexCapacity = indices.size();
 
     agpu_buffer_description desc;
-    desc.size = indexCapacity*sizeof(int);
+    desc.size = agpu_uint(indexCapacity*sizeof(int));
     desc.usage = AGPU_STREAM;
     desc.binding = AGPU_ELEMENT_ARRAY_BUFFER;
     desc.mapping_flags = AGPU_MAP_DYNAMIC_STORAGE_BIT | AGPU_MAP_WRITE_BIT;
@@ -135,6 +136,9 @@ void AgpuCanvas::close()
 		createIndexBuffer();
 	vertexBuffer->uploadBufferData(0, vertices.size()*sizeof(Vertex), &vertices[0]);
 	indexBuffer->uploadBufferData(0, indices.size()*sizeof(int), &indices[0]);
+
+    // Set the shader signature.
+    commandList->setShaderSignature(shaderSignature.get());
 
 	// Store the commands in the command list.
 	commandList->useVertexBinding(vertexBufferBinding.get());
@@ -233,7 +237,7 @@ void AgpuCanvas::beginLineShape()
 		});
 
 	shapeType = ST_Line;
-	baseVertex = vertices.size();
+	baseVertex = (agpu_uint)vertices.size();
 }
 
 void AgpuCanvas::beginTriangleShape()
@@ -248,20 +252,20 @@ void AgpuCanvas::beginTriangleShape()
 		});
 
 	shapeType = ST_Triangle;
-	baseVertex = vertices.size();
+	baseVertex = (agpu_uint)vertices.size();
 }
 
 void AgpuCanvas::endSubmesh()
 {
 	int start = startIndex;
-	int count = indices.size() - startIndex;
+	int count = (int)indices.size() - startIndex;
 	if(!count)
 		return;
 
 	drawCommandsToAdd.push_back([=]{
 		commandList->drawElements(count, 1, start, 0, 0);
 	});
-	startIndex = indices.size();
+	startIndex = (int)indices.size();
 }
 
 void AgpuCanvas::addVertex(const AgpuCanvasVertex &vertex)

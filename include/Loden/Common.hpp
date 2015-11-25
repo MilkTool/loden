@@ -27,4 +27,12 @@
 	class className; \
 	LODEN_DECLARE_SMART_POINTERS(className)
 	
+#ifdef _MSC_VER
+#pragma warning(disable : 4100) // Unreferenced formal parameter.
+#pragma warning(disable : 4200) // Zero sized array in structure end.
+#pragma warning(disable : 4201) // Anonymous struct/union
+#pragma warning(disable : 4251) // Needs to have dll interface to be used by clients of class.
+#pragma warning(disable : 4458) // Declaration of 'X' hides class member
+#endif
+
 #endif //LODEN_COMMON_HPP_

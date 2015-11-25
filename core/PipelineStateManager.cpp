@@ -1,6 +1,6 @@
-#include <vector>
 #include "Loden/PipelineStateManager.hpp"
 #include "Loden/Printing.hpp"
+#include <vector>
 
 namespace Loden
 {

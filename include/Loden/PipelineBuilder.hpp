@@ -1,8 +1,8 @@
 #ifndef LODEN_PIPELINE_BUILDER_HPP
 #define LODEN_PIPELINE_BUILDER_HPP
 
-#include "AGPU/agpu.hpp"
 #include "Loden/Common.hpp"
+#include "AGPU/agpu.hpp"
 
 namespace Loden
 {

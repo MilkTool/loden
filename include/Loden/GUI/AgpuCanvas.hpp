@@ -1,12 +1,13 @@
 #ifndef LODEN_AGPU_CANVAS_HPP
 #define LODEN_AGPU_CANVAS_HPP
 
+#include "Loden/Common.hpp"
+#include "Loden/GUI/Canvas.hpp"
+#include "Loden/PipelineStateManager.hpp"
+#include "AGPU/agpu.hpp"
 #include <vector>
 #include <glm/vec3.hpp>
 #include <functional>
-#include "AGPU/agpu.hpp"
-#include "Loden/GUI/Canvas.hpp"
-#include "Loden/PipelineStateManager.hpp"
 
 namespace Loden
 {
@@ -15,7 +16,7 @@ namespace GUI
 
 LODEN_DECLARE_CLASS(AgpuCanvas);
 
-struct LODEN_CORE_EXPORT AgpuCanvasVertex
+struct AgpuCanvasVertex
 {
 	AgpuCanvasVertex() {}
 	AgpuCanvasVertex(const glm::vec2 &position, const glm::vec4 &color)
@@ -25,8 +26,8 @@ struct LODEN_CORE_EXPORT AgpuCanvasVertex
 	glm::vec2 texcoord;
 	glm::vec4 color;
 	
-    static agpu_vertex_attrib_description Description[];
-    static const int DescriptionSize;
+    LODEN_CORE_EXPORT static agpu_vertex_attrib_description Description[];
+    LODEN_CORE_EXPORT static const int DescriptionSize;
 };
 
 /**
@@ -100,6 +101,7 @@ private:
 	agpu_ref<agpu_vertex_binding> vertexBufferBinding;
 	
 	agpu_ref<agpu_buffer> indexBuffer;
+    agpu_ref<agpu_shader_signature> shaderSignature;
 	agpu_ref<agpu_pipeline_state> linePipeline;
 	agpu_ref<agpu_pipeline_state> trianglePipeline;
 	
