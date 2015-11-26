@@ -1,8 +1,8 @@
 #include "Loden/Printing.hpp"
 #include "Loden/GUI/SystemWindow.hpp"
 #include "Loden/GUI/AgpuCanvas.hpp"
+#include "Loden/Matrices.hpp"
 #include "SDL_syswm.h"
-#include <glm/gtc/matrix_transform.hpp>
 
 namespace Loden
 {
@@ -46,8 +46,20 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
 		return nullptr;
 	}
 
+    int flags = 0;
+#ifndef _WIN32
+    SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_BLUE_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_ALPHA_SIZE, 8);
+    SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 0);
+    SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 0);
+    SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
+    flags |= SDL_WINDOW_OPENGL;
+#endif
+
 	// Create the sdl window.
-	auto sdlWindow = SDL_CreateWindow(title.c_str(), x, y, w, h, SDL_WINDOW_OPENGL);
+	auto sdlWindow = SDL_CreateWindow(title.c_str(), x, y, w, h, flags);
 	if(!sdlWindow)
 	{
 		printError("Failed to open window\n");
@@ -370,7 +382,7 @@ void SystemWindow::renderScreen()
     auto transformationBlock = reinterpret_cast<TransformationBlock*> (transformationBlockData + TransformationBlock_AlignedSize*frameIndex);
 	int screenWidth = (int)ceil(getWidth());
 	int screenHeight = (int)ceil(getHeight());
-    transformationBlock->projectionMatrix = glm::ortho(0.0f, (float)screenWidth, (float)screenHeight, 0.0f, -2.0f, 2.0f);
+    transformationBlock->projectionMatrix = orthographicMatrix(0.0f, (float)screenWidth, (float)screenHeight, 0.0f, -2.0f, 2.0f);
     transformationBlock->modelMatrix = glm::mat4();
     transformationBlock->viewMatrix = glm::mat4();
 

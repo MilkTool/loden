@@ -20,12 +20,14 @@ set(LodenCore_SRCS
 	Application.cpp
 	FileSystem.cpp
 	JSON.cpp
+	Matrices.cpp
 	Printing.cpp
 	PipelineStateManager.cpp
 )
 
 source_group("Public Headers" FILES ${LodenCore_HEADERS})
 source_group("Public Headers\\GUI" FILES ${LodenCoreGUI_HEADERS})
+
 
 add_definitions(-DBUILDING_LODEN_CORE)
 add_library(LodenCore SHARED ${LodenCore_SRCS} ${LodenCoreGUI_SRCS} ${LodenCore_HEADERS} ${LodenCoreGUI_HEADERS})

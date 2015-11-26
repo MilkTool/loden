@@ -81,8 +81,6 @@ void AgpuCanvas::reset()
 {
 	baseVertex = 0;
 	startIndex = 0;
-	vertexCapacity = 0;
-	indexCapacity = 0;
 	shapeType = ST_Unknown;
 	drawCommandsToAdd.clear();
 
