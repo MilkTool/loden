@@ -25,9 +25,6 @@ struct AgpuCanvasVertex
 	glm::vec2 position;
 	glm::vec2 texcoord;
 	glm::vec4 color;
-	
-    LODEN_CORE_EXPORT static agpu_vertex_attrib_description Description[];
-    LODEN_CORE_EXPORT static const int DescriptionSize;
 };
 
 /**

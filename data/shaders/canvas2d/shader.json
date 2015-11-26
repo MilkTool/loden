@@ -1,6 +1,0 @@
-{
-    "glsl" : {
-        "fragment" : "colorFragment.glsl",
-        "vertex" : "colorVertex.glsl",
-    }
-}

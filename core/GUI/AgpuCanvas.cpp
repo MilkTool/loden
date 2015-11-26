@@ -1,37 +1,9 @@
 #include "Loden/GUI/AgpuCanvas.hpp"
-#include "Loden/PipelineStateFactory.hpp"
 
 namespace Loden
 {
 namespace GUI
 {
-
-agpu_vertex_attrib_description AgpuCanvasVertex::Description[] = {
-    {0, 0, AGPU_FLOAT, 2, 1, false, offsetof(AgpuCanvasVertex, position)},
-    {0, 1, AGPU_FLOAT, 2, 1, false, offsetof(AgpuCanvasVertex, texcoord)},
-	{0, 2, AGPU_FLOAT, 4, 1, false, offsetof(AgpuCanvasVertex, color)},
-};
-
-const int AgpuCanvasVertex::DescriptionSize = 3;
-
-static PipelineStateFactory canvasLinePipeline("AgpuCanvas::line", [](PipelineBuilder &builder) {
-	builder
-        .setShaderSignatureNamed("GUI")
-		.setVertexShader("shaders/canvas2d/colorVertex")
-		.setFragmentShader("shaders/canvas2d/colorFragment")
-		.setPrimitiveType(AGPU_PRIMITIVE_TYPE_LINE)
-		.setRenderTargetCount(1)
-		.setVertexLayout(1, AgpuCanvasVertex::DescriptionSize, AgpuCanvasVertex::Description);
-});
-static PipelineStateFactory canvasTrianglePipeline("AgpuCanvas::triangle", [](PipelineBuilder &builder) {
-	builder
-        .setShaderSignatureNamed("GUI")
-		.setVertexShader("shaders/canvas2d/colorVertex")
-		.setFragmentShader("shaders/canvas2d/colorFragment")
-		.setPrimitiveType(AGPU_PRIMITIVE_TYPE_TRIANGLE)
-		.setRenderTargetCount(1)
-		.setVertexLayout(1, AgpuCanvasVertex::DescriptionSize, AgpuCanvasVertex::Description);
-});
 
 AgpuCanvas::AgpuCanvas()
 {
@@ -47,7 +19,7 @@ AgpuCanvasPtr AgpuCanvas::create(const PipelineStateManagerPtr &stateManager)
 {
 	auto &device = stateManager->getDevice();
 
-	auto layout = stateManager->getVertexLayout(1, AgpuCanvasVertex::DescriptionSize, AgpuCanvasVertex::Description);
+	auto layout = stateManager->getVertexLayout("CanvasVertex2D");
 	if(!layout)
 		return nullptr;
 
@@ -70,8 +42,8 @@ AgpuCanvasPtr AgpuCanvas::create(const PipelineStateManagerPtr &stateManager)
 	canvas->commandList = commandList;
 	canvas->vertexBufferBinding = device->createVertexBinding(layout.get());
     canvas->shaderSignature = stateManager->getShaderSignature("GUI");
-	canvas->linePipeline = stateManager->getState(canvasLinePipeline);
-	canvas->trianglePipeline = stateManager->getState(canvasTrianglePipeline);
+	canvas->linePipeline = stateManager->getPipelineState("canvas2d.color.line");
+	canvas->trianglePipeline = stateManager->getPipelineState("canvas2d.color.triangle");
 
 	return canvas;
 }

@@ -24,6 +24,8 @@ APPLICATION_ENTRY_POINT(Sample2);
 bool Sample2::initialize()
 {
 	screen = GUI::SystemWindow::create("Sample2", 640, 480);
+    if (!screen)
+        return false;
 	
 	auto button = GUI::Button::create("Click Me", glm::vec2(60, 20), glm::vec2(60, 60));
 	screen->addChild(button);
