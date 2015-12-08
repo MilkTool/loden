@@ -2,9 +2,8 @@
 #define LODEN_GUI_SYSTEM_WINDOW_HPP
 
 #include "Loden/GUI/ContainerWidget.hpp"
-#include "Loden/PipelineStateManager.hpp"
+#include "Loden/Engine.hpp"
 #include "Loden/TransformationBlock.hpp"
-#include "AGPU/agpu.hpp"
 #include "SDL.h"
 #include <string>
 
@@ -15,6 +14,7 @@ namespace GUI
 
 LODEN_DECLARE_CLASS(SystemWindow);
 LODEN_DECLARE_CLASS(AgpuCanvas);
+
 /**
  * The system window.
  */
@@ -23,7 +23,7 @@ class LODEN_CORE_EXPORT SystemWindow: public ContainerWidget
 public:
 	~SystemWindow();
 
-	static SystemWindowPtr create(const std::string &title, int w, int h, int x = SDL_WINDOWPOS_CENTERED, int y = SDL_WINDOWPOS_CENTERED);
+	static SystemWindowPtr create(const EnginePtr &engine, const std::string &title, int w, int h, int x = SDL_WINDOWPOS_CENTERED, int y = SDL_WINDOWPOS_CENTERED);
 
 	virtual bool isSystemWindow() const;
 	virtual SystemWindow *getSystemWindow();
@@ -32,8 +32,6 @@ public:
 	void setKeyboardFocusWidget(const WidgetPtr &newKeyboardFocus);
 	void setMouseFocusWidget(const WidgetPtr &newMouseFocus);
 	void setMouseCaptureWidget(const WidgetPtr &widget);
-
-	const PipelineStateManagerPtr &getPipelineStateManager();
 
 	void pumpEvents();
 	void renderScreen();
@@ -52,14 +50,14 @@ private:
 	WidgetPtr focusedWidget;
 	WidgetPtr mouseOverWidget;
 	WidgetPtr mouseCaptureWidget;
+    EnginePtr engine;
 
-	agpu_ref<agpu_device> device;
-    agpu_ref<agpu_command_queue> commandQueue;
-    agpu_ref<agpu_swap_chain> swapChain;
-    agpu_ref<agpu_shader_signature> shaderSignature;
-	PipelineStateManagerPtr pipelineStateManager;
+    agpu_device_ref device;
+    agpu_command_queue_ref commandQueue;
+    agpu_swap_chain_ref swapChain;
+    agpu_shader_signature_ref shaderSignature;
 
-	agpu_ref<agpu_buffer> transformationBuffer;
+	agpu_buffer_ref transformationBuffer;
     uint8_t *transformationBlockData;
 
 	agpu_ref<agpu_command_allocator> commandAllocators[3];

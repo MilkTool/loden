@@ -9,6 +9,11 @@ int Application::main(int argc, const char **argv)
 	if(!parseCommandLine(argc, argv))
 		return -1;
 
+    // Create the engine
+    engine = Engine::create();
+    if (!engine->initialize(argc, argv))
+        return -1;
+
 	// Initialize the application
 	if(!initialize())
 		return -1;
@@ -21,6 +26,11 @@ int Application::main(int argc, const char **argv)
 	if(!shutdown())
 		return -1;
 	return 0;
+}
+
+const EnginePtr &Application::getEngine() const
+{
+    return engine;
 }
 
 bool Application::parseCommandLine(int argc, const char **argv)

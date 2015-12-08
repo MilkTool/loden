@@ -6,6 +6,7 @@
 
 namespace Loden
 {
+LODEN_DECLARE_CLASS(VirtualFileSytem);
 
 /**
  * Tells if a paths is absolute.
@@ -31,6 +32,17 @@ LODEN_CORE_EXPORT std::string extensionOfPath(const std::string &path);
 * Joins a base path with a relative path.
 */
 LODEN_CORE_EXPORT std::string joinPath(const std::string &path1, const std::string &path2);
+
+
+/**
+ * The virtual file system
+ */
+class LODEN_CORE_EXPORT VirtualFileSystem
+{
+public:
+
+
+};
 
 } // End of namespace
 

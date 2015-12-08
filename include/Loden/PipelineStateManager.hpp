@@ -3,6 +3,7 @@
 
 #include "Loden/Common.hpp"
 #include "Loden/JSON.hpp"
+#include "Loden/Structure.hpp"
 #include "AGPU/agpu.hpp"
 #include <functional>
 #include <map>
@@ -11,6 +12,7 @@
 namespace Loden
 {
 
+LODEN_DECLARE_CLASS(Engine);
 LODEN_DECLARE_CLASS(PipelineStateManager);
 LODEN_DECLARE_CLASS(PipelineStateTemplate);
 
@@ -26,24 +28,6 @@ public:
     }
 
     std::vector<agpu_shader_ref> stages;
-};
-
-/**
- * Vertex attribute type
- */
-class VertexAttributeType
-{
-public:
-    VertexAttributeType() {}
-    VertexAttributeType(agpu_field_type type, agpu_uint components, agpu_uint rows, agpu_bool normalized, agpu_uint size, agpu_uint alignment)
-        : type(type), components(components), rows(rows), normalized(normalized), size(size), alignment(alignment) {}
-
-    agpu_field_type type;
-    agpu_uint components;
-    agpu_uint rows;
-    agpu_bool normalized;
-    agpu_uint size;
-    agpu_uint alignment;
 };
 
 /**
@@ -93,25 +77,27 @@ public:
 class LODEN_CORE_EXPORT PipelineStateManager
 {
 public:
-	PipelineStateManager(const agpu_device_ref &device);
+	PipelineStateManager(Engine *engine);
 	~PipelineStateManager();
 
     bool initialize();
     bool loadStatesFromFile(const std::string &filename);
+    bool loadStructuresFromFile(const std::string &filename);
     bool loadShaderSignaturesFromFile(const std::string &filename);
     bool loadVertexLayoutsFromFile(const std::string &filename);
     bool loadShadersFromFile(const std::string &filename, const std::string &namePrefix = std::string());
     bool loadPipelineStatesFromFile(const std::string &filename, const std::string &namePrefix = std::string());
     
-
 	const agpu_device_ref &getDevice() const;
 
+    void addStructure(const std::string &name, const StructurePtr &structure);
     void addShaderSignature(const std::string &name, const agpu_shader_signature_ref &shaderSignature);
     void addVertexLayout(const std::string &name, const agpu_vertex_layout_ref &vertexLayout);
     void addShaderSet(const std::string &name, const ShaderSet &shaderSet);
     void addPipelineStateTemplate(const std::string &name, const PipelineStateTemplatePtr &stateTemplate);
     void addPipelineState(const std::string &name, const agpu_pipeline_state_ref &state);
 
+    StructurePtr getStructure(const std::string &name);
     agpu_shader_signature_ref getShaderSignature(const std::string &name);
 	agpu_vertex_layout_ref getVertexLayout(const std::string &name);
     ShaderSet *getShaderSet(const std::string &name);
@@ -126,17 +112,24 @@ private:
 
 	agpu_shader_ref compileShaderFromFile(const std::string &fileName, agpu_shader_language language, agpu_shader_type type);
 
+    Engine *engine;
 	agpu_device_ref device;
+    std::map<std::string, StructurePtr> structures;
 	std::map<std::string, agpu_pipeline_state_ref> pipelineStates;
 	std::map<std::string, agpu_vertex_layout_ref> vertexLayouts;
     std::map<std::string, agpu_shader_signature_ref> shaderSignatures;
     std::map<std::string, ShaderSet> shaderSets;
 
-    // Tables for parsing the state data.
+    // Structure parsing table
+    std::map<std::string, StructureType> structureTypeMap;
+    std::map<std::string, StructureFieldType> structureFieldTypeMap;
+
+    // Shader parsing tables
     std::map<std::string, agpu_shader_binding_type> shaderBindingTypeNameMap;
-    std::map<std::string, VertexAttributeType> vertexLayoutTypeMap;
     std::map<std::string, agpu_shader_type> shaderTypeNameMap;
     std::vector<std::pair<agpu_shader_language, std::string>> shaderLanguageSearchOrder;
+
+    // Pipeline state parsing table.s
     std::map<std::string, PipelineStateTemplateParseAction> pipelineStateParsingActions;
     std::map<std::string, PipelineStateTemplatePtr> pipelineStateTemplates;
     std::map<std::string, agpu_primitive_type> primitiveTypeNameMap;

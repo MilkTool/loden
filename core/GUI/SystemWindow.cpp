@@ -37,7 +37,7 @@ glm::vec2 SystemWindow::getAbsolutePosition() const
 	return glm::vec2();
 }
 
-SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int x, int y)
+SystemWindowPtr SystemWindow::create(const EnginePtr &engine, const std::string &title, int w, int h, int x, int y)
 {
 	// Initialize the video subsystem.
 	if(SDL_Init(SDL_INIT_VIDEO) < 0)
@@ -66,24 +66,16 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
 		return nullptr;
 	}
 
-    // Get the platform.
-    agpu_platform *platform;
-    agpuGetPlatforms(1, &platform, nullptr);
-    if(!platform)
-    {
-        printError("Failed to get the AGPU platform\n");
-        return nullptr;
-    }
-
     // Get the window info.
     SDL_SysWMinfo windowInfo;
     SDL_VERSION(&windowInfo.version);
     SDL_GetWindowWMInfo(sdlWindow, &windowInfo);
 
-    // Open the device
+    // Get the device.
+    auto &device = engine->getAgpuDevice();
+
+    // Create the swap chain
     agpu_swap_chain_create_info swapChainCreateInfo;
-    agpu_device_open_info openInfo;
-    memset(&openInfo, 0, sizeof(openInfo));
     memset(&swapChainCreateInfo, 0, sizeof(swapChainCreateInfo));
     switch(windowInfo.subsystem)
     {
@@ -95,7 +87,6 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
 #endif
 #if defined(SDL_VIDEO_DRIVER_X11)
     case SDL_SYSWM_X11:
-        openInfo.display = (agpu_pointer)windowInfo.info.x11.display;
         swapChainCreateInfo.window = (agpu_pointer)(uintptr_t)windowInfo.info.x11.window;
         break;
 #endif
@@ -109,27 +100,10 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
     swapChainCreateInfo.width = w;
     swapChainCreateInfo.height = h;
     swapChainCreateInfo.doublebuffer = 1;
-#ifdef _DEBUG
-    // Use the debug layer when debugging. This is useful for low level backends.
-    openInfo.debug_layer = true;
-#endif
-	agpu_ref<agpu_device> device = platform->openDevice(&openInfo);
-	if(!device)
-	{
-        printError("Failed to open the AGPU device\n");
-        return nullptr;
-	}
 
-    // Get the main command queue.
-    agpu_ref<agpu_command_queue> commandQueue = device->getDefaultCommandQueue();
-    if(!commandQueue)
-    {
-        printError("Failed to get the default AGPU command queue\n");
-        return nullptr;
-    }
 
     // Create the swap chain.
-    agpu_ref<agpu_swap_chain> swapChain = device->createSwapChain(commandQueue.get(), &swapChainCreateInfo);
+    agpu_ref<agpu_swap_chain> swapChain = device->createSwapChain(engine->getGraphicsCommandQueue().get(), &swapChainCreateInfo);
     if(!swapChain)
     {
         printError("Failed to create the swap chain\n");
@@ -141,9 +115,10 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
 	window->setPosition(glm::vec2(0, 0));
 	window->setSize(glm::vec2(w, h));
 	window->handle = sdlWindow;
+    window->engine = engine;
 	window->device = device;
     window->swapChain = swapChain;
-    window->commandQueue = commandQueue;
+    window->commandQueue = engine->getGraphicsCommandQueue();
 
     if(!window->initialize())
         return nullptr;
@@ -153,14 +128,6 @@ SystemWindowPtr SystemWindow::create(const std::string &title, int w, int h, int
 
 bool SystemWindow::initialize()
 {
-    // Create the pipeline state manager.
-    pipelineStateManager = std::make_shared<PipelineStateManager> (device);
-    if(!pipelineStateManager->initialize())
-    {
-        printError("Failed to initialize the pipeline state manager.\n");
-        return false;
-    }
-
     // Create the transformation buffer.
     {
         agpu_buffer_description desc;
@@ -185,6 +152,7 @@ bool SystemWindow::initialize()
     }
 
     // Get the gui shader signature.
+    auto &pipelineStateManager = engine->getPipelineStateManager();
     shaderSignature = pipelineStateManager->getShaderSignature("GUI");
     if(!shaderSignature)
     {
@@ -238,11 +206,6 @@ bool SystemWindow::initialize()
     }
 
     return true;
-}
-
-const PipelineStateManagerPtr &SystemWindow::getPipelineStateManager()
-{
-	return pipelineStateManager;
 }
 
 void SystemWindow::pumpEvents()

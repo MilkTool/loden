@@ -2,6 +2,7 @@
 #define LODEN_APPLICATION_HPP
 
 #include "Loden/Common.hpp"
+#include "Loden/Engine.hpp"
 #include "SDL.h"
 
 namespace Loden
@@ -15,6 +16,8 @@ class LODEN_CORE_EXPORT Application
 public:
 	virtual int main(int argc, const char **argv);
 	
+    const EnginePtr &getEngine() const;
+
 protected:
 	virtual bool parseCommandLine(int argc, const char **argv);
 	virtual bool initialize();
@@ -26,6 +29,8 @@ protected:
 	virtual void mainLoopQuit();
 	virtual void mainLoopUpdateStep(float updateDelta);
 	virtual void mainLoopRenderStep();
+
+    EnginePtr engine;
 
 private:
 	bool mainLoopQuit_;

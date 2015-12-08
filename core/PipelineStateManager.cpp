@@ -1,5 +1,6 @@
 #include "Loden/PipelineStateManager.hpp"
 #include "Loden/Printing.hpp"
+#include "Loden/Engine.hpp"
 #include "Loden/FileSystem.hpp"
 #include <algorithm>
 #include <vector>
@@ -21,9 +22,10 @@ inline const char *mapShaderLanguageIdToName(agpu_shader_language language)
     }
 }
 
-PipelineStateManager::PipelineStateManager(const agpu_device_ref &device)
-	: device(device)
+PipelineStateManager::PipelineStateManager(Engine *engine)
+	: engine(engine)
 {
+    device = engine->getAgpuDevice();
     buildParseTables();
     buildPipelineStateParsingActions();
 }
@@ -35,59 +37,24 @@ PipelineStateManager::~PipelineStateManager()
 
 void PipelineStateManager::buildParseTables()
 {
+    // Structure type.
+    structureTypeMap["generic"] = StructureType::Generic;
+    structureTypeMap["uniform"] = StructureType::UniformState;
+    structureTypeMap["uniform-state"] = StructureType::UniformState;
+    structureTypeMap["vertex"] = StructureType::Vertex;
+
+    // Structure field type.
+    for (int i = 0; i < (int)StructureFieldType::Count; ++i)
+    {
+        auto &desc = StructureFieldTypeDescription::Descriptions[i];
+        structureFieldTypeMap[desc.name] = StructureFieldType(i);
+    }
+
     // Some dictionaries for parsing data.
     shaderBindingTypeNameMap["cbv"] = AGPU_SHADER_BINDING_TYPE_CBV;
     shaderBindingTypeNameMap["srv"] = AGPU_SHADER_BINDING_TYPE_SRV;
     shaderBindingTypeNameMap["sampler"] = AGPU_SHADER_BINDING_TYPE_SAMPLER;
     shaderBindingTypeNameMap["uav"] = AGPU_SHADER_BINDING_TYPE_UAV;
-
-    // Vertex attributes
-    vertexLayoutTypeMap["float"] = VertexAttributeType(AGPU_FLOAT, 1, 1, false, 4, 4);
-    vertexLayoutTypeMap["vec2"] = VertexAttributeType(AGPU_FLOAT, 2, 1, false, 4, 8);
-    vertexLayoutTypeMap["vec3"] = VertexAttributeType(AGPU_FLOAT, 3, 1, false, 4, 12);
-    vertexLayoutTypeMap["vec4"] = VertexAttributeType(AGPU_FLOAT, 4, 1, false, 4, 16);
-
-    vertexLayoutTypeMap["int"] = VertexAttributeType(AGPU_INT, 1, 1, false, 4, 4);
-    vertexLayoutTypeMap["ivec2"] = VertexAttributeType(AGPU_INT, 2, 1, false, 4, 8);
-    vertexLayoutTypeMap["ivec3"] = VertexAttributeType(AGPU_INT, 3, 1, false, 4, 12);
-    vertexLayoutTypeMap["ivec4"] = VertexAttributeType(AGPU_INT, 4, 1, false, 4, 16);
-
-    vertexLayoutTypeMap["uint"] = VertexAttributeType(AGPU_UNSIGNED_INT, 1, 1, false, 4, 4);
-    vertexLayoutTypeMap["uivec2"] = VertexAttributeType(AGPU_UNSIGNED_INT, 2, 1, false, 4, 8);
-    vertexLayoutTypeMap["uivec3"] = VertexAttributeType(AGPU_UNSIGNED_INT, 3, 1, false, 4, 12);
-    vertexLayoutTypeMap["uivec4"] = VertexAttributeType(AGPU_UNSIGNED_INT, 4, 1, false, 4, 16);
-
-    vertexLayoutTypeMap["short"] = VertexAttributeType(AGPU_SHORT, 1, 1, false, 2, 2);
-    vertexLayoutTypeMap["svec2"] = VertexAttributeType(AGPU_SHORT, 2, 1, false, 4, 4);
-    vertexLayoutTypeMap["svec4"] = VertexAttributeType(AGPU_SHORT, 4, 1, false, 4, 8);
-
-    vertexLayoutTypeMap["ushort"] = VertexAttributeType(AGPU_UNSIGNED_SHORT, 1, 1, false, 2, 2);
-    vertexLayoutTypeMap["usvec2"] = VertexAttributeType(AGPU_UNSIGNED_SHORT, 2, 1, false, 4, 4);
-    vertexLayoutTypeMap["usvec4"] = VertexAttributeType(AGPU_UNSIGNED_SHORT, 4, 1, false, 4, 8);
-
-    vertexLayoutTypeMap["nshort"] = VertexAttributeType(AGPU_SHORT, 1, 1, true, 2, 2);
-    vertexLayoutTypeMap["nsvec2"] = VertexAttributeType(AGPU_SHORT, 2, 1, true, 4, 4);
-    vertexLayoutTypeMap["nsvec4"] = VertexAttributeType(AGPU_SHORT, 4, 1, true, 4, 8);
-
-    vertexLayoutTypeMap["nushort"] = VertexAttributeType(AGPU_UNSIGNED_SHORT, 1, 1, true, 2, 2);
-    vertexLayoutTypeMap["nusvec2"] = VertexAttributeType(AGPU_UNSIGNED_SHORT, 2, 1, true, 4, 4);
-    vertexLayoutTypeMap["nusvec4"] = VertexAttributeType(AGPU_UNSIGNED_SHORT, 4, 1, true, 4, 8);
-
-    vertexLayoutTypeMap["byte"] = VertexAttributeType(AGPU_BYTE, 1, 1, false, 1, 1);
-    vertexLayoutTypeMap["bvec2"] = VertexAttributeType(AGPU_BYTE, 2, 1, false, 2, 2);
-    vertexLayoutTypeMap["bvec4"] = VertexAttributeType(AGPU_BYTE, 4, 1, false, 4, 4);
-
-    vertexLayoutTypeMap["ubyte"] = VertexAttributeType(AGPU_UNSIGNED_BYTE, 1, 1, false, 1, 1);
-    vertexLayoutTypeMap["ubvec2"] = VertexAttributeType(AGPU_UNSIGNED_BYTE, 2, 1, false, 2, 2);
-    vertexLayoutTypeMap["ubvec4"] = VertexAttributeType(AGPU_UNSIGNED_BYTE, 4, 1, false, 4, 4);
-
-    vertexLayoutTypeMap["nbyte"] = VertexAttributeType(AGPU_BYTE, 1, 1, true, 1, 1);
-    vertexLayoutTypeMap["nbvec2"] = VertexAttributeType(AGPU_BYTE, 2, 1, true, 2, 2);
-    vertexLayoutTypeMap["nbvec4"] = VertexAttributeType(AGPU_BYTE, 4, 1, true, 4, 4);
-
-    vertexLayoutTypeMap["nubyte"] = VertexAttributeType(AGPU_UNSIGNED_BYTE, 1, 1, true, 1, 1);
-    vertexLayoutTypeMap["nubvec2"] = VertexAttributeType(AGPU_UNSIGNED_BYTE, 2, 1, true, 2, 2);
-    vertexLayoutTypeMap["nubvec4"] = VertexAttributeType(AGPU_UNSIGNED_BYTE, 4, 1, true, 4, 4);
 
     // Shader type name.
     shaderTypeNameMap["vertex"] = AGPU_VERTEX_SHADER;
@@ -254,6 +221,14 @@ bool PipelineStateManager::loadStatesFromFile(const std::string &filename)
 
     auto basePath = dirname(filename);
 
+    // Load the structures
+    {
+        auto &structuresFileName = document["structures"];
+        assert(structuresFileName.IsString());
+        if (!loadStructuresFromFile(joinPath(basePath, structuresFileName.GetString())))
+            return false;
+    }
+
     // Load the shader signatures
     {
         auto &shaderSignatureFileName = document["shader-signatures"];
@@ -382,6 +357,113 @@ bool PipelineStateManager::loadShaderSignaturesFromFile(const std::string &filen
     return true;
 }
 
+bool PipelineStateManager::loadStructuresFromFile(const std::string &filename)
+{
+    rapidjson::Document document;
+    if (!parseJsonFromFile(filename, &document))
+        return false;
+
+    assert(document.IsObject());
+    for (auto it = document.MemberBegin(); it != document.MemberEnd(); ++it)
+    {
+        assert(it->name.IsString());
+        auto name = it->name.GetString();
+
+        auto &structureDescription = it->value;
+        assert(structureDescription.IsObject());
+
+        if (!structureDescription.HasMember("type") || !structureDescription["type"].IsString())
+        {
+            printError("Missing type in structure specification.\n");
+            return false;
+        }
+
+        if (!structureDescription.HasMember("fields") || !structureDescription["fields"].IsArray())
+        {
+            printError("Missing fields in structure specification.\n");
+            return false;
+        }
+
+        auto structure = std::make_shared<Structure> ();
+
+        // Parse the structure type
+        {
+            auto typeName = structureDescription["type"].GetString();
+            auto typeIt = structureTypeMap.find(typeName);
+            if (typeIt == structureTypeMap.end())
+            {
+                printError("Unsupported structure type '%s'.\n", typeName);
+                return false;
+            }
+            structure->type = typeIt->second;
+        }
+
+        // Get structure fields
+        auto &fields = structureDescription["fields"];
+
+        // Keep track of the structure size and alignment.
+        structure->size = 0;
+        structure->alignment = 1;
+
+        // Get the fields.
+        for (size_t j = 0; j < fields.Size(); ++j)
+        {
+            auto &fieldValue = fields[j];
+            if (!fieldValue.IsObject())
+                continue;
+
+            if (!fieldValue.HasMember("type") || !fieldValue.HasMember("name"))
+                continue;
+
+            auto &typeValue = fieldValue["type"];
+            auto &nameValue = fieldValue["name"];
+            if (!nameValue.IsString() || !typeValue.IsString())
+                continue;
+
+            auto binding = -1;
+            if (fieldValue.HasMember("binding"))
+            {
+                auto &bindingValue = fieldValue["binding"];
+                if(bindingValue.IsInt())
+                    binding = bindingValue.GetInt();
+            }
+
+            // Parse the field type
+            auto typeIt = structureFieldTypeMap.find(typeValue.GetString());
+            if (typeIt == structureFieldTypeMap.end())
+            {
+                printf("Unsupported type '%s' for structure field.", typeValue.GetString());
+                return false;
+            }
+
+            // Align the attribute offset.
+            auto typeId = typeIt->second;
+            auto &type = StructureFieldTypeDescription::Descriptions[(int)typeId];
+            auto alignmentMask = type.alignment - 1;
+            structure->size = (structure->size + alignmentMask) & ~alignmentMask;
+            structure->alignment = std::max(structure->alignment, (size_t)type.alignment);
+
+            // Set the field data.
+            StructureField field;
+            field.type = typeId;
+            field.name = name;
+            field.binding = binding;
+            field.offset = structure->size;
+            structure->size += type.size;
+            structure->fields.push_back(field);
+        }
+
+        // Align the structure size.
+        auto alignmentMask = structure->alignment - 1;
+        structure->size = (structure->size + alignmentMask) & ~alignmentMask;
+
+        // Register the structure
+        addStructure(name, structure);
+    }
+
+    return true;
+}
+
 bool PipelineStateManager::loadVertexLayoutsFromFile(const std::string &filename)
 {
     rapidjson::Document document;
@@ -397,97 +479,62 @@ bool PipelineStateManager::loadVertexLayoutsFromFile(const std::string &filename
         auto &layoutData = it->value;
         assert(layoutData.IsObject());
 
-        if (!layoutData.HasMember("buffer-count") || !layoutData["buffer-count"].IsInt())
+        
+        if (!layoutData.HasMember("buffers"))
         {
-            printError("Missing buffer count in vertex layout specification.\n");
+            printError("Missing buffers count in vertex layout specification.\n");
             return false;
         }
 
-        auto bufferCount = layoutData["buffer-count"].GetInt();
+        auto &bufferArray = layoutData["buffers"];
+        if (!bufferArray.IsArray())
+        {
+            printError("Expected an array with the specification of buffers used by a vertex layout\n");
+            return false;
+        }
 
         std::vector<agpu_vertex_attrib_description> layoutAttributes;
-        if (layoutData.HasMember("structures") && layoutData["structures"].IsArray())
+        auto bufferCount = bufferArray.Size();
+        for (size_t i = 0; i < bufferCount; ++i)
         {
-            auto &structures = layoutData["structures"];
-            for (size_t i = 0; i < structures.Size(); ++i)
+            auto &bufferSpec = bufferArray[i];
+            if (!bufferSpec.IsString())
             {
-                auto &structure = structures[i];
-                if (!structure.IsObject() || !structure.HasMember("fields"))
-                    continue;
-
-                // Get the buffer index.
-                auto buffer = 0;
-                if (structure.HasMember("buffer"))
-                {
-                    auto &bufferValue = structure["buffer"];
-                    if(bufferValue.IsInt())
-                        buffer = bufferValue.GetInt();
-                }
-
-                // Get structure fields
-                auto &fields = structure["fields"];
-                if (!fields.IsArray())
-                    continue;
-
-                // Keep track of the structure size and alignment.
-                size_t startPosition = layoutAttributes.size();
-                size_t currentSize = 0;
-                size_t currentAlignment = 1;
-
-                // Get the fields.
-                for (size_t j = 0; j < fields.Size(); ++j)
-                {
-                    auto &fieldValue = fields[j];
-                    if (!fieldValue.IsObject())
-                        continue;
-
-                    if (!fieldValue.HasMember("binding") || !fieldValue.HasMember("type"))
-                        continue;
-
-                    auto &bindingValue = fieldValue["binding"];
-                    auto &typeValue = fieldValue["type"];
-                    if (!bindingValue.IsInt() || !typeValue.IsString())
-                        continue;
-
-                    auto binding = bindingValue.GetInt();
-                    auto typeIt = vertexLayoutTypeMap.find(typeValue.GetString());
-                    if (typeIt == vertexLayoutTypeMap.end())
-                    {
-                        printf("Unsupported type '%s' for vertex attribute", typeValue.GetString());
-                        return false;
-                    }
-
-                    // Align the attribute offset.
-                    auto &type = typeIt->second;
-                    auto alignmentMask = type.alignment - 1;
-                    currentSize = (currentSize + alignmentMask) & ~alignmentMask;
-                    currentAlignment = std::max(currentAlignment, (size_t)type.alignment);
-
-                    // Get the optional divisor parameter
-                    int divisor = 0;
-                    if (fieldValue.HasMember("divisor") && fieldValue["divisor"].IsInt())
-                        divisor = fieldValue["divisor"].GetInt();
-
-                    // Set the attribute data.
-                    agpu_vertex_attrib_description attribute;
-                    attribute.buffer = buffer;
-                    attribute.binding = binding;
-                    attribute.type = type.type;
-                    attribute.components = type.components;
-                    attribute.rows = type.rows;
-                    attribute.normalized = type.normalized;
-                    attribute.divisor = divisor;
-                    attribute.offset = currentSize;
-                    currentSize += type.size;
-                    layoutAttributes.push_back(attribute);
-                }
+                printError("Expected a structure name to specify a buffer used by a vertex layout.\n");
+                return false;
             }
 
-            // Create the vertex layout.
-            agpu_vertex_layout_ref vertexLayout = device->createVertexLayout();
-            vertexLayout->addVertexAttributeBindings(bufferCount, layoutAttributes.size(), &layoutAttributes[0]);
-            addVertexLayout(name, vertexLayout);
+            auto structureName = bufferSpec.GetString();
+            auto structure = getStructure(structureName);
+            if (!structure)
+            {
+                printError("Expected unknown structure '%s' required by vertex layout '%s'.\n", structureName, name);
+                return false;
+            }
+
+            // Add all the attributes of the structure.
+            auto stride = structure->size;
+            for (auto &field : structure->fields)
+            {
+                auto &type = StructureFieldTypeDescription::Descriptions[(int)field.type];
+                // Set the attribute data.
+                agpu_vertex_attrib_description attribute;
+                attribute.buffer = i;
+                attribute.binding = field.binding;
+                attribute.type = type.type;
+                attribute.components = type.components;
+                attribute.rows = type.rows;
+                attribute.normalized = type.normalized;
+                attribute.divisor = 0; // TODO: Fetch a divisor from some place.
+                attribute.offset = field.offset;
+                layoutAttributes.push_back(attribute);
+            }
         }
+
+        // Create the vertex layout.
+        agpu_vertex_layout_ref vertexLayout = device->createVertexLayout();
+        vertexLayout->addVertexAttributeBindings(bufferCount, layoutAttributes.size(), &layoutAttributes[0]);
+        addVertexLayout(name, vertexLayout);
     }
     return true;
 }
@@ -693,6 +740,14 @@ const agpu_device_ref &PipelineStateManager::getDevice() const
     return device;
 }
 
+StructurePtr PipelineStateManager::getStructure(const std::string &name)
+{
+    auto it = structures.find(name);
+    if (it != structures.end())
+        return it->second;
+    return nullptr;
+}
+
 agpu_shader_signature_ref PipelineStateManager::getShaderSignature(const std::string &name)
 {
     auto it = shaderSignatures.find(name);
@@ -707,6 +762,11 @@ ShaderSet *PipelineStateManager::getShaderSet(const std::string &name)
     if (it != shaderSets.end())
         return &it->second;
     return nullptr;
+}
+
+void PipelineStateManager::addStructure(const std::string &name, const StructurePtr &structure)
+{
+    structures[name] = structure;
 }
 
 void PipelineStateManager::addShaderSignature(const std::string &name, const agpu_shader_signature_ref &shaderSignature)

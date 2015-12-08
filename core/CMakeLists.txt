@@ -18,15 +18,19 @@ set(LodenCoreGUI_SRCS
 
 set(LodenCore_SRCS
 	Application.cpp
+	Engine.cpp
 	FileSystem.cpp
 	JSON.cpp
 	Matrices.cpp
 	Printing.cpp
 	PipelineStateManager.cpp
+	Structure.cpp
 )
 
 source_group("Public Headers" FILES ${LodenCore_HEADERS})
 source_group("Public Headers\\GUI" FILES ${LodenCoreGUI_HEADERS})
+source_group("Source Files\\GUI" FILES ${LodenCoreGUI_SRCS})
+source_group("Source Files" FILES ${LodenCore_SRCS})
 
 
 add_definitions(-DBUILDING_LODEN_CORE)

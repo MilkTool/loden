@@ -1,6 +1,7 @@
 #include "Loden/GUI/SystemWindow.hpp"
 #include "Loden/GUI/Button.hpp"
 #include "Loden/Application.hpp"
+#include "Loden/Engine.hpp"
 
 using namespace Loden;
 
@@ -23,7 +24,8 @@ APPLICATION_ENTRY_POINT(Sample2);
 
 bool Sample2::initialize()
 {
-	screen = GUI::SystemWindow::create("Sample2", 640, 480);
+    // Create thew system window
+	screen = GUI::SystemWindow::create(engine, "Sample2", 640, 480);
     if (!screen)
         return false;
 	
