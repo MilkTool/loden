@@ -36,4 +36,4 @@ source_group("Source Files" FILES ${LodenCore_SRCS})
 
 add_definitions(-DBUILDING_LODEN_CORE)
 add_library(LodenCore SHARED ${LodenCore_SRCS} ${LodenCoreGUI_SRCS} ${LodenCore_HEADERS} ${LodenCoreGUI_HEADERS})
-target_link_libraries(LodenCore ${Loden_DEP_LIBS})
+target_link_libraries(LodenCore ${Loden_DEP_LIBS} freetype)
