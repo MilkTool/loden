@@ -439,7 +439,7 @@ bool PipelineStateManager::loadStructuresFromFile(const std::string &filename)
             // Align the attribute offset.
             auto typeId = typeIt->second;
             auto &type = StructureFieldTypeDescription::Descriptions[(int)typeId];
-            auto alignmentMask = type.alignment - 1;
+            size_t alignmentMask = type.alignment - 1;
             structure->size = (structure->size + alignmentMask) & ~alignmentMask;
             structure->alignment = std::max(structure->alignment, (size_t)type.alignment);
 
@@ -513,13 +513,12 @@ bool PipelineStateManager::loadVertexLayoutsFromFile(const std::string &filename
             }
 
             // Add all the attributes of the structure.
-            auto stride = structure->size;
             for (auto &field : structure->fields)
             {
                 auto &type = StructureFieldTypeDescription::Descriptions[(int)field.type];
                 // Set the attribute data.
                 agpu_vertex_attrib_description attribute;
-                attribute.buffer = i;
+                attribute.buffer = (agpu_uint)i;
                 attribute.binding = field.binding;
                 attribute.type = type.type;
                 attribute.components = type.components;
@@ -817,12 +816,12 @@ agpu_shader_ref PipelineStateManager::compileShaderFromFile(const std::string &f
     {
         shader->compileShader(nullptr);
     }
-    catch(agpu_error &e)
+    catch(agpu_exception &e)
     {
         auto logLength = shader->getCompilationLogLength();
         std::unique_ptr<char[]> logBuffer(new char[logLength+1]);
         shader->getCompilationLog(logLength+1, logBuffer.get());
-        printError("Compilation error of '%s':%s\n", fileName.c_str(), logBuffer.get());
+        printError("[%s]Compilation error of '%s':%s\n", e.what(), fileName.c_str(), logBuffer.get());
         return nullptr;
     }
 

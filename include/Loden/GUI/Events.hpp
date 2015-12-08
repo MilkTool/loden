@@ -2,6 +2,7 @@
 #define LODEN_EVENT_HPP_
 
 #include "Loden/Common.hpp"
+#include "Loden/Object.hpp"
 #include "SDL.h"
 
 namespace Loden
@@ -14,7 +15,7 @@ LODEN_DECLARE_CLASS(Widget);
 /**
  * The event class.
  */	
-class Event
+class LODEN_CORE_EXPORT Event: public Object
 {
 public:
 	Event()
@@ -38,7 +39,7 @@ private:
 /**
  * The keyboard event.
  */
-class KeyboardEvent: public Event
+class LODEN_CORE_EXPORT KeyboardEvent: public Event
 {
 public:
 	KeyboardEvent(SDL_Keycode symbol, bool isDown)
@@ -63,7 +64,7 @@ private:
 /**
  * A mouse event.
  */
-class MouseEvent: public Event
+class LODEN_CORE_EXPORT MouseEvent: public Event
 {
 public:
 	MouseEvent(glm::vec2 position)
@@ -87,7 +88,7 @@ private:
 /**
  * Mouse button event.
  */
-class MouseButtonEvent: public MouseEvent
+class LODEN_CORE_EXPORT MouseButtonEvent: public MouseEvent
 {
 public:
 	MouseButtonEvent(glm::vec2 position, int button, bool isDown)
@@ -118,7 +119,7 @@ private:
 /**
  * Mouse motion event.
  */
-class MouseMotionEvent: public MouseEvent
+class LODEN_CORE_EXPORT MouseMotionEvent: public MouseEvent
 {
 public:
 	MouseMotionEvent(glm::vec2 position, glm::vec2 delta)
@@ -143,7 +144,7 @@ private:
 /**
  * Focus event.
  */
-class FocusEvent: public Event
+class LODEN_CORE_EXPORT FocusEvent: public Event
 {
 public:
 	FocusEvent(const WidgetPtr &previousWidget, const WidgetPtr &newWidget)
@@ -167,7 +168,7 @@ private:
 /**
  * Mouse focus event.
  */
-class MouseFocusEvent: public Event
+class LODEN_CORE_EXPORT MouseFocusEvent: public Event
 {
 public:
 	MouseFocusEvent(const WidgetPtr &previousWidget, const WidgetPtr &newWidget)

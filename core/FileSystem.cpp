@@ -1,8 +1,38 @@
 #include "Loden/FileSystem.hpp"
+#include "Loden/Printing.hpp"
 #include <algorithm>
+#include <vector>
 
 namespace Loden
 {
+
+LODEN_CORE_EXPORT std::string readWholeFile(const std::string &fileName)
+{
+    FILE *file = fopen(fileName.c_str(), "rb");
+    if (!file)
+    {
+        printError("Failed to open file %s\n", fileName.c_str());
+        return std::string();
+    }
+
+    // Allocate the data.
+    std::vector<char> data;
+    fseek(file, 0, SEEK_END);
+    data.resize(ftell(file));
+    fseek(file, 0, SEEK_SET);
+
+    // Read the file
+    if (fread(&data[0], data.size(), 1, file) != 1)
+    {
+        printError("Failed to read file %s\n", fileName.c_str());
+        fclose(file);
+        return std::string();
+    }
+
+    fclose(file);
+    return std::string(data.begin(), data.end());
+}
+
 
 LODEN_CORE_EXPORT bool isAbsolutePath(const std::string &path)
 {

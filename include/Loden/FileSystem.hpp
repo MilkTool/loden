@@ -33,6 +33,10 @@ LODEN_CORE_EXPORT std::string extensionOfPath(const std::string &path);
 */
 LODEN_CORE_EXPORT std::string joinPath(const std::string &path1, const std::string &path2);
 
+/**
+ * Reads a whole file.
+ */
+LODEN_CORE_EXPORT std::string readWholeFile(const std::string &fileName);
 
 /**
  * The virtual file system

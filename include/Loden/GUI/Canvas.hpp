@@ -2,6 +2,7 @@
 #define LODEN_GUI_CANVAS_HPP_
 
 #include "Loden/Common.hpp"
+#include "Loden/Object.hpp"
 #include "Loden/Rectangle.hpp"
 
 #include <glm/vec2.hpp>
@@ -17,7 +18,7 @@ namespace GUI
 /**
  * 2D Canvas rendering interface
  */
-class Canvas
+class LODEN_CORE_EXPORT Canvas: public Object
 {
 public:
 	virtual void setColor(const glm::vec4 &color) = 0;

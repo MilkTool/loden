@@ -22,6 +22,7 @@ set(LodenCore_SRCS
 	FileSystem.cpp
 	JSON.cpp
 	Matrices.cpp
+	Object.cpp
 	Printing.cpp
 	PipelineStateManager.cpp
 	Structure.cpp
