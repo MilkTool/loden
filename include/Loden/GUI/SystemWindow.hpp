@@ -39,6 +39,8 @@ public:
 	virtual void handleKeyDown(KeyboardEvent &event);
 	virtual void handleKeyUp(KeyboardEvent &event);
 
+    void setTitle(const std::string &title);
+
 public:
 	EventSocket<Event> quitEvent;
 

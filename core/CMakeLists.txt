@@ -26,6 +26,7 @@ set(LodenCore_SRCS
 	Printing.cpp
 	PipelineStateManager.cpp
 	Structure.cpp
+	TextureFormats.cpp
 )
 
 source_group("Public Headers" FILES ${LodenCore_HEADERS})

@@ -1,14 +1,206 @@
 #include "Loden/GUI/AgpuCanvas.hpp"
+#include "Loden/Math.hpp"
+#include "Loden/Printing.hpp"
 
 namespace Loden
 {
 namespace GUI
 {
 
+/**
+ * Path processing strategy.
+ */
+class AgpuCanvasPathProcessor
+{
+public:
+    AgpuCanvasPathProcessor(AgpuCanvas *canvas)
+        : canvas(canvas)
+    {
+    }
+    virtual ~AgpuCanvasPathProcessor()
+    {
+    }
+
+    virtual void begin()
+    {
+    }
+
+    virtual void closePath()
+    {
+    }
+
+    virtual void moveTo(const glm::vec2 &point)
+    {
+    }
+
+    virtual void lineTo(const glm::vec2 &point)
+    {
+    }
+
+    virtual void quadTo(const glm::vec2 &control, const glm::vec2 &point)
+    {
+    }
+
+    virtual void cubicTo(const glm::vec2 &control, const glm::vec2 &control2, const glm::vec2 &point)
+    {
+    }
+
+    virtual void end()
+    {
+    }
+
+    AgpuCanvas *canvas;
+};
+
+/**
+* Triangle fan based path processor
+*/
+class AgpuSoftwareTessellationPathProcessor : public AgpuCanvasPathProcessor
+{
+public:
+    AgpuSoftwareTessellationPathProcessor(AgpuCanvas *canvas)
+        : AgpuCanvasPathProcessor(canvas)
+    {
+    }
+
+    virtual void begin();
+    virtual void end();
+
+    virtual void closePath();
+    virtual void moveTo(const glm::vec2 &point);
+    virtual void lineTo(const glm::vec2 &point);
+    virtual void quadTo(const glm::vec2 &control, const glm::vec2 &point);
+    virtual void cubicTo(const glm::vec2 &control, const glm::vec2 &control2, const glm::vec2 &point);
+
+    glm::vec2 closePosition;
+    glm::vec2 currentPosition;
+};
+
+/**
+* Triangle fan based path processor
+*/
+class AgpuConvexPathProcessor: public AgpuSoftwareTessellationPathProcessor
+{
+public:
+    typedef AgpuSoftwareTessellationPathProcessor BaseClass;
+
+    AgpuConvexPathProcessor(AgpuCanvas *canvas)
+        : BaseClass(canvas)
+    {
+        vertexCount = 0;
+    }
+
+
+    virtual void begin();
+    virtual void end();
+    virtual void moveTo(const glm::vec2 &point);
+    virtual void lineTo(const glm::vec2 &point);
+
+    int vertexCount;
+};
+
+/**
+* Concave path processor
+*/
+class AgpuStencilPathProcessor : public AgpuSoftwareTessellationPathProcessor
+{
+public:
+    typedef AgpuSoftwareTessellationPathProcessor BaseClass;
+
+    AgpuStencilPathProcessor(AgpuCanvas *canvas)
+        : BaseClass(canvas)
+    {
+        totalVertexCount = 0;
+        vertexCount = 0;
+    }
+
+    virtual agpu_pipeline_state *getPipelineState() const = 0;
+
+    virtual void begin();
+    virtual void end();
+    virtual void moveTo(const glm::vec2 &point);
+    virtual void lineTo(const glm::vec2 &point);
+
+    int totalVertexCount;
+    int vertexCount;
+    Rectangle boundingBox;
+};
+
+/**
+* Concave even-odd rule path processor
+*/
+class AgpuStencilEvenOddPathProcessor : public AgpuStencilPathProcessor
+{
+public:
+    typedef AgpuStencilPathProcessor BaseClass;
+
+    AgpuStencilEvenOddPathProcessor(AgpuCanvas *canvas)
+        : BaseClass(canvas)
+    {
+    }
+
+    agpu_pipeline_state *getPipelineState() const
+    {
+        return canvas->stencilEvenOddPipeline.get();
+    }
+};
+
+/**
+* Concave non-zero rule path processor
+*/
+class AgpuStencilNonZeroPathProcessor : public AgpuStencilPathProcessor
+{
+public:
+    typedef AgpuStencilPathProcessor BaseClass;
+
+    AgpuStencilNonZeroPathProcessor(AgpuCanvas *canvas)
+        : BaseClass(canvas)
+    {
+    }
+
+    agpu_pipeline_state *getPipelineState() const
+    {
+        return canvas->stencilNonZeroPipeline.get();
+    }
+};
+
+/**
+* No width stroke path processor
+*/
+class AgpuNoWidthStrokePathProcessor : public AgpuSoftwareTessellationPathProcessor
+{
+public:
+    typedef AgpuSoftwareTessellationPathProcessor BaseClass;
+
+    AgpuNoWidthStrokePathProcessor(AgpuCanvas *canvas)
+        : BaseClass(canvas)
+    {
+        vertexCount = 0;
+    }
+
+    virtual void begin();
+    virtual void end();
+    virtual void moveTo(const glm::vec2 &point);
+    virtual void lineTo(const glm::vec2 &point);
+
+    int vertexCount;
+};
+
+/// AGPU Canvas.
 AgpuCanvas::AgpuCanvas()
 {
 	vertexCapacity = 0;
 	indexCapacity = 0;
+    currentPipeline = nullptr;
+
+    nullPathProcessor.reset(new AgpuCanvasPathProcessor(this));
+    currentPathProcessor = nullPathProcessor.get();
+
+    noWithStrokePathProcessor.reset(new AgpuNoWidthStrokePathProcessor(this));
+    strokePathProcessor.reset(new AgpuNoWidthStrokePathProcessor(this)); // TODO: Implement this properly
+    convexPathProcessor.reset(new AgpuConvexPathProcessor(this));
+    evenOddRulePathProcessor.reset(new AgpuStencilEvenOddPathProcessor(this));
+    nonZeroRulePathProcessor.reset(new AgpuStencilNonZeroPathProcessor(this));
 }
 
 AgpuCanvas::~AgpuCanvas()
@@ -42,9 +234,12 @@ AgpuCanvasPtr AgpuCanvas::create(const PipelineStateManagerPtr &stateManager)
 	canvas->commandList = commandList;
 	canvas->vertexBufferBinding = device->createVertexBinding(layout.get());
     canvas->shaderSignature = stateManager->getShaderSignature("GUI");
-	canvas->linePipeline = stateManager->getPipelineState("canvas2d.color.line");
-	canvas->trianglePipeline = stateManager->getPipelineState("canvas2d.color.triangle");
+	canvas->convexColorLinePipeline = stateManager->getPipelineState("canvas2d.polygon.convex.color.line");
+	canvas->convexColorTrianglePipeline = stateManager->getPipelineState("canvas2d.polygon.convex.color.triangle");
 
+    canvas->stencilNonZeroPipeline = stateManager->getPipelineState("canvas2d.polygon.stencil.non-zero");
+    canvas->stencilEvenOddPipeline = stateManager->getPipelineState("canvas2d.polygon.stencil.even-odd");
+    canvas->coverColorPipeline = stateManager->getPipelineState("canvas2d.polygon.cover.color");
 	return canvas;
 }
 
@@ -82,6 +277,7 @@ void AgpuCanvas::reset()
 	baseVertex = 0;
 	startIndex = 0;
 	shapeType = ST_Unknown;
+    currentPipeline = nullptr;
 	drawCommandsToAdd.clear();
 
 	shapeType = ST_Unknown;
@@ -89,6 +285,8 @@ void AgpuCanvas::reset()
 	indices.clear();
 	allocator->reset();
 	commandList->reset(allocator.get(), nullptr);
+    commandList->setStencilReference(0);
+    currentPathProcessor = nullPathProcessor.get();
 }
 
 void AgpuCanvas::close()
@@ -131,7 +329,7 @@ void AgpuCanvas::setColor(const glm::vec4 &color)
 
 void AgpuCanvas::drawLine(const glm::vec2 &p1, const glm::vec2 &p2)
 {
-	beginLineShape();
+    beginConvexLines();
 	addVertex(Vertex(transformPosition(p1), currentColor));
 	addVertex(Vertex(transformPosition(p2), currentColor));
 	addIndex(0);
@@ -140,7 +338,7 @@ void AgpuCanvas::drawLine(const glm::vec2 &p1, const glm::vec2 &p2)
 
 void AgpuCanvas::drawTriangle(const glm::vec2 &p1, const glm::vec2 &p2, const glm::vec2 &p3)
 {
-	beginLineShape();
+    beginConvexTriangles();
 	addVertex(Vertex(transformPosition(p1), currentColor));
 	addVertex(Vertex(transformPosition(p2), currentColor));
 	addVertex(Vertex(transformPosition(p3), currentColor));
@@ -154,7 +352,7 @@ void AgpuCanvas::drawTriangle(const glm::vec2 &p1, const glm::vec2 &p2, const gl
 
 void AgpuCanvas::drawRectangle(const Rectangle &rectangle)
 {
-	beginLineShape();
+    beginConvexLines();
 	addVertex(Vertex(transformPosition(rectangle.getBottomLeft()), currentColor));
 	addVertex(Vertex(transformPosition(rectangle.getBottomRight()), currentColor));
 	addVertex(Vertex(transformPosition(rectangle.getTopRight()), currentColor));
@@ -169,9 +367,27 @@ void AgpuCanvas::drawRectangle(const Rectangle &rectangle)
 	addIndex(0);
 }
 
+void AgpuCanvas::drawRoundedRectangle(const Rectangle &rectangle, float cornerRadius)
+{
+    glm::vec2 dx(cornerRadius, 0);
+    glm::vec2 dy(0, cornerRadius);
+
+    beginStrokePath();
+    moveTo(rectangle.getBottomLeft() + dx);
+    lineTo(rectangle.getBottomRight() - dx);
+    quadTo(rectangle.getBottomRight(), rectangle.getBottomRight() + dy);
+    lineTo(rectangle.getTopRight() - dy);
+    quadTo(rectangle.getTopRight(), rectangle.getTopRight() - dx);
+    lineTo(rectangle.getTopLeft() + dx);
+    quadTo(rectangle.getTopLeft(), rectangle.getTopLeft() - dy);
+    lineTo(rectangle.getBottomLeft() + dy);
+    quadTo(rectangle.getBottomLeft(), rectangle.getBottomLeft() + dx);
+    endStrokePath();
+}
+
 void AgpuCanvas::drawFillTriangle(const glm::vec2 &p1, const glm::vec2 &p2, const glm::vec2 &p3)
 {
-	beginTriangleShape();
+	beginConvexLines();
 	addVertex(Vertex(transformPosition(p1), currentColor));
 	addVertex(Vertex(transformPosition(p2), currentColor));
 	addVertex(Vertex(transformPosition(p3), currentColor));
@@ -182,7 +398,7 @@ void AgpuCanvas::drawFillTriangle(const glm::vec2 &p1, const glm::vec2 &p2, cons
 
 void AgpuCanvas::drawFillRectangle(const Rectangle &rectangle)
 {
-	beginTriangleShape();
+    beginConvexTriangles();
 	addVertex(Vertex(transformPosition(rectangle.getBottomLeft()), currentColor));
 	addVertex(Vertex(transformPosition(rectangle.getBottomRight()), currentColor));
 	addVertex(Vertex(transformPosition(rectangle.getTopRight()), currentColor));
@@ -195,34 +411,147 @@ void AgpuCanvas::drawFillRectangle(const Rectangle &rectangle)
 	addIndex(0);
 }
 
-void AgpuCanvas::beginLineShape()
+void AgpuCanvas::drawFillRoundedRectangle(const Rectangle &rectangle, float cornerRadius)
 {
-	if(shapeType != ST_Line && shapeType != ST_Unknown)
-		endSubmesh();
+    glm::vec2 dx(cornerRadius, 0);
+    glm::vec2 dy(0, cornerRadius);
 
-	if(shapeType != ST_Line)
-		drawCommandsToAdd.push_back([this] {
-			commandList->usePipelineState(linePipeline.get());
-			commandList->setPrimitiveTopology(AGPU_LINES);
-		});
-
-	shapeType = ST_Line;
-	baseVertex = (agpu_uint)vertices.size();
+    beginFillPath(PathFillRule::Convex);
+    moveTo(rectangle.getBottomLeft() + dx);
+    lineTo(rectangle.getBottomRight() - dx);
+    quadTo(rectangle.getBottomRight(), rectangle.getBottomRight() + dy);
+    lineTo(rectangle.getTopRight() - dy);
+    quadTo(rectangle.getTopRight(), rectangle.getTopRight() - dx);
+    lineTo(rectangle.getTopLeft() + dx);
+    quadTo(rectangle.getTopLeft(), rectangle.getTopLeft() - dy);
+    lineTo(rectangle.getBottomLeft() + dy);
+    quadTo(rectangle.getBottomLeft(), rectangle.getBottomLeft() + dx);
+    endFillPath();
 }
 
-void AgpuCanvas::beginTriangleShape()
+// Covering
+void AgpuCanvas::coverBox(const Rectangle &rectangle)
 {
-	if(shapeType != ST_Triangle && shapeType != ST_Unknown)
-		endSubmesh();
+    beginShapeWithPipeline(ST_Triangle, coverColorPipeline.get());
+    addVertex(Vertex(transformPosition(rectangle.getBottomLeft()), currentColor));
+    addVertex(Vertex(transformPosition(rectangle.getBottomRight()), currentColor));
+    addVertex(Vertex(transformPosition(rectangle.getTopRight()), currentColor));
+    addVertex(Vertex(transformPosition(rectangle.getTopLeft()), currentColor));
+    addIndex(0);
+    addIndex(1);
+    addIndex(2);
+    addIndex(2);
+    addIndex(3);
+    addIndex(0);
+}
 
-	if(shapeType != ST_Triangle)
-		drawCommandsToAdd.push_back([this] {
-			commandList->usePipelineState(trianglePipeline.get());
-			commandList->setPrimitiveTopology(AGPU_TRIANGLES);
-		});
+// Fill paths.
+void AgpuCanvas::beginFillPath(PathFillRule fillRule)
+{
+    switch (fillRule)
+    {
+    case PathFillRule::EvenOdd:
+        currentPathProcessor = evenOddRulePathProcessor.get();
+        break;
+    case PathFillRule::NonZero:
+        currentPathProcessor = nonZeroRulePathProcessor.get();
+        break;
+    case PathFillRule::Convex:
+        currentPathProcessor = convexPathProcessor.get();
+        break;
+    }
+    currentPathProcessor->begin();
+}
 
-	shapeType = ST_Triangle;
-	baseVertex = (agpu_uint)vertices.size();
+void AgpuCanvas::endFillPath()
+{
+    currentPathProcessor->end();
+    currentPathProcessor = nullPathProcessor.get();
+}
+
+void AgpuCanvas::closePath()
+{
+    currentPathProcessor->closePath();
+}
+
+void AgpuCanvas::moveTo(const glm::vec2 &point)
+{
+    currentPathProcessor->moveTo(point);
+}
+
+void AgpuCanvas::lineTo(const glm::vec2 &point)
+{
+    currentPathProcessor->lineTo(point);
+}
+
+void AgpuCanvas::quadTo(const glm::vec2 &control, const glm::vec2 &point)
+{
+    currentPathProcessor->quadTo(control, point);
+}
+
+void AgpuCanvas::cubicTo(const glm::vec2 &control, const glm::vec2 &control2, const glm::vec2 &point)
+{
+    currentPathProcessor->cubicTo(control, control2, point);
+}
+
+// Stroke paths
+void AgpuCanvas::beginStrokePath()
+{
+    currentPathProcessor = strokePathProcessor.get();
+    currentPathProcessor->begin();
+}
+
+void AgpuCanvas::endStrokePath()
+{
+    currentPathProcessor->end();
+    currentPathProcessor = nullPathProcessor.get();
+}
+
+void AgpuCanvas::beginConvexLines()
+{
+    beginShapeWithPipeline(ST_Line, convexColorLinePipeline.get());
+}
+
+void AgpuCanvas::beginConvexTriangles()
+{
+    beginShapeWithPipeline(ST_Triangle, convexColorTrianglePipeline.get());
+}
+
+void AgpuCanvas::beginShapeWithPipeline(ShapeType newShapeType, agpu_pipeline_state *pipeline)
+{
+    if ((shapeType != newShapeType && shapeType != ST_Unknown) ||
+        (pipeline != currentPipeline && currentPipeline != nullptr))
+        endSubmesh();
+
+    if (currentPipeline != pipeline)
+    {
+        drawCommandsToAdd.push_back([=] {
+            commandList->usePipelineState(pipeline);
+        });
+        currentPipeline = pipeline;
+    }
+
+    if (shapeType != newShapeType)
+    {
+        agpu_primitive_topology topology;
+        switch (newShapeType)
+        {
+        case ST_Line:
+            topology = AGPU_LINES;
+            break;
+        case ST_Triangle:
+            topology = AGPU_TRIANGLES;
+            break;
+        default:
+            abort();
+        }
+        drawCommandsToAdd.push_back([=] {
+            commandList->setPrimitiveTopology(topology);
+        });
+    }
+
+    shapeType = newShapeType;
+    baseVertex = (agpu_uint)vertices.size();
 }
 
 void AgpuCanvas::endSubmesh()
@@ -248,6 +577,11 @@ void AgpuCanvas::addIndex(int index)
 	indices.push_back(index + baseVertex);
 }
 
+void AgpuCanvas::addVertexPosition(const glm::vec2 &position)
+{
+    addVertex(Vertex(transformPosition(position), currentColor));
+}
+
 const glm::mat3 &AgpuCanvas::getTransform() const
 {
 	return transform;
@@ -256,6 +590,185 @@ const glm::mat3 &AgpuCanvas::getTransform() const
 void AgpuCanvas::setTransform(const glm::mat3 &newTransform)
 {
 	transform = newTransform;
+}
+
+// Software tesselation path processor
+void AgpuSoftwareTessellationPathProcessor::begin()
+{
+    currentPosition = glm::vec2();
+    closePosition = glm::vec2();
+}
+
+void AgpuSoftwareTessellationPathProcessor::end()
+{
+}
+
+void AgpuSoftwareTessellationPathProcessor::closePath()
+{
+    lineTo(closePosition);
+}
+
+void AgpuSoftwareTessellationPathProcessor::moveTo(const glm::vec2 &point)
+{
+    currentPosition = point;
+    closePosition = point;
+}
+
+void AgpuSoftwareTessellationPathProcessor::lineTo(const glm::vec2 &point)
+{
+    currentPosition = point;
+}
+
+void AgpuSoftwareTessellationPathProcessor::quadTo(const glm::vec2 &control, const glm::vec2 &point)
+{
+    const int N = 8;
+    auto startPoint = currentPosition;
+    auto delta = 1.0f / (N - 1);
+    auto alpha = 0.0f;
+
+    for (int i = 0; i < N; ++i)
+    {
+        lineTo(quadraticBezier(startPoint, control, point, alpha));
+        alpha += delta;
+    }
+}
+
+void AgpuSoftwareTessellationPathProcessor::cubicTo(const glm::vec2 &control, const glm::vec2 &control2, const glm::vec2 &point)
+{
+    const int N = 8;
+    auto startPoint = currentPosition;
+    auto delta = 1.0f / (N - 1);
+    auto alpha = 0.0f;
+
+    for (int i = 0; i < N; ++i)
+    {
+        lineTo(cubicBezier(startPoint, control, control2, point, alpha));
+        alpha += delta;
+    }
+}
+
+// Triangle fan based path processor
+void AgpuConvexPathProcessor::begin()
+{
+    BaseClass::begin();
+    vertexCount = 0;
+}
+
+void AgpuConvexPathProcessor::end()
+{
+    BaseClass::end();
+}
+
+void AgpuConvexPathProcessor::moveTo(const glm::vec2 &point)
+{
+    BaseClass::moveTo(point);
+    vertexCount = 0;
+}
+
+void AgpuConvexPathProcessor::lineTo(const glm::vec2 &point)
+{
+    if (vertexCount == 0)
+    {
+        canvas->beginConvexTriangles();
+        canvas->addVertexPosition(currentPosition);
+        ++vertexCount;
+    }
+
+    currentPosition = point;
+    canvas->addVertexPosition(currentPosition);
+    ++vertexCount;
+
+    if (vertexCount > 2)
+    {
+        canvas->addIndex(0);
+        canvas->addIndex(vertexCount - 2);
+        canvas->addIndex(vertexCount - 1);
+    }
+}
+
+// Stencil path processor
+void AgpuStencilPathProcessor::begin()
+{
+    BaseClass::begin();
+    vertexCount = 0;
+    totalVertexCount = 0;
+}
+
+void AgpuStencilPathProcessor::end()
+{
+    BaseClass::end();
+    if (!totalVertexCount)
+        return;
+    canvas->coverBox(boundingBox);
+}
+
+void AgpuStencilPathProcessor::moveTo(const glm::vec2 &point)
+{
+    BaseClass::moveTo(point);
+    totalVertexCount = 0;
+    vertexCount = 0;
+}
+
+void AgpuStencilPathProcessor::lineTo(const glm::vec2 &point)
+{
+    if (totalVertexCount == 0)
+        boundingBox.min = boundingBox.max = currentPosition;
+
+    if (vertexCount == 0)
+    {
+        canvas->beginShapeWithPipeline(AgpuCanvas::ST_Triangle, getPipelineState());
+        canvas->addVertexPosition(currentPosition);
+        ++vertexCount;
+        ++totalVertexCount;
+    }
+
+    currentPosition = point;
+    canvas->addVertexPosition(currentPosition);
+    boundingBox.insertPoint(point);
+    ++vertexCount;
+    ++totalVertexCount;
+
+    if (vertexCount > 2)
+    {
+        canvas->addIndex(0);
+        canvas->addIndex(vertexCount - 2);
+        canvas->addIndex(vertexCount - 1);
+    }
+}
+
+// No width stroke path processor
+void AgpuNoWidthStrokePathProcessor::begin()
+{
+    BaseClass::begin();
+    vertexCount = 0;
+}
+
+void AgpuNoWidthStrokePathProcessor::end()
+{
+    BaseClass::end();
+}
+
+void AgpuNoWidthStrokePathProcessor::moveTo(const glm::vec2 &point)
+{
+    BaseClass::moveTo(point);
+    vertexCount = 0;
+}
+
+void AgpuNoWidthStrokePathProcessor::lineTo(const glm::vec2 &point)
+{
+    if (vertexCount == 0)
+    {
+        canvas->beginConvexLines();
+        canvas->addVertexPosition(currentPosition);
+        ++vertexCount;
+    }
+
+    currentPosition = point;
+    canvas->addVertexPosition(currentPosition);
+
+    ++vertexCount;
+    canvas->addIndex(vertexCount - 1);
+    canvas->addIndex(vertexCount - 2);
 }
 
 } // End of namespace GUI

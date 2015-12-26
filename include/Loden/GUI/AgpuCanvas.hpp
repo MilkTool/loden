@@ -27,6 +27,8 @@ struct AgpuCanvasVertex
 	glm::vec4 color;
 };
 
+class AgpuCanvasPathProcessor;
+
 /**
  * AGPU canvas
  */	
@@ -44,9 +46,24 @@ public:
 	virtual void drawLine(const glm::vec2 &p1, const glm::vec2 &p2);
 	virtual void drawTriangle(const glm::vec2 &p1, const glm::vec2 &p2, const glm::vec2 &p3);
 	virtual void drawRectangle(const Rectangle &rectangle);
+    virtual void drawRoundedRectangle(const Rectangle &rectangle, float cornerRadius);
 
 	virtual void drawFillTriangle(const glm::vec2 &p1, const glm::vec2 &p2, const glm::vec2 &p3);
 	virtual void drawFillRectangle(const Rectangle &rectangle);
+    virtual void drawFillRoundedRectangle(const Rectangle &rectangle, float cornerRadius);
+
+    // Fill paths.
+    virtual void beginFillPath(PathFillRule fillRule = PathFillRule::EvenOdd);
+    virtual void closePath();
+    virtual void moveTo(const glm::vec2 &point);
+    virtual void lineTo(const glm::vec2 &point);
+    virtual void quadTo(const glm::vec2 &control, const glm::vec2 &point);
+    virtual void cubicTo(const glm::vec2 &control, const glm::vec2 &control2, const glm::vec2 &point);
+    virtual void endFillPath();
+
+    // Stroke paths
+    virtual void beginStrokePath();
+    virtual void endStrokePath();
 
 	virtual const glm::mat3 &getTransform() const;
 	virtual void setTransform(const glm::mat3 &newTransform);
@@ -62,6 +79,8 @@ private:
 		return glm::vec2(v3.x, v3.y);
 	}
 	
+    void coverBox(const Rectangle &rectangle);
+
 	void createVertexBuffer();
 	void createIndexBuffer();
 	
@@ -72,13 +91,15 @@ private:
 		ST_Triangle
 	};
 
-		
 	AgpuCanvas();
 
-	void beginLineShape();
-	void beginTriangleShape();
+	void beginConvexLines();
+	void beginConvexTriangles();
+    void beginShapeWithPipeline(ShapeType newShapeType, agpu_pipeline_state *pipeline);
+
 	void endSubmesh();
 	void addVertex(const AgpuCanvasVertex &vertex);
+    void addVertexPosition(const glm::vec2 &position);
 	void addIndex(int index);
 
 	glm::vec4 currentColor;
@@ -88,24 +109,51 @@ private:
 	int startIndex;
 	int baseVertex;
 	ShapeType shapeType;
+    agpu_pipeline_state *currentPipeline;
 		
 	agpu_ref<agpu_command_allocator> allocator;
 	agpu_ref<agpu_command_list> commandList;
 	
 	PipelineStateManagerPtr stateManager;
-	agpu_ref<agpu_device> device;
-	agpu_ref<agpu_buffer> vertexBuffer;
-	agpu_ref<agpu_vertex_binding> vertexBufferBinding;
+	agpu_device_ref device;
+	agpu_buffer_ref vertexBuffer;
+	agpu_vertex_binding_ref vertexBufferBinding;
 	
-	agpu_ref<agpu_buffer> indexBuffer;
-    agpu_ref<agpu_shader_signature> shaderSignature;
-	agpu_ref<agpu_pipeline_state> linePipeline;
-	agpu_ref<agpu_pipeline_state> trianglePipeline;
-	
+	agpu_buffer_ref indexBuffer;
+    agpu_shader_signature_ref shaderSignature;
+    
+    agpu_pipeline_state_ref stencilNonZeroPipeline;
+    agpu_pipeline_state_ref stencilEvenOddPipeline;
+    agpu_pipeline_state_ref coverColorPipeline;
+
+	agpu_pipeline_state_ref convexColorLinePipeline;
+	agpu_pipeline_state_ref convexColorTrianglePipeline;
+
+    // Path stenciling.
+    agpu_pipeline_state_ref triangleStencilSetPipeline;
+
+    // Path filling.
+    agpu_pipeline_state_ref triangleStencilClearAndFillPipeline;
+
 	std::vector<AgpuCanvasVertex> vertices;
 	std::vector<int> indices;
 	std::vector<std::function<void ()> > drawCommandsToAdd;
 
+    // Path processing strategies.
+    friend class AgpuCanvasPathProcessor;
+    friend class AgpuConvexPathProcessor;
+    friend class AgpuNoWidthStrokePathProcessor;
+    friend class AgpuStencilPathProcessor;
+    friend class AgpuStencilEvenOddPathProcessor;
+    friend class AgpuStencilNonZeroPathProcessor;
+
+    AgpuCanvasPathProcessor *currentPathProcessor;
+    std::unique_ptr<AgpuCanvasPathProcessor> nullPathProcessor;
+    std::unique_ptr<AgpuCanvasPathProcessor> noWithStrokePathProcessor;
+    std::unique_ptr<AgpuCanvasPathProcessor> strokePathProcessor;
+    std::unique_ptr<AgpuCanvasPathProcessor> convexPathProcessor;
+    std::unique_ptr<AgpuCanvasPathProcessor> evenOddRulePathProcessor;
+    std::unique_ptr<AgpuCanvasPathProcessor> nonZeroRulePathProcessor;
 };
 
 } // End of namespace GUI

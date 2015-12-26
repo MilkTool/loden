@@ -84,6 +84,56 @@ void PipelineStateManager::buildParseTables()
     primitiveTypeNameMap["line"] = AGPU_PRIMITIVE_TYPE_LINE;
     primitiveTypeNameMap["triangle"] = AGPU_PRIMITIVE_TYPE_TRIANGLE;
     primitiveTypeNameMap["patch"] = AGPU_PRIMITIVE_TYPE_PATCH;
+
+    // Blending factor
+    blendingFactorNameMap["zero"] = AGPU_BLENDING_ZERO;
+    blendingFactorNameMap["one"] = AGPU_BLENDING_ONE;
+    blendingFactorNameMap["source-color"] = AGPU_BLENDING_SRC_COLOR;
+    blendingFactorNameMap["inverted-source-color"] = AGPU_BLENDING_INVERTED_SRC_COLOR;
+    blendingFactorNameMap["source-alpha"] = AGPU_BLENDING_SRC_ALPHA;
+    blendingFactorNameMap["inverted-source-alpha"] = AGPU_BLENDING_INVERTED_SRC_ALPHA;
+    blendingFactorNameMap["dest-alpha"] = AGPU_BLENDING_DEST_ALPHA;
+    blendingFactorNameMap["inverted-dest-alpha"] = AGPU_BLENDING_INVERTED_DEST_ALPHA;
+    blendingFactorNameMap["dest-color"] = AGPU_BLENDING_DEST_COLOR;
+    blendingFactorNameMap["inverted-dest-color"] = AGPU_BLENDING_INVERTED_DEST_COLOR;
+    blendingFactorNameMap["source-alpha-sat"] = AGPU_BLENDING_SRC_ALPHA_SAT;
+
+    // Blending operation
+    blendingOperationNameMap["add"] = AGPU_BLENDING_OPERATION_ADD;
+    blendingOperationNameMap["subtract"] = AGPU_BLENDING_OPERATION_SUBTRACT;
+    blendingOperationNameMap["reverse-subtract"] = AGPU_BLENDING_OPERATION_REVERSE_SUBTRACT;
+    blendingOperationNameMap["max"] = AGPU_BLENDING_OPERATION_MAX;
+    blendingOperationNameMap["min"] = AGPU_BLENDING_OPERATION_MIN;
+
+    // Compare function
+    compareFunctionNameMap["always"] = AGPU_ALWAYS;
+    compareFunctionNameMap["never"] = AGPU_NEVER;
+    compareFunctionNameMap["less"] = AGPU_LESS;
+    compareFunctionNameMap["less-equal"] = AGPU_LESS_EQUAL;
+    compareFunctionNameMap["equal"] = AGPU_EQUAL;
+    compareFunctionNameMap["not-equal"] = AGPU_NOT_EQUAL;
+    compareFunctionNameMap["greater"] = AGPU_GREATER;
+    compareFunctionNameMap["greater-equal"] = AGPU_GREATER_EQUAL;
+
+    // Stencil operation
+    stencilOperationNameMap["keep"] = AGPU_KEEP;
+    stencilOperationNameMap["zero"] = AGPU_ZERO;
+    stencilOperationNameMap["replace"] = AGPU_REPLACE;
+    stencilOperationNameMap["invert"] = AGPU_INVERT;
+    stencilOperationNameMap["increase"] = AGPU_INCREASE;
+    stencilOperationNameMap["increase-wrap"] = AGPU_INCREASE_WRAP;
+    stencilOperationNameMap["decrease"] = AGPU_DECREASE;
+    stencilOperationNameMap["decrease-wrap"] = AGPU_DECREASE_WRAP;
+
+    // Texture formats
+    for (int i = 0;; ++i)
+    {
+        auto format = &TextureFormatDescription::Descriptions[i];
+        if (!format->name)
+            break;
+
+        textureFormatNameMap[format->name] = format;
+    }
 }
 
 void PipelineStateManager::buildPipelineStateParsingActions()
@@ -181,6 +231,198 @@ void PipelineStateManager::buildPipelineStateParsingActions()
         auto count = value.GetInt();
         stateTemplate.addAction([=](const agpu_pipeline_builder_ref &builder) {
             builder->setRenderTargetCount(count);
+            return true;
+        });
+
+        return true;
+    };
+
+    pipelineStateParsingActions["render-target-formats"] = [&](PipelineStateTemplate &stateTemplate, rapidjson::Value &value) {
+        if (!value.IsArray())
+            return false;
+
+        auto count = std::min((int)value.Size(), 16);
+        std::vector<agpu_texture_format> formats(count);
+        for (int i = 0; i < count; ++i)
+        {
+            auto formatIt = textureFormatNameMap.find(value.GetString());
+            if (formatIt == textureFormatNameMap.end())
+            {
+                printError("Failed to texture format %s\n", value.GetString());
+                return false;
+            }
+
+            formats[i] = formatIt->second->format;
+        }
+
+        stateTemplate.addAction([=](const agpu_pipeline_builder_ref &builder) {
+            builder->setRenderTargetCount(count);
+            for (int i = 0; i < count; ++i)
+                builder->setRenderTargetFormat(i, formats[i]);
+            return true;
+        });
+
+        return true;
+    };
+
+    pipelineStateParsingActions["depth-stencil-format"] = [&](PipelineStateTemplate &stateTemplate, rapidjson::Value &value) {
+        if (!value.IsString())
+            return false;
+
+        auto formatIt = textureFormatNameMap.find(value.GetString());
+        if (formatIt == textureFormatNameMap.end())
+        {
+            printError("Failed to texture format %s\n", value.GetString());
+            return false;
+        }
+
+        auto format = formatIt->second;
+        if (!format->hasDepth || !format->hasStencil)
+        {
+            printError("Texture format %s has no depth or stencil\n", value.GetString());
+            return false;
+        }
+
+        stateTemplate.addAction([=](const agpu_pipeline_builder_ref &builder) {
+            builder->setDepthStencilFormat(format->format);
+            return true;
+        });
+
+        return true;
+    };
+
+    pipelineStateParsingActions["color-mask"] = [&](PipelineStateTemplate &stateTemplate, rapidjson::Value &value) {
+        if (!value.IsObject() || !value.HasMember("render-target-mask") ||
+            !value.HasMember("red-enabled") || !value.HasMember("green-enabled") || !value.HasMember("blue-enabled") ||
+            !value.HasMember("alpha-enabled"))
+            return false;
+
+        auto renderTargetMask = value["render-target-mask"].GetInt();
+        auto redEnabled = value["red-enabled"].GetBool();
+        auto greenEnabled = value["green-enabled"].GetBool();
+        auto blueEnabled = value["blue-enabled"].GetBool();
+        auto alphaEnabled = value["alpha-enabled"].GetBool();
+
+        stateTemplate.addAction([=](const agpu_pipeline_builder_ref &builder) {
+            builder->setColorMask(renderTargetMask, redEnabled, greenEnabled, blueEnabled, alphaEnabled);
+            return true;
+        });
+
+        return true;
+    };
+
+    pipelineStateParsingActions["blend-state"] = [&](PipelineStateTemplate &stateTemplate, rapidjson::Value &value) {
+        if (!value.IsArray())
+            return false;
+
+        for (auto i = 0; i < value.Size(); ++i)
+        {
+            auto &state = value[i];
+            if (!state.IsObject())
+                return false;
+
+            if (!state.IsObject() || !state.HasMember("render-target-mask") ||
+                !state.HasMember("enabled") )
+                return false;
+
+            auto renderTargetMask = state["render-target-mask"].GetInt();
+            auto enabled = state["enabled"].GetBool();
+            auto sourceFactor = AGPU_BLENDING_ONE;
+            auto destFactor = AGPU_BLENDING_ZERO;
+            auto operation = AGPU_BLENDING_OPERATION_ADD;
+            auto sourceFactorAlpha = AGPU_BLENDING_ONE;
+            auto destFactorAlpha = AGPU_BLENDING_ZERO;
+            auto operationAlpha = AGPU_BLENDING_OPERATION_ADD;
+
+            if (enabled)
+            {
+                if (!state.HasMember("source-factor") || !state.HasMember("dest-factor") || !state.HasMember("operation"))
+                    return false;
+
+                sourceFactorAlpha = sourceFactor = blendingFactorNameMap[state["source-factor"].GetString()];
+                destFactorAlpha = destFactor = blendingFactorNameMap[state["dest-factor"].GetString()];
+                operationAlpha = operation = blendingOperationNameMap[state["operation"].GetString()];
+
+                if (state.HasMember("source-factor-alpha") && state.HasMember("dest-factor-alpha") && state.HasMember("operation-alpha"))
+                {
+                    sourceFactorAlpha = blendingFactorNameMap[state["source-factor-alpha"].GetString()];
+                    destFactorAlpha = blendingFactorNameMap[state["dest-factor-alpha"].GetString()];
+                    operationAlpha = blendingOperationNameMap[state["operation-alpha"].GetString()];
+                }
+            }
+
+            stateTemplate.addAction([=](const agpu_pipeline_builder_ref &builder) {
+                builder->setBlendState(renderTargetMask, enabled);
+                builder->setBlendFunction(renderTargetMask, sourceFactor, destFactor, operation, sourceFactorAlpha, destFactorAlpha, operationAlpha);
+                return true;
+            });
+        }
+
+        return true;
+    };
+
+    pipelineStateParsingActions["stencil-state"] = [&](PipelineStateTemplate &stateTemplate, rapidjson::Value &value) {
+        if (!value.IsObject() || !value.HasMember("enabled") || !value.HasMember("read-mask") || !value.HasMember("write-mask"))
+            return false;
+
+        auto enabled = value["enabled"].GetBool();
+        auto readMask = value["read-mask"].GetInt();
+        auto writeMask = value["write-mask"].GetInt();
+
+        stateTemplate.addAction([=](const agpu_pipeline_builder_ref &builder) {
+            builder->setStencilState(enabled, writeMask, readMask);
+            return true;
+        });
+
+        return true;
+    };
+
+    pipelineStateParsingActions["stencil-operations"] = [&](PipelineStateTemplate &stateTemplate, rapidjson::Value &value) {
+        if (!value.IsObject() || !value.HasMember("stencil-fail") || !value.HasMember("depth-fail") || !value.HasMember("stencil-depth-pass") || !value.HasMember("function"))
+            return false;
+
+        auto stencilFailOp = stencilOperationNameMap[value["stencil-fail"].GetString()];
+        auto depthFailOp = stencilOperationNameMap[value["depth-fail"].GetString()];
+        auto stencilDepthPassOp = stencilOperationNameMap[value["stencil-depth-pass"].GetString()];
+        auto function = compareFunctionNameMap[value["function"].GetString()];
+        
+        stateTemplate.addAction([=](const agpu_pipeline_builder_ref &builder) {
+            builder->setStencilFrontFace(stencilFailOp, depthFailOp, stencilDepthPassOp, function);
+            builder->setStencilBackFace(stencilFailOp, depthFailOp, stencilDepthPassOp, function);
+            return true;
+        });
+
+        return true;
+    };
+
+    pipelineStateParsingActions["stencil-front-operations"] = [&](PipelineStateTemplate &stateTemplate, rapidjson::Value &value) {
+        if (!value.IsObject() || !value.HasMember("stencil-fail") || !value.HasMember("depth-fail") || !value.HasMember("stencil-depth-pass") || !value.HasMember("function"))
+            return false;
+
+        auto stencilFailOp = stencilOperationNameMap[value["stencil-fail"].GetString()];
+        auto depthFailOp = stencilOperationNameMap[value["depth-fail"].GetString()];
+        auto stencilDepthPassOp = stencilOperationNameMap[value["stencil-depth-pass"].GetString()];
+        auto function = compareFunctionNameMap[value["function"].GetString()];
+
+        stateTemplate.addAction([=](const agpu_pipeline_builder_ref &builder) {
+            builder->setStencilFrontFace(stencilFailOp, depthFailOp, stencilDepthPassOp, function);
+            return true;
+        });
+
+        return true;
+    };
+
+    pipelineStateParsingActions["stencil-back-operations"] = [&](PipelineStateTemplate &stateTemplate, rapidjson::Value &value) {
+        if (!value.IsObject() || !value.HasMember("stencil-fail") || !value.HasMember("depth-fail") || !value.HasMember("stencil-depth-pass") || !value.HasMember("function"))
+            return false;
+
+        auto stencilFailOp = stencilOperationNameMap[value["stencil-fail"].GetString()];
+        auto depthFailOp = stencilOperationNameMap[value["depth-fail"].GetString()];
+        auto stencilDepthPassOp = stencilOperationNameMap[value["stencil-depth-pass"].GetString()];
+        auto function = compareFunctionNameMap[value["function"].GetString()];
+        
+        stateTemplate.addAction([=](const agpu_pipeline_builder_ref &builder) {
+            builder->setStencilBackFace(stencilFailOp, depthFailOp, stencilDepthPassOp, function);
             return true;
         });
 
@@ -526,6 +768,7 @@ bool PipelineStateManager::loadVertexLayoutsFromFile(const std::string &filename
                 attribute.normalized = type.normalized;
                 attribute.divisor = 0; // TODO: Fetch a divisor from some place.
                 attribute.offset = field.offset;
+                attribute.internal_format = AGPU_TEXTURE_FORMAT_UNKNOWN;
                 layoutAttributes.push_back(attribute);
             }
         }

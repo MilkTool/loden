@@ -2,6 +2,7 @@
 #define LODEN_RECTANGLE_HPP
 
 #include "Loden/Common.hpp"
+#include <algorithm>
 #include <glm/vec2.hpp>
 
 namespace Loden
@@ -64,6 +65,16 @@ public:
     glm::vec2 getTopRight() const
     {
         return max;
+    }
+
+    void insertPoint(const glm::vec2 &point)
+    {
+        min.x = std::min(min.x, point.x);
+        min.y = std::min(min.y, point.y);
+
+        max.x = std::max(max.x, point.x);
+        max.y = std::max(max.y, point.y);
+
     }
 
     glm::vec2 min, max;

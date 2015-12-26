@@ -29,6 +29,7 @@ protected:
 	virtual void mainLoopQuit();
 	virtual void mainLoopUpdateStep(float updateDelta);
 	virtual void mainLoopRenderStep();
+    virtual void updateFpsDisplay(float fps);
 
     EnginePtr engine;
 

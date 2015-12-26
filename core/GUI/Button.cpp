@@ -66,9 +66,9 @@ void Button::drawContentOn(Canvas *canvas)
 			canvas->setColor(glm::vec4(0.0,0.2,0.6, 1.0));
 	}
 	
-	canvas->drawFillRectangle(getLocalRectangle());
+	canvas->drawFillRoundedRectangle(getLocalRectangle(), 5);
 	canvas->setColor(glm::vec4(0.0,0.8,0.8, 1.0));
-	canvas->drawRectangle(getLocalRectangle());
+	canvas->drawRoundedRectangle(getLocalRectangle(), 5);
 }
 
 } // End of namespace GUI

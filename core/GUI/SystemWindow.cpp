@@ -96,7 +96,7 @@ SystemWindowPtr SystemWindow::create(const EnginePtr &engine, const std::string 
     }
 
     swapChainCreateInfo.colorbuffer_format = AGPU_TEXTURE_FORMAT_R8G8B8A8_UNORM;
-    swapChainCreateInfo.depth_stencil_format = AGPU_TEXTURE_FORMAT_D16_UNORM;
+    swapChainCreateInfo.depth_stencil_format = AGPU_TEXTURE_FORMAT_D24_UNORM_S8_UINT;
     swapChainCreateInfo.width = w;
     swapChainCreateInfo.height = h;
     swapChainCreateInfo.doublebuffer = 1;
@@ -360,7 +360,9 @@ void SystemWindow::renderScreen()
     commandList->setViewport(0, 0, screenWidth, screenHeight);
     commandList->setScissor(0, 0, screenWidth, screenHeight);
     commandList->setClearColor(0, 0, 0, 0);
-    commandList->clear(AGPU_COLOR_BUFFER_BIT);
+    commandList->setClearDepth(1);
+    commandList->setClearStencil(0);
+    commandList->clear(AGPU_COLOR_BUFFER_BIT | AGPU_DEPTH_BUFFER_BIT | AGPU_STENCIL_BUFFER_BIT);
 
 	// Use the transformation block.
 	commandList->useShaderResources(globalShaderBindings[frameIndex].get());
@@ -380,6 +382,11 @@ void SystemWindow::renderScreen()
     commandQueue->signalFence(frameFences[frameIndex].get());
 
     frameIndex = (frameIndex + 1) % frameCount;
+}
+
+void SystemWindow::setTitle(const std::string &title)
+{
+    SDL_SetWindowTitle(handle, title.c_str());
 }
 
 } // End of namespace GUI

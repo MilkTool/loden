@@ -4,6 +4,7 @@
 #include "Loden/Common.hpp"
 #include "Loden/JSON.hpp"
 #include "Loden/Structure.hpp"
+#include "Loden/TextureFormats.hpp"
 #include "AGPU/agpu.hpp"
 #include <functional>
 #include <map>
@@ -133,6 +134,11 @@ private:
     std::map<std::string, PipelineStateTemplateParseAction> pipelineStateParsingActions;
     std::map<std::string, PipelineStateTemplatePtr> pipelineStateTemplates;
     std::map<std::string, agpu_primitive_type> primitiveTypeNameMap;
+    std::map<std::string, const TextureFormatDescription*> textureFormatNameMap;
+    std::map<std::string, agpu_stencil_operation> stencilOperationNameMap;
+    std::map<std::string, agpu_compare_function> compareFunctionNameMap;
+    std::map<std::string, agpu_blending_factor> blendingFactorNameMap;
+    std::map<std::string, agpu_blending_operation> blendingOperationNameMap;
 };
 
 }; // End of namespace Loden

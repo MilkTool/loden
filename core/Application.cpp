@@ -63,6 +63,8 @@ bool Application::enterMainLoop(float updateStep)
 	mainLoopQuit_ = false;
 	auto lastTime = SDL_GetTicks();
 	float availableTime = 0;
+    int frameCount = 0;
+    float frameTime = 0;
 	
 	while(!mainLoopQuit_)
 	{
@@ -72,6 +74,14 @@ bool Application::enterMainLoop(float updateStep)
 		auto deltaTime = (newTime - lastTime) * 0.001;
 		lastTime = newTime;
 		availableTime += (float)deltaTime;
+        frameTime += deltaTime;
+        if (frameTime > 1)
+        {
+            auto fps = frameCount / frameTime;
+            updateFpsDisplay(fps);
+            frameTime = 0;
+            frameCount = 0;
+        }
 		
 		// Perform multiples updates in fixed steps for determinism.
 		while(availableTime >= updateStep)
@@ -82,6 +92,7 @@ bool Application::enterMainLoop(float updateStep)
 		
 		// Perform render step
 		mainLoopRenderStep();
+        ++frameCount;
 	}
 	return true;
 }
@@ -95,6 +106,10 @@ void Application::mainLoopUpdateStep(float deltaTime)
 }
 
 void Application::mainLoopRenderStep()
+{
+}
+
+void Application::updateFpsDisplay(float fps)
 {
 }
 

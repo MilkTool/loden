@@ -16,6 +16,16 @@ namespace GUI
 {
 
 /**
+ * Path fill rule.
+ */
+enum class PathFillRule
+{
+    EvenOdd = 0,
+    NonZero,
+    Convex,
+};
+
+/**
  * 2D Canvas rendering interface
  */
 class LODEN_CORE_EXPORT Canvas: public Object
@@ -26,10 +36,25 @@ public:
 	virtual void drawLine(const glm::vec2 &p1, const glm::vec2 &p2) = 0;
 	virtual void drawTriangle(const glm::vec2 &p1, const glm::vec2 &p2, const glm::vec2 &p3) = 0;
 	virtual void drawRectangle(const Rectangle &rectangle) = 0;
+    virtual void drawRoundedRectangle(const Rectangle &rectangle, float cornerRadius) = 0;
 
 	virtual void drawFillTriangle(const glm::vec2 &p1, const glm::vec2 &p2, const glm::vec2 &p3) = 0;
 	virtual void drawFillRectangle(const Rectangle &rectangle) = 0;
-	
+    virtual void drawFillRoundedRectangle(const Rectangle &rectangle, float cornerRadius) = 0;
+
+    // Fill paths.
+    virtual void beginFillPath(PathFillRule fillRule = PathFillRule::EvenOdd) = 0;
+    virtual void closePath() = 0;
+    virtual void moveTo(const glm::vec2 &point) = 0;
+    virtual void lineTo(const glm::vec2 &point) = 0;
+    virtual void quadTo(const glm::vec2 &control, const glm::vec2 &point) = 0;
+    virtual void cubicTo(const glm::vec2 &control, const glm::vec2 &control2, const glm::vec2 &point) = 0;
+    virtual void endFillPath() = 0;
+
+    // Stroke paths
+    virtual void beginStrokePath() = 0;
+    virtual void endStrokePath() = 0;
+
 	virtual const glm::mat3 &getTransform() const = 0;
 	virtual void setTransform(const glm::mat3 &transform) = 0;
 

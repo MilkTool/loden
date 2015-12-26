@@ -15,6 +15,7 @@ protected:
 	virtual void pumpEvents();
 	virtual void mainLoopUpdateStep(float updateDelta);
 	virtual void mainLoopRenderStep();
+    virtual void updateFpsDisplay(float fps);
 
 private:
 	GUI::SystemWindowPtr screen;
@@ -71,4 +72,11 @@ void Sample2::mainLoopUpdateStep(float updateDelta)
 void Sample2::mainLoopRenderStep()
 {
 	screen->renderScreen();
+}
+
+void Sample2::updateFpsDisplay(float fps)
+{
+    char buffer[256];
+    sprintf(buffer, "Sample 2 - %03.2f", fps);
+    screen->setTitle(buffer);
 }
