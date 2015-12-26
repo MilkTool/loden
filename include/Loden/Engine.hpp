@@ -7,6 +7,11 @@
 namespace Loden
 {
 
+namespace GUI
+{
+LODEN_DECLARE_CLASS(FontManager);
+}
+
 LODEN_DECLARE_CLASS(Engine);
 LODEN_DECLARE_CLASS(PipelineStateManager);
 LODEN_DECLARE_CLASS(VirtualFileSystem);
@@ -23,20 +28,24 @@ public:
     static EnginePtr create();
 
     bool initialize(int argc, const char **argv);
+    void shutdown();
 
     const agpu_device_ref &getAgpuDevice() const;
     const agpu_command_queue_ref &getGraphicsCommandQueue() const;
     
     const PipelineStateManagerPtr &getPipelineStateManager() const;
-    
+    const GUI::FontManagerPtr &getFontManager() const;
+
 private:
     bool createDevice();
     bool createPipelineStateManager();
+    bool createFontManager();
 
     agpu_device_ref device;
     agpu_command_queue_ref graphicsCommandQueue;
 
     PipelineStateManagerPtr pipelineStateManager;
+    GUI::FontManagerPtr fontManager;
 };
 
 } // End of namespace Loden

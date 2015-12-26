@@ -455,6 +455,15 @@ bool PipelineStateManager::initialize()
     return loadStatesFromFile("core-assets/pipeline-states/states.json");
 }
 
+void PipelineStateManager::shutdown()
+{
+    structures.clear();
+    pipelineStates.clear();
+    vertexLayouts.clear();
+    shaderSignatures.clear();
+    shaderSets.clear();
+}
+
 bool PipelineStateManager::loadStatesFromFile(const std::string &filename)
 {
     rapidjson::Document document;

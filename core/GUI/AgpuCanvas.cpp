@@ -1,11 +1,17 @@
 #include "Loden/GUI/AgpuCanvas.hpp"
+#include "Loden/GUI/Font.hpp"
+#include "Loden/GUI/FontManager.hpp"
 #include "Loden/Math.hpp"
 #include "Loden/Printing.hpp"
+#include <glm/gtx/norm.hpp>
 
 namespace Loden
 {
 namespace GUI
 {
+
+const float CurveFlattnessFactor = 1.01;
+const float CurvePixelThreshold = 0.2;
 
 /**
  * Path processing strategy.
@@ -287,6 +293,14 @@ void AgpuCanvas::reset()
 	commandList->reset(allocator.get(), nullptr);
     commandList->setStencilReference(0);
     currentPathProcessor = nullPathProcessor.get();
+
+    // Use the default font face.
+    {
+        auto defaultFont = stateManager->getEngine()->getFontManager()->getDefaultFont();
+        if (defaultFont)
+            fontFace = defaultFont->getDefaultFace();
+    }
+
 }
 
 void AgpuCanvas::close()
@@ -427,6 +441,21 @@ void AgpuCanvas::drawFillRoundedRectangle(const Rectangle &rectangle, float corn
     lineTo(rectangle.getBottomLeft() + dy);
     quadTo(rectangle.getBottomLeft(), rectangle.getBottomLeft() + dx);
     endFillPath();
+}
+
+// Text drawing
+glm::vec2 AgpuCanvas::drawText(const std::string &text, int pointSize, glm::vec2 position)
+{
+    if (!fontFace)
+        return position;
+    return fontFace->drawUtf8(this, text, pointSize, position);
+}
+
+glm::vec2 AgpuCanvas::drawTextUtf16(const std::wstring &text, int pointSize, glm::vec2 position)
+{
+    if (!fontFace)
+        return position;
+    return fontFace->drawUtf16(this, text, pointSize, position);
 }
 
 // Covering
@@ -621,29 +650,46 @@ void AgpuSoftwareTessellationPathProcessor::lineTo(const glm::vec2 &point)
 
 void AgpuSoftwareTessellationPathProcessor::quadTo(const glm::vec2 &control, const glm::vec2 &point)
 {
-    const int N = 8;
-    auto startPoint = currentPosition;
-    auto delta = 1.0f / (N - 1);
-    auto alpha = 0.0f;
+    auto lineLength = glm::length(point - currentPosition);
+    auto arcLength = glm::length(control - currentPosition) + glm::length(point - control);
 
-    for (int i = 0; i < N; ++i)
+    auto delta = arcLength - lineLength;
+    if (arcLength > CurveFlattnessFactor * lineLength && delta > CurvePixelThreshold)
     {
-        lineTo(quadraticBezier(startPoint, control, point, alpha));
-        alpha += delta;
+        auto m1 = midpoint(currentPosition, control);
+        auto m2 = midpoint(control, point);
+        auto m3 = midpoint(m1, m2);
+        quadTo(m1, m3);
+        quadTo(m2, point);
+    }
+    else
+    {
+        lineTo(point);
     }
 }
 
 void AgpuSoftwareTessellationPathProcessor::cubicTo(const glm::vec2 &control, const glm::vec2 &control2, const glm::vec2 &point)
 {
-    const int N = 8;
-    auto startPoint = currentPosition;
-    auto delta = 1.0f / (N - 1);
-    auto alpha = 0.0f;
+    auto lineLength = glm::length(point - currentPosition);
+    auto arcLength = glm::length(control - currentPosition) + glm::length(point - control);
 
-    for (int i = 0; i < N; ++i)
+    auto delta = arcLength - lineLength;
+    if (arcLength > CurveFlattnessFactor * lineLength && delta > CurvePixelThreshold)
     {
-        lineTo(cubicBezier(startPoint, control, control2, point, alpha));
-        alpha += delta;
+        auto m1 = midpoint(currentPosition, control);
+        auto m2 = midpoint(control, control2);
+        auto m3 = midpoint(control2, point);
+
+        auto m4 = midpoint(m1, m2);
+        auto m5 = midpoint(m2, m3);
+        auto m6 = midpoint(m4, m5);
+        
+        cubicTo(m1, m4, m6);
+        cubicTo(m2, m5, point);
+    }
+    else
+    {
+        lineTo(point);
     }
 }
 
@@ -705,7 +751,6 @@ void AgpuStencilPathProcessor::end()
 void AgpuStencilPathProcessor::moveTo(const glm::vec2 &point)
 {
     BaseClass::moveTo(point);
-    totalVertexCount = 0;
     vertexCount = 0;
 }
 

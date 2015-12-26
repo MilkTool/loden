@@ -14,6 +14,8 @@ namespace Loden
 {
 namespace GUI
 {
+LODEN_DECLARE_CLASS(Font);
+LODEN_DECLARE_CLASS(FontFace);
 
 /**
  * Path fill rule.
@@ -41,6 +43,10 @@ public:
 	virtual void drawFillTriangle(const glm::vec2 &p1, const glm::vec2 &p2, const glm::vec2 &p3) = 0;
 	virtual void drawFillRectangle(const Rectangle &rectangle) = 0;
     virtual void drawFillRoundedRectangle(const Rectangle &rectangle, float cornerRadius) = 0;
+
+    // Text drawing
+    virtual glm::vec2 drawText(const std::string &text, int pointSize, glm::vec2 position) = 0;
+    virtual glm::vec2 drawTextUtf16(const std::wstring &text, int pointSize, glm::vec2 position) = 0;
 
     // Fill paths.
     virtual void beginFillPath(PathFillRule fillRule = PathFillRule::EvenOdd) = 0;

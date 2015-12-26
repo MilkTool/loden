@@ -11,6 +11,10 @@ set(LodenCoreGUI_SRCS
 	GUI/Button.cpp
 	GUI/Canvas.cpp
 	GUI/ContainerWidget.cpp
+	GUI/Font.cpp
+	GUI/FontManager.cpp
+	GUI/FreeTypeFont.cpp
+	GUI/FreeTypeFont.hpp
 	GUI/SystemWindow.cpp
 	GUI/Widget.cpp
 	GUI/Window.cpp

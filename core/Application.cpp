@@ -50,6 +50,8 @@ bool Application::run()
 
 bool Application::shutdown()
 {
+    engine->shutdown();
+    engine.reset();
 	return true;
 }
 

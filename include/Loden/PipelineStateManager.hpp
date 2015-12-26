@@ -82,6 +82,7 @@ public:
 	~PipelineStateManager();
 
     bool initialize();
+    void shutdown();
     bool loadStatesFromFile(const std::string &filename);
     bool loadStructuresFromFile(const std::string &filename);
     bool loadShaderSignaturesFromFile(const std::string &filename);
@@ -104,6 +105,11 @@ public:
     ShaderSet *getShaderSet(const std::string &name);
 	agpu_pipeline_state_ref getPipelineState(const std::string &name);
     PipelineStateTemplatePtr getPipelineStateTemplate(const std::string &name);
+
+    Engine *getEngine() const
+    {
+        return engine;
+    }
 
 private:
     typedef std::function<bool (PipelineStateTemplate &, rapidjson::Value &)> PipelineStateTemplateParseAction;

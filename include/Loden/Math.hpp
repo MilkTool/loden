@@ -56,6 +56,12 @@ T cubicRationalBezier(const T &P1, const S w1, const T &P2, const S w2, const T 
     return c1*P1 + c2*P2 + c3*P3 + c4*P4;
 }
 
+template<typename T>
+T midpoint(const T &a, const T &b)
+{
+    return (a + b) * 0.5f;
+}
+
 } // End of namesapce Loden
 
 #endif //LODEN_MATH_HPP

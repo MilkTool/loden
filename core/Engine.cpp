@@ -1,6 +1,7 @@
 #include "Loden/Engine.hpp"
 #include "Loden/PipelineStateManager.hpp"
 #include "Loden/Printing.hpp"
+#include "Loden/GUI/FontManager.hpp"
 
 namespace Loden
 {
@@ -26,7 +27,28 @@ bool Engine::initialize(int argc, const char **argv)
     if (!createPipelineStateManager())
         return false;
 
+    if (!createFontManager())
+        return false;
+
     return true;
+}
+
+void Engine::shutdown()
+{
+    graphicsCommandQueue->finishExecution();
+
+    if (fontManager)
+    {
+        fontManager->shutdown();
+        fontManager.reset();
+    }
+
+    if (pipelineStateManager)
+    {
+        pipelineStateManager->shutdown();
+        pipelineStateManager.reset();
+    }
+
 }
 
 bool Engine::createDevice()
@@ -80,6 +102,19 @@ bool Engine::createPipelineStateManager()
     return true;
 }
 
+bool Engine::createFontManager()
+{
+    // Create the font manager
+    fontManager = std::make_shared<GUI::FontManager>(this);
+    if (!fontManager->initialize())
+    {
+        printError("Failed to initialize the font manager.\n");
+        return false;
+    }
+
+    return true;
+}
+
 const agpu_device_ref &Engine::getAgpuDevice() const
 {
     return device;
@@ -93,6 +128,11 @@ const agpu_command_queue_ref &Engine::getGraphicsCommandQueue() const
 const PipelineStateManagerPtr &Engine::getPipelineStateManager() const
 {
     return pipelineStateManager;
+}
+
+const GUI::FontManagerPtr &Engine::getFontManager() const
+{
+    return fontManager;
 }
 
 } // End of namespace Loden

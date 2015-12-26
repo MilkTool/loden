@@ -25,5 +25,5 @@ bool Sample1::run()
 
 bool Sample1::shutdown()
 {
-	return true;
+	return Application::shutdown();
 }

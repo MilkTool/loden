@@ -52,6 +52,10 @@ public:
 	virtual void drawFillRectangle(const Rectangle &rectangle);
     virtual void drawFillRoundedRectangle(const Rectangle &rectangle, float cornerRadius);
 
+    // Text drawing
+    virtual glm::vec2 drawText(const std::string &text, int pointSize, glm::vec2 position);
+    virtual glm::vec2 drawTextUtf16(const std::wstring &text, int pointSize, glm::vec2 position) ;
+
     // Fill paths.
     virtual void beginFillPath(PathFillRule fillRule = PathFillRule::EvenOdd);
     virtual void closePath();
@@ -102,8 +106,14 @@ private:
     void addVertexPosition(const glm::vec2 &position);
 	void addIndex(int index);
 
+    // Current canvas state
 	glm::vec4 currentColor;
 	glm::mat3 transform;
+
+    // Current font state
+    FontFacePtr fontFace;
+
+    // Buffer states
 	size_t vertexCapacity;
 	size_t indexCapacity;
 	int startIndex;

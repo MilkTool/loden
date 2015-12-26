@@ -25,7 +25,7 @@ APPLICATION_ENTRY_POINT(Sample2);
 
 bool Sample2::initialize()
 {
-    // Create thew system window
+    // Create the system window
 	screen = GUI::SystemWindow::create(engine, "Sample2", 640, 480);
     if (!screen)
         return false;
@@ -57,7 +57,7 @@ bool Sample2::run()
 
 bool Sample2::shutdown()
 {
-	return true;
+	return Application::shutdown();
 }
 
 void Sample2::pumpEvents()
