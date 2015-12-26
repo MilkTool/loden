@@ -2,9 +2,13 @@
 #define LODEN_MATH_HPP
 
 #include "Loden/Common.hpp"
+#include <glm/vec2.hpp>
+#include <glm/vec3.hpp>
+#include <glm/vec4.hpp>
 
 namespace Loden
 {
+static constexpr float FloatEpsilon = 0.00001f;
 
 template<typename T, typename S>
 T quadraticBezier(const T &P1, const T &P2, const T &P3, const S alpha)
@@ -60,6 +64,27 @@ template<typename T>
 T midpoint(const T &a, const T &b)
 {
     return (a + b) * 0.5f;
+}
+
+inline bool closeTo(float a, float b)
+{
+    auto delta = a - b;
+    return -FloatEpsilon < delta && delta < FloatEpsilon;
+}
+
+inline bool closeTo(const glm::vec2 &a, const glm::vec2 &b)
+{
+    return closeTo(a.x, b.x) && closeTo(a.y, b.y);
+}
+
+inline bool closeTo(const glm::vec3 &a, const glm::vec3 &b)
+{
+    return closeTo(a.x, b.x) && closeTo(a.y, b.y) && closeTo(a.z, b.z);
+}
+
+inline bool closeTo(const glm::vec4 &a, const glm::vec4 &b)
+{
+    return closeTo(a.x, b.x) && closeTo(a.y, b.y) && closeTo(a.z, b.z) && closeTo(a.w, b.w);
 }
 
 } // End of namesapce Loden

@@ -89,7 +89,9 @@ include_directories(
 "${PROJECT_SOURCE_DIR}/include"
 "${PROJECT_SOURCE_DIR}/thirdparty/glm"
 "${PROJECT_SOURCE_DIR}/thirdparty/rapidjson/include"
+"${PROJECT_SOURCE_DIR}/thirdparty/rapidxml/include"
 "${PROJECT_SOURCE_DIR}/thirdparty/freetype/include"
+"${PROJECT_SOURCE_DIR}/thirdparty/unittest-cpp"
 "${AGPU_INCLUDE_DIR}"
 )
 
@@ -101,3 +103,6 @@ add_subdirectory(core)
 
 # Build the samples
 add_subdirectory(samples)
+
+# Build the tests
+add_subdirectory(tests)

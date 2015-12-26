@@ -10,8 +10,8 @@ namespace Loden
 namespace GUI
 {
 
-const float CurveFlattnessFactor = 1.01;
-const float CurvePixelThreshold = 0.2;
+const float CurveFlattnessFactor = 1.01f;
+const float CurvePixelThreshold = 0.2f;
 
 /**
  * Path processing strategy.

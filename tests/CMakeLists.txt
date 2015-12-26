@@ -1,2 +1,9 @@
-add_executable(Tests WIN32 Sample1.cpp)
-target_link_libraries(Tests LodenCore ${LodenProgram_DEP_LIBS})
+set(Test_Sources
+    Color.cpp
+    Math.cpp
+
+    TestMain.cpp
+)
+
+add_executable(Tests ${Test_Sources})
+target_link_libraries(Tests LodenCore ${Loden_DEP_LIBS} UnitTest++)

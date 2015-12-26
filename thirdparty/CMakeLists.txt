@@ -1,3 +1,6 @@
+# Build UnitTest++
+add_subdirectory(unittest-cpp)
+
 # Build the freetype library
 if(WIN32)
     set(BUILD_SHARED_LIBS False)

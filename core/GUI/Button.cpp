@@ -1,4 +1,5 @@
 #include "Loden/GUI/Button.hpp"
+#include "Loden/Color.hpp"
 
 namespace Loden
 {
@@ -70,7 +71,7 @@ void Button::drawContentOn(Canvas *canvas)
 	canvas->setColor(glm::vec4(0.0,0.8,0.8, 1.0));
 	canvas->drawRoundedRectangle(getLocalRectangle(), 5);
 
-    canvas->setColor(glm::vec4(1.0, 1.0, 1.0, 1.0));
+    canvas->setColor(Colors::white());
     canvas->drawText(label, 12, glm::vec2(5, getHeight() - 5));
 }
 
