@@ -92,6 +92,9 @@ include_directories(
 "${AGPU_INCLUDE_DIR}"
 )
 
+# Build third party libraries
+add_subdirectory(thirdparty)
+
 # Build the core library
 add_subdirectory(core)
 
