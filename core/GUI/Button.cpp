@@ -24,7 +24,7 @@ ButtonPtr Button::create(const std::string &label, const glm::vec2 &size, const 
 	return button;
 }
 
-std::string Button::getLabel() const
+const std::string &Button::getLabel() const
 {
 	return label;
 }
@@ -51,6 +51,18 @@ void Button::handleMouseButtonUp(MouseButtonEvent &event)
 	Widget::handleMouseButtonUp(event);
 	isButtonDown_ = false;
 	releaseMouse(); 
+
+    // Fire the action event only if the mouse is above me.
+    if (hasMouseOver())
+    {
+        ActionEvent actionEvent;
+        handleAction(actionEvent);
+    }
+}
+
+void Button::handleAction(ActionEvent &event)
+{
+    actionEvent(event);
 }
 
 void Button::drawContentOn(Canvas *canvas)

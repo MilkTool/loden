@@ -1,6 +1,8 @@
 #include "Loden/GUI/Widget.hpp"
 #include "Loden/GUI/ContainerWidget.hpp"
 #include "Loden/GUI/SystemWindow.hpp"
+#include "Loden/GUI/FontManager.hpp"
+#include "Loden/Engine.hpp"
 #include "Loden/Printing.hpp"
 
 namespace Loden
@@ -61,12 +63,76 @@ glm::vec2 Widget::getAbsolutePosition() const
 	return getPosition();
 }
 
+glm::vec2 Widget::getMinimalSize()
+{
+    return glm::vec2(20, 20);
+}
+
+glm::vec2 Widget::getPreferredSize()
+{
+    return getMinimalSize();
+}
+
+FontPtr Widget::getDefaultFont()
+{
+    auto engine = getEngine();
+    if (!engine)
+        return nullptr;
+
+    return engine->getFontManager()->getDefaultFont();
+}
+
+FontFacePtr Widget::getDefaultFontFace()
+{
+    auto font = getDefaultFont();
+    if (!font)
+        return nullptr;
+
+    return font->getDefaultFace();
+}
+
+Rectangle Widget::computeUtf16TextRectangle(const std::wstring &text, int pointSize)
+{
+    auto fontFace = getDefaultFontFace();
+    if (!fontFace)
+        return Rectangle();
+
+    return fontFace->computeUtf16TextRectangle(text, pointSize);
+}
+
+Rectangle Widget::computeUtf8TextRectangle(const std::string &text, int pointSize)
+{
+    auto fontFace = getDefaultFontFace();
+    if (!fontFace)
+        return Rectangle();
+
+    return fontFace->computeUtf8TextRectangle(text, pointSize);
+}
+
+glm::vec2 Widget::computeUtf16TextSize(const std::wstring &text, int pointSize)
+{
+    return computeUtf16TextRectangle(text, pointSize).getSize();
+}
+
+glm::vec2 Widget::computeUtf8TextSize(const std::string &text, int pointSize)
+{
+    return computeUtf8TextRectangle(text, pointSize).getSize();
+}
+
 SystemWindow *Widget::getSystemWindow()
 {
 	auto theParent = getParent();
 	if(theParent)
 		return theParent->getSystemWindow();
 	return nullptr;
+}
+
+EnginePtr Widget::getEngine()
+{
+    auto systemWindow = getSystemWindow();
+    if (systemWindow)
+        return systemWindow->getEngine();
+    return nullptr;
 }
 
 ContainerWidgetPtr Widget::getParent() const
@@ -86,7 +152,9 @@ const glm::vec2 &Widget::getPosition() const
 
 void Widget::setPosition(const glm::vec2 &newPosition)
 {
+    PositionChangedEvent event(position, newPosition);
 	position = newPosition;
+    handlePositionChanged(event);
 }
 
 const glm::vec2 &Widget::getSize() const
@@ -96,7 +164,9 @@ const glm::vec2 &Widget::getSize() const
 
 void Widget::setSize(const glm::vec2 &newSize)
 {
+    SizeChangedEvent event(size, newSize);
 	size = newSize;
+    handleSizeChanged(event);
 }
 
 float Widget::getWidth() const
@@ -122,6 +192,12 @@ void Widget::setBackgroundColor(const glm::vec4 &newColor)
 Rectangle Widget::getRectangle() const
 {
 	return Rectangle(position, position + size);
+}
+
+void Widget::setRectangle(const Rectangle &rectangle)
+{
+    setPosition(rectangle.min);
+    setSize(rectangle.getSize());
 }
 
 Rectangle Widget::getLocalRectangle() const
@@ -193,6 +269,16 @@ void Widget::handleMouseMotion(MouseMotionEvent &event)
 {
 	setMouseOverHere();
 	mouseMotionEvent(event);
+}
+
+void Widget::handleSizeChanged(SizeChangedEvent &event)
+{
+    sizeChangedEvent(event);
+}
+
+void Widget::handlePositionChanged(PositionChangedEvent &event)
+{
+    positionChangedEvent(event);
 }
 
 } // End of namespace GUI

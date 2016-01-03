@@ -10,6 +10,7 @@ namespace GUI
 {
 
 LODEN_DECLARE_CLASS(ContainerWidget);
+LODEN_DECLARE_CLASS(Layout);
 
 /**
  * ContainerWidget class
@@ -34,8 +35,19 @@ public:
 	virtual void handleMouseButtonUp(MouseButtonEvent &event);
 	virtual void handleMouseMotion(MouseMotionEvent &event);
 	
+    const LayoutPtr &getLayout() const;
+    void setLayout(const LayoutPtr &newLayout);
+
+    virtual bool isAutoLayout();
+    virtual void setAutoLayout(bool newAutoLayout);
+
+    virtual void fitLayout();
+    virtual void updateLayout();
+
 private:
 	std::vector<WidgetPtr> children;
+    LayoutPtr layout;
+    bool autoLayout;
 };
 
 } // End of namespace GUI

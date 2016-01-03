@@ -10,12 +10,19 @@ set(LodenCoreGUI_SRCS
 	GUI/AgpuCanvas.cpp
 	GUI/Button.cpp
 	GUI/Canvas.cpp
+	GUI/CanvasWidget.cpp
 	GUI/ContainerWidget.cpp
+	GUI/DockingLayout.cpp
 	GUI/Font.cpp
 	GUI/FontManager.cpp
 	GUI/FreeTypeFont.cpp
 	GUI/FreeTypeFont.hpp
+	GUI/Label.cpp
+	GUI/Layout.cpp
+	GUI/MenuBar.cpp
+	GUI/StatusBar.cpp
 	GUI/SystemWindow.cpp
+	GUI/TextInput.cpp
 	GUI/Widget.cpp
 	GUI/Window.cpp
 )

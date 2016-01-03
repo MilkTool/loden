@@ -67,6 +67,11 @@ public:
         return max;
     }
 
+    glm::vec2 getSize() const
+    {
+        return max - min;
+    }
+
     void insertPoint(const glm::vec2 &point)
     {
         min.x = std::min(min.x, point.x);
@@ -74,6 +79,15 @@ public:
 
         max.x = std::max(max.x, point.x);
         max.y = std::max(max.y, point.y);
+    }
+
+    void insertRectangle(const Rectangle &rectangle)
+    {
+        min.x = std::min(min.x, rectangle.min.x);
+        min.y = std::min(min.y, rectangle.min.y);
+
+        max.x = std::max(max.x, rectangle.max.x);
+        max.y = std::max(max.y, rectangle.max.y);
 
     }
 

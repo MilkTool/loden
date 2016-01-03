@@ -21,7 +21,7 @@ public:
 	
 	static ButtonPtr create(const std::string &label, const glm::vec2 &size, const glm::vec2 &position = glm::vec2());
 	
-	std::string getLabel() const;
+	const std::string &getLabel() const;
 	void setLabel(const std::string &newLabel);
 	
 	bool isButtonDown() const;
@@ -30,6 +30,11 @@ public:
 
 	virtual void handleMouseButtonDown(MouseButtonEvent &event);
 	virtual void handleMouseButtonUp(MouseButtonEvent &event);
+
+    virtual void handleAction(ActionEvent &event);
+
+public:
+    EventSocket<ActionEvent> actionEvent;
 
 private:
 	std::string label;

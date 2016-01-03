@@ -9,6 +9,8 @@ namespace Loden
 namespace GUI
 {
 
+static constexpr float ScaleFactor = 1.0f / 64.0f;
+
 inline glm::vec2 convertFreeTypeVector(const FT_Vector *vector)
 {
     return glm::vec2(vector->x, vector->y);
@@ -40,10 +42,14 @@ public:
     }
 
     glm::vec2 drawNextCharacter(Canvas *canvas, int character, int previousCharacter, int pointSize, const glm::vec2 &position);
+    glm::vec2 appendCharacterBoundingBox(int character, int previousCharacter, int pointSize, const glm::vec2 &position, Rectangle &accumulatedBoundingBox);
 
     virtual glm::vec2 drawCharacter(Canvas *canvas, int character, int pointSize, const glm::vec2 &position);
     virtual glm::vec2 drawUtf8(Canvas *canvas, const std::string &text, int pointSize, const glm::vec2 &position);
     virtual glm::vec2 drawUtf16(Canvas *canvas, const std::wstring &text, int pointSize, const glm::vec2 &position);
+
+    virtual Rectangle computeUtf8TextRectangle(const std::string &text, int pointSize);
+    virtual Rectangle computeUtf16TextRectangle(const std::wstring &text, int pointSize);
 
 private:
     void drawOutline(Canvas *canvas, FT_Outline *outline, const glm::vec2 &scale, const glm::vec2 &position);
@@ -70,10 +76,8 @@ bool FreeTypeFace::updatePointSize(int newPointSize)
     return true;
 }
 
-glm::vec2 FreeTypeFace::drawNextCharacter(Canvas *canvas, int character, int previousCharacter, int pointSize, const glm::vec2 &position)
+glm::vec2 FreeTypeFace::appendCharacterBoundingBox(int character, int previousCharacter, int pointSize, const glm::vec2 &position, Rectangle &accumulatedBoundingBox)
 {
-    const auto ScaleFactor = 1.0f / 64.0f;
-
     // Get the glyph index.
     auto glyphIndex = FT_Get_Char_Index(face, character);
 
@@ -108,6 +112,54 @@ glm::vec2 FreeTypeFace::drawNextCharacter(Canvas *canvas, int character, int pre
     // Draw the outline.
     auto scale = glm::vec2(ScaleFactor, -ScaleFactor);
     auto translation = position + glm::vec2(0, bearingY);
+
+    auto minX = metrics.horiBearingX * ScaleFactor;
+    auto maxX = (metrics.horiBearingX + metrics.width) * ScaleFactor;
+
+    auto minY = -metrics.horiBearingY * ScaleFactor;
+    auto maxY = (metrics.height - metrics.horiBearingY) * ScaleFactor;
+
+    accumulatedBoundingBox.insertRectangle(Rectangle(position + glm::vec2(minX, minY), position + glm::vec2(maxX, maxY)));
+
+    // Compute the advance.
+    return position + glm::vec2(advance + kerning, 0);
+}
+
+glm::vec2 FreeTypeFace::drawNextCharacter(Canvas *canvas, int character, int previousCharacter, int pointSize, const glm::vec2 &position)
+{
+    // Get the glyph index.
+    auto glyphIndex = FT_Get_Char_Index(face, character);
+
+    // Load the glyph.
+    auto error = FT_Load_Glyph(face, glyphIndex, FT_LOAD_NO_BITMAP);
+    if (error)
+        return position;
+    auto glyph = face->glyph;
+
+    // Only support outline fonts.
+    if (glyph->format != FT_GLYPH_FORMAT_OUTLINE)
+        return position;
+
+    // Get the glyph metrics.
+    auto &metrics = glyph->metrics;
+    auto advance = metrics.horiAdvance*ScaleFactor;
+
+    // Get the kerning.
+    auto kerning = 0.0f;
+    if (hasKerning && previousCharacter >= 0 && glyphIndex != 0)
+    {
+        auto previousGlyph = FT_Get_Char_Index(face, previousCharacter);
+        if (previousGlyph != 0)
+        {
+            FT_Vector delta;
+            FT_Get_Kerning(face, previousGlyph, glyphIndex, FT_KERNING_DEFAULT, &delta);
+            kerning = delta.x * ScaleFactor;
+        }
+    }
+
+    // Draw the outline.
+    auto scale = glm::vec2(ScaleFactor, -ScaleFactor);
+    auto translation = position;
     drawOutline(canvas, &glyph->outline, scale, position);
 
     // Compute the advance.
@@ -209,6 +261,42 @@ glm::vec2 FreeTypeFace::drawUtf16(Canvas *canvas, const std::wstring &text, int 
     canvas->endFillPath();
 
     return currentPosition;
+}
+
+Rectangle FreeTypeFace::computeUtf8TextRectangle(const std::string &text, int pointSize)
+{
+    if (!updatePointSize(pointSize))
+        return Rectangle();
+
+    int previousCharacter = -1;
+    glm::vec2 currentPosition(0);
+    Rectangle boundingBox(glm::vec2(0, 0), glm::vec2(0, 0));
+    for (size_t i = 0; i < text.size(); ++i)
+    {
+        int character = text[i];
+        currentPosition = appendCharacterBoundingBox(character, previousCharacter, pointSize, currentPosition, boundingBox);
+        previousCharacter = character;
+    }
+
+    return boundingBox;
+}
+
+Rectangle FreeTypeFace::computeUtf16TextRectangle(const std::wstring &text, int pointSize)
+{
+    if (!updatePointSize(pointSize))
+        return Rectangle();
+
+    int previousCharacter = -1;
+    glm::vec2 currentPosition(0);
+    Rectangle boundingBox(glm::vec2(0, 0), glm::vec2(0, 0));
+    for (size_t i = 0; i < text.size(); ++i)
+    {
+        int character = text[i];
+        currentPosition = appendCharacterBoundingBox(character, previousCharacter, pointSize, currentPosition, boundingBox);
+        previousCharacter = character;
+    }
+
+    return boundingBox;
 }
 
 FreeTypeFontLoader::FreeTypeFontLoader(Engine *engine)

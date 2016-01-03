@@ -27,6 +27,8 @@ public:
 
 	virtual bool isSystemWindow() const;
 	virtual SystemWindow *getSystemWindow();
+    virtual EnginePtr getEngine();
+
 	virtual glm::vec2 getAbsolutePosition() const;
 
 	void setKeyboardFocusWidget(const WidgetPtr &newKeyboardFocus);

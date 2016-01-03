@@ -11,12 +11,16 @@
 
 namespace Loden
 {
+LODEN_DECLARE_CLASS(Engine)
+
 namespace GUI
 {
 
 LODEN_DECLARE_CLASS(ContainerWidget)
 LODEN_DECLARE_CLASS(SystemWindow)	
 LODEN_DECLARE_CLASS(Widget)
+LODEN_DECLARE_CLASS(Font)
+LODEN_DECLARE_CLASS(FontFace)
 
 #define LODEN_WIDGET_TYPE(widgetClass, baseClass) \
 public: \
@@ -34,11 +38,25 @@ public:
 	
 	virtual bool isSystemWindow() const;
 	virtual SystemWindow *getSystemWindow();
+    virtual EnginePtr getEngine();
+
 	virtual glm::vec2 getAbsolutePosition() const;
 
 	virtual bool hasKeyboardFocus() const;
 	virtual bool hasMouseOver() const;
-	
+
+    virtual glm::vec2 getMinimalSize();
+    virtual glm::vec2 getPreferredSize();
+
+    FontPtr getDefaultFont();
+    FontFacePtr getDefaultFontFace();
+
+    Rectangle computeUtf16TextRectangle(const std::wstring &text, int pointSize);
+    Rectangle computeUtf8TextRectangle(const std::string &text, int pointSize);
+
+    glm::vec2 computeUtf16TextSize(const std::wstring &text, int pointSize);
+    glm::vec2 computeUtf8TextSize(const std::string &text, int pointSize);
+
 	void captureMouse();
 	void releaseMouse();
 	
@@ -61,6 +79,8 @@ public:
 	void setBackgroundColor(const glm::vec4 &newColor);
 	
 	Rectangle getRectangle() const;
+    void setRectangle(const Rectangle &rectangle);
+
 	Rectangle getLocalRectangle() const;
 	
 public:
@@ -78,7 +98,10 @@ public:
 	virtual void handleMouseButtonDown(MouseButtonEvent &event);
 	virtual void handleMouseButtonUp(MouseButtonEvent &event);
 	virtual void handleMouseMotion(MouseMotionEvent &event);
-	
+
+    virtual void handleSizeChanged(SizeChangedEvent &event);
+    virtual void handlePositionChanged(PositionChangedEvent &event);
+
 public:
 	EventSocket<KeyboardEvent> keyDownEvent;
 	EventSocket<KeyboardEvent> keyUpEvent;
@@ -91,6 +114,9 @@ public:
 	EventSocket<FocusEvent> lostFocusEvent;
 	EventSocket<MouseFocusEvent> mouseEnterEvent;
 	EventSocket<MouseFocusEvent> mouseLeaveEvent;
+
+    EventSocket<SizeChangedEvent> sizeChangedEvent;
+    EventSocket<PositionChangedEvent> positionChangedEvent;
 	
 private:
 	glm::vec2 position;

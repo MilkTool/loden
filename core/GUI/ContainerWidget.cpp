@@ -1,4 +1,5 @@
 #include "Loden/GUI/ContainerWidget.hpp"
+#include "Loden/GUI/Layout.hpp"
 
 namespace Loden
 {
@@ -6,6 +7,7 @@ namespace GUI
 {
 ContainerWidget::ContainerWidget()
 {
+    autoLayout = false;
 }
 
 ContainerWidget::~ContainerWidget()
@@ -118,6 +120,40 @@ void ContainerWidget::handleMouseMotion(MouseMotionEvent &event)
 
 	if(!event.wasHandled())
 		mouseMotionEvent(event);
+}
+
+const LayoutPtr &ContainerWidget::getLayout() const
+{
+    return layout;
+}
+
+void ContainerWidget::setLayout(const LayoutPtr &newLayout)
+{
+    layout = newLayout;
+    if (isAutoLayout())
+        updateLayout();
+}
+
+bool ContainerWidget::isAutoLayout()
+{
+    return autoLayout;
+}
+
+void ContainerWidget::setAutoLayout(bool newAutoLayout)
+{
+    autoLayout = newAutoLayout;
+}
+
+void ContainerWidget::fitLayout()
+{
+    if (layout)
+        layout->fit(this);
+}
+
+void ContainerWidget::updateLayout()
+{
+    if (layout)
+        layout->update(this, getLocalRectangle());
 }
 
 } // End of namespace GUI

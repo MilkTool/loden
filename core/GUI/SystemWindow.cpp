@@ -15,6 +15,7 @@ SystemWindow::SystemWindow()
     frameCount = 3;
     frameIndex = 0;
 	setBackgroundColor(glm::vec4(0.0, 0.0, 0.0, 1.0));
+    setAutoLayout(true);
 }
 
 SystemWindow::~SystemWindow()
@@ -30,6 +31,11 @@ bool SystemWindow::isSystemWindow() const
 SystemWindow *SystemWindow::getSystemWindow()
 {
 	return this;
+}
+
+EnginePtr SystemWindow::getEngine()
+{
+    return engine;
 }
 
 glm::vec2 SystemWindow::getAbsolutePosition() const

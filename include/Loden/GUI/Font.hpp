@@ -3,6 +3,7 @@
 
 #include "Loden/Common.hpp"
 #include "Loden/Object.hpp"
+#include "Loden/Rectangle.hpp"
 #include <glm/vec2.hpp>
 #include <map>
 #include <string>
@@ -58,6 +59,9 @@ public:
     virtual glm::vec2 drawCharacter(Canvas *canvas, int character, int pointSize, const glm::vec2 &position) = 0;
     virtual glm::vec2 drawUtf8(Canvas *canvas, const std::string &text, int pointSize, const glm::vec2 &position) = 0;
     virtual glm::vec2 drawUtf16(Canvas *canvas, const std::wstring &text, int pointSize, const glm::vec2 &position) = 0;
+
+    virtual Rectangle computeUtf8TextRectangle(const std::string &text, int pointSize) = 0;
+    virtual Rectangle computeUtf16TextRectangle(const std::wstring &text, int pointSize) = 0;
 };
 
 } // End of namespace GUI

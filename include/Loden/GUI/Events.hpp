@@ -189,6 +189,62 @@ private:
 	WidgetPtr newWidget;
 };
 
+/**
+* Action event.
+*/
+class LODEN_CORE_EXPORT ActionEvent : public Event
+{
+public:
+};
+
+/**
+* Size changed event.
+*/
+class LODEN_CORE_EXPORT SizeChangedEvent : public Event
+{
+public:
+    SizeChangedEvent(const glm::vec2 &oldSize, const glm::vec2 &newSize)
+        : oldSize(oldSize), newSize(newSize) {}
+
+    const glm::vec2 &getOldSize() const
+    {
+        return oldSize;
+    }
+
+    const glm::vec2 &getNewSize() const
+    {
+        return newSize;
+    }
+
+private:
+    glm::vec2 oldSize;
+    glm::vec2 newSize;
+};
+
+/**
+* Position changed event.
+*/
+class LODEN_CORE_EXPORT PositionChangedEvent : public Event
+{
+public:
+    PositionChangedEvent(const glm::vec2 &oldPosition, const glm::vec2 &newPosition)
+        : oldPosition(oldPosition), newPosition(newPosition) {}
+
+    const glm::vec2 &getOldPosition() const
+    {
+        return oldPosition;
+    }
+
+    const glm::vec2 &getNewPosition() const
+    {
+        return newPosition;
+    }
+
+private:
+    glm::vec2 oldPosition;
+    glm::vec2 newPosition;
+};
+
 } // End of namespace Loden
 } // End of namespace GUI
 
