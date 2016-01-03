@@ -20,6 +20,11 @@ MenuBarPtr MenuBar::create()
     return menuBar;
 }
 
+void MenuBar::addMenu(const std::string &text, const MenuPtr &menu)
+{
+    items.push_back(Item(text, menu));
+}
+
 glm::vec2 MenuBar::getMinimalSize()
 {
     return glm::vec2(25, 25);

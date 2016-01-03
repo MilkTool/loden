@@ -19,6 +19,7 @@ set(LodenCoreGUI_SRCS
 	GUI/FreeTypeFont.hpp
 	GUI/Label.cpp
 	GUI/Layout.cpp
+	GUI/Menu.cpp
 	GUI/MenuBar.cpp
 	GUI/StatusBar.cpp
 	GUI/SystemWindow.cpp

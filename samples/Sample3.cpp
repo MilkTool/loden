@@ -37,8 +37,15 @@ bool Sample3::initialize()
     auto menuBar = GUI::MenuBar::create();
     screen->addChild(menuBar);
 
+    // Create the menu
+    auto fileMenu = GUI::Menu::create(screen.get());
+    fileMenu->addItem("Exit", [this](GUI::Event &ev) {
+        mainLoopQuit();
+    });
+    menuBar->addMenu("File", fileMenu);
+
     // Create a label
-	auto label = GUI::Label::create("Hello Worldgp");
+	auto label = GUI::Label::create("Hello World");
 	screen->addChild(label);
 
     // Create the status bar
