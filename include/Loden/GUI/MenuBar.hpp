@@ -17,30 +17,37 @@ LODEN_DECLARE_CLASS(MenuBar);
 */
 class LODEN_CORE_EXPORT MenuBar : public Widget
 {
+    LODEN_WIDGET_TYPE(MenuBar, Widget);
 public:
     MenuBar(const SystemWindowPtr &systemWindow);
     ~MenuBar();
 
     static MenuBarPtr create(const SystemWindowPtr &systemWindow);
 
+    void addItem(const MenuItemPtr &item);
     void addMenu(const std::string &text, const MenuPtr &menu);
+    void addAction(const std::string &text, const ActionEventHandler &action);
 
     virtual glm::vec2 getMinimalSize();
 
-    virtual void drawContentOn(Canvas *canvas);
+public:
+    virtual void drawContentOn(Canvas *canvas) override;
+
+    virtual void handleMouseButtonDown(MouseButtonEvent &event) override;
+    virtual void handleMouseButtonUp(MouseButtonEvent &event) override;
+    virtual void handleMouseMotion(MouseMotionEvent &event) override;
+
+    virtual void handlePopUpsKilledEvent(PopUpsKilledEvent &event) override;
 
 private:
-    struct Item
-    {
-        Item(const std::string &text, const MenuPtr &menu)
-            : text(text), menu(menu) {}
+    void activateMenuAtPosition(const glm::vec2 &position);
 
-        std::string text;
-        MenuPtr menu;
-        Rectangle rectangle;
-    };
+    MenuItemPtr getItemAtPosition(const glm::vec2 &position, int *itemIndex, glm::vec2 *itemPosition);
 
-    std::vector<Item> items;
+    std::vector<MenuItemPtr> items;
+    bool activated;
+    int activeItemIndex;
+
 };
 } // End of namespace GUI
 } // End of namespace Loden

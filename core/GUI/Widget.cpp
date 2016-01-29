@@ -138,6 +138,18 @@ EnginePtr Widget::getEngine()
     return nullptr;
 }
 
+bool Widget::isAncestorOf(const WidgetPtr &o) const
+{
+    auto currentParent = o->getParent();
+    for (; currentParent; currentParent = currentParent->getParent())
+    {
+        if (currentParent.get() == this)
+            return true;
+    }
+
+    return false;
+}
+
 ContainerWidgetPtr Widget::getParent() const
 {
 	return parent.lock();
@@ -145,7 +157,19 @@ ContainerWidgetPtr Widget::getParent() const
 
 void Widget::setParent(const ContainerWidgetPtr &newParent)
 {
+    if (parent.lock())
+    {
+        ParentChangedEvent event;
+        handleRemovedFromParent(event);
+    }
+
 	parent = newParent;
+
+    if (newParent)
+    {
+        ParentChangedEvent event;
+        handleAddedToParent(event);
+    }
 }
 
 const glm::vec2 &Widget::getPosition() const
@@ -208,6 +232,11 @@ Rectangle Widget::getLocalRectangle() const
 	return Rectangle(glm::vec2(), size);
 }
 
+Rectangle Widget::getAbsoluteRectangle() const
+{
+    return Rectangle(getAbsolutePosition(), position + size);
+}
+
 void Widget::drawOn(Canvas *canvas)
 {
 	canvas->withTranslation(getPosition(), [&] {
@@ -230,6 +259,16 @@ void Widget::handleKeyDown(KeyboardEvent &event)
 void Widget::handleKeyUp(KeyboardEvent &event)
 {
 	keyUpEvent(event);
+}
+
+void Widget::handleAddedToParent(ParentChangedEvent &event)
+{
+    addedToParentEvent(event);
+}
+
+void Widget::handleRemovedFromParent(ParentChangedEvent &event)
+{
+    removedFromParentEvent(event);
 }
 
 void Widget::handleGotFocus(FocusEvent &event)
@@ -282,6 +321,31 @@ void Widget::handleSizeChanged(SizeChangedEvent &event)
 void Widget::handlePositionChanged(PositionChangedEvent &event)
 {
     positionChangedEvent(event);
+}
+
+void Widget::handlePopUpsKilledEvent(PopUpsKilledEvent &event)
+{
+    popUpsKilledEvent(event);
+}
+
+WidgetPtr Widget::getCurrentPopUpGroup()
+{
+    return getSystemWindow()->getCurrentPopUpGroup();
+}
+
+void Widget::popUp(const WidgetPtr &popupGroup)
+{
+    getSystemWindow()->activatePopUp(shared_from_this(), popupGroup);
+}
+
+void Widget::popKill(const WidgetPtr &popupGroup)
+{
+    getSystemWindow()->killPopUp(shared_from_this(), popupGroup);
+}
+
+void Widget::killAllPopUps(const WidgetPtr &popupGroup)
+{
+    getSystemWindow()->killAllPopUps(popupGroup);
 }
 
 } // End of namespace GUI

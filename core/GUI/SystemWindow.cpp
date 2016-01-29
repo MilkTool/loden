@@ -10,7 +10,7 @@ namespace GUI
 {
 
 SystemWindow::SystemWindow()
-    : ContainerWidget(nullptr)
+    : BaseType(nullptr)
 {
 	handle = nullptr;
     frameCount = 3;
@@ -285,6 +285,34 @@ void SystemWindow::pumpEvents()
 	}
 }
 
+void SystemWindow::handleMouseButtonDown(MouseButtonEvent &event)
+{
+    auto child = findChildAtPoint(event.getPosition());
+    if (child)
+    {
+        // Kill the popups when not clicking on them.
+        if(!popups.empty() && currentPopUpGroup)
+        {
+            if (popups.find(child) == popups.end() && child != currentPopUpGroup && !child->getAbsoluteRectangle().containsPoint(event.getPosition()))
+                killAllPopUps(currentPopUpGroup);
+        }
+        
+
+        auto newEvent = event.translatedBy(-child->getPosition());
+        child->handleMouseButtonDown(newEvent);
+        event.setHandled(newEvent.wasHandled());
+    }
+
+    if (!child)
+    {
+        killAllPopUps(currentPopUpGroup);
+        setMouseOverHere();
+    }
+
+    if (!event.wasHandled())
+        mouseButtonDownEvent(event);
+}
+
 void SystemWindow::handleKeyDown(KeyboardEvent &event)
 {
 	keyDownEvent(event);
@@ -390,6 +418,43 @@ void SystemWindow::renderScreen()
 void SystemWindow::setTitle(const std::string &title)
 {
     SDL_SetWindowTitle(handle, title.c_str());
+}
+
+void SystemWindow::activatePopUp(const WidgetPtr &popup, const WidgetPtr &popupGroup)
+{
+    if (currentPopUpGroup && currentPopUpGroup != popupGroup)
+        killAllPopUps(currentPopUpGroup);
+    currentPopUpGroup = popupGroup;
+    if (!popups.insert(popup).second)
+        return;
+
+    addChild(popup);
+}
+
+void SystemWindow::killPopUp(const WidgetPtr &popup, const WidgetPtr &popupGroup)
+{
+    if (popupGroup && currentPopUpGroup != popupGroup)
+        return;
+
+    auto it = popups.find(popup);
+    if (it != popups.end())
+        removeChild(popup);
+}
+
+void SystemWindow::killAllPopUps(const WidgetPtr &popupGroup)
+{
+    if (popupGroup && currentPopUpGroup != popupGroup)
+        return;
+
+    for (auto &popup : popups)
+        removeChild(popup);
+    popups.clear();
+    if (currentPopUpGroup)
+    {
+        PopUpsKilledEvent event;
+        currentPopUpGroup->handlePopUpsKilledEvent(event);
+    }
+    currentPopUpGroup.reset();
 }
 
 } // End of namespace GUI

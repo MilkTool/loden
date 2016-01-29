@@ -21,6 +21,7 @@ set(LodenCoreGUI_SRCS
 	GUI/Layout.cpp
 	GUI/Menu.cpp
 	GUI/MenuBar.cpp
+	GUI/MenuItem.cpp
 	GUI/StatusBar.cpp
 	GUI/SystemWindow.cpp
 	GUI/TextInput.cpp

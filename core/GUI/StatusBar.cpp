@@ -7,7 +7,7 @@ namespace GUI
 {
 
 StatusBar::StatusBar(const SystemWindowPtr &systemWindow)
-    : Widget(systemWindow)
+    : BaseType(systemWindow)
 {
 }
 

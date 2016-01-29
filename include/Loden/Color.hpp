@@ -56,6 +56,22 @@ inline glm::vec4 transparent()
 {
     return glm::vec4(0.0, 0.0, 0.0, 0.0);
 }
+
+inline glm::vec4 gray()
+{
+    return glm::vec4(0.5, 0.5, 0.5, 1.0);
+}
+
+inline glm::vec4 darkGray()
+{
+    return glm::vec4(0.25, 0.25, 0.25, 1.0);
+}
+
+inline glm::vec4 lightGray()
+{
+    return glm::vec4(0.75, 0.75, 0.75, 1.0);
+}
+
 } // End of namespace Colors
 
 inline float srgbToLrgb(float component)

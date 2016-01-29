@@ -7,7 +7,7 @@ namespace GUI
 {
 
 Button::Button(const SystemWindowPtr &systemWindow)
-    : Widget(systemWindow)
+    : BaseType(systemWindow)
 {
 	isButtonDown_ = false;
 }

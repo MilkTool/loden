@@ -3,14 +3,32 @@
 
 #include "Loden/Common.hpp"
 #include "Loden/Object.hpp"
+#include "Loden/GUI/EventSocket.hpp"
 #include "SDL.h"
 
 namespace Loden
 {
 namespace GUI
 {
-	
+
 LODEN_DECLARE_CLASS(Widget);
+
+#define LODEN_GUI_DECLARE_EVENT(eventName) \
+    class eventName; \
+    typedef EventSocket<eventName>::EventHandler eventName ## Handler;
+
+LODEN_GUI_DECLARE_EVENT(Event);
+LODEN_GUI_DECLARE_EVENT(ParentChangedEvent);
+LODEN_GUI_DECLARE_EVENT(KeyboardEvent);
+LODEN_GUI_DECLARE_EVENT(MouseEvent);
+LODEN_GUI_DECLARE_EVENT(MouseButtonEvent);
+LODEN_GUI_DECLARE_EVENT(MouseMotionEvent);
+LODEN_GUI_DECLARE_EVENT(FocusEvent);
+LODEN_GUI_DECLARE_EVENT(MouseFocusEvent);
+LODEN_GUI_DECLARE_EVENT(ActionEvent);
+LODEN_GUI_DECLARE_EVENT(SizeChangedEvent);
+LODEN_GUI_DECLARE_EVENT(PositionChangedEvent);
+LODEN_GUI_DECLARE_EVENT(PopUpsKilledEvent);
 
 /**
  * The event class.
@@ -34,6 +52,15 @@ public:
 	
 private:
 	bool wasHandled_;
+};
+
+/**
+ * Parent changed event
+ */
+class LODEN_CORE_EXPORT ParentChangedEvent : public Event
+{
+public:
+
 };
 
 /**
@@ -243,6 +270,14 @@ public:
 private:
     glm::vec2 oldPosition;
     glm::vec2 newPosition;
+};
+
+/**
+ * PopUps killed event
+ */
+class LODEN_CORE_EXPORT PopUpsKilledEvent : public Event
+{
+
 };
 
 } // End of namespace Loden

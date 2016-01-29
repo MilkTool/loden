@@ -15,6 +15,7 @@ LODEN_DECLARE_CLASS(StatusBar);
 */
 class LODEN_CORE_EXPORT StatusBar : public Widget
 {
+    LODEN_WIDGET_TYPE(StatusBar, Widget);
 public:
     StatusBar(const SystemWindowPtr &systemWindow);
     ~StatusBar();

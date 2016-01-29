@@ -6,6 +6,7 @@
 #include "Loden/TransformationBlock.hpp"
 #include "SDL.h"
 #include <string>
+#include <set>
 
 namespace Loden
 {
@@ -20,6 +21,7 @@ LODEN_DECLARE_CLASS(AgpuCanvas);
  */
 class LODEN_CORE_EXPORT SystemWindow: public ContainerWidget
 {
+    LODEN_WIDGET_TYPE(SystemWindow, ContainerWidget);
 public:
 	~SystemWindow();
 
@@ -37,10 +39,16 @@ public:
 	void pumpEvents();
 	void renderScreen();
 
-	virtual void handleKeyDown(KeyboardEvent &event);
-	virtual void handleKeyUp(KeyboardEvent &event);
+    virtual void handleMouseButtonDown(MouseButtonEvent &event) override;
+
+	virtual void handleKeyDown(KeyboardEvent &event) override;
+	virtual void handleKeyUp(KeyboardEvent &event) override;
 
     void setTitle(const std::string &title);
+
+    void activatePopUp(const WidgetPtr &popup, const WidgetPtr &popupGroup);
+    void killPopUp(const WidgetPtr &popup, const WidgetPtr &popupGroup);
+    virtual void killAllPopUps(const WidgetPtr &popupGroup) override;
 
 public:
 	EventSocket<Event> quitEvent;
@@ -70,6 +78,9 @@ private:
     AgpuCanvasPtr screenCanvases[3];
     int frameCount;
     int frameIndex;
+
+    std::set<WidgetPtr> popups;
+    WidgetPtr currentPopUpGroup;
 };
 
 } // End of namespace GUI

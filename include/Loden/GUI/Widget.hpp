@@ -30,7 +30,7 @@ public: \
 /**
  * Widget class
  */
-class LODEN_CORE_EXPORT Widget : public std::enable_shared_from_this<Widget>
+class LODEN_CORE_EXPORT Widget : public Object, public std::enable_shared_from_this<Widget>
 {
 public:
 	Widget(const SystemWindowPtr &systemWindow);
@@ -49,6 +49,8 @@ public:
 
     virtual glm::vec2 getMinimalSize();
     virtual glm::vec2 getPreferredSize();
+
+    bool isAncestorOf(const WidgetPtr &o) const;
 
     FontPtr getDefaultFont();
     FontFacePtr getDefaultFontFace();
@@ -84,10 +86,19 @@ public:
     void setRectangle(const Rectangle &rectangle);
 
 	Rectangle getLocalRectangle() const;
+    Rectangle getAbsoluteRectangle() const;
 	
+    virtual WidgetPtr getCurrentPopUpGroup();
+    virtual void popUp(const WidgetPtr &popupGroup = nullptr);
+    virtual void popKill(const WidgetPtr &popupGroup = nullptr);
+    virtual void killAllPopUps(const WidgetPtr &popupGroup = nullptr);
+
 public:
 	virtual void drawOn(Canvas *canvas);
 	virtual void drawContentOn(Canvas *canvas);
+
+    virtual void handleAddedToParent(ParentChangedEvent &event);
+    virtual void handleRemovedFromParent(ParentChangedEvent &event);
 
 	virtual void handleKeyDown(KeyboardEvent &event);
 	virtual void handleKeyUp(KeyboardEvent &event);
@@ -104,7 +115,12 @@ public:
     virtual void handleSizeChanged(SizeChangedEvent &event);
     virtual void handlePositionChanged(PositionChangedEvent &event);
 
+    virtual void handlePopUpsKilledEvent(PopUpsKilledEvent &event);
+
 public:
+    EventSocket<ParentChangedEvent> addedToParentEvent;
+    EventSocket<ParentChangedEvent> removedFromParentEvent;
+
 	EventSocket<KeyboardEvent> keyDownEvent;
 	EventSocket<KeyboardEvent> keyUpEvent;
 	
@@ -120,6 +136,7 @@ public:
     EventSocket<SizeChangedEvent> sizeChangedEvent;
     EventSocket<PositionChangedEvent> positionChangedEvent;
 	
+    EventSocket<PopUpsKilledEvent> popUpsKilledEvent;
 private:
 	glm::vec2 position;
 	glm::vec2 size;

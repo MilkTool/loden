@@ -15,6 +15,7 @@ LODEN_DECLARE_CLASS(Label);
 */
 class LODEN_CORE_EXPORT Label : public Widget
 {
+    LODEN_WIDGET_TYPE(Label, Widget);
 public:
     Label(const SystemWindowPtr &systemWindow);
     ~Label();

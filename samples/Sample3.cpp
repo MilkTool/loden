@@ -39,10 +39,22 @@ bool Sample3::initialize()
 
     // Create the menu
     auto fileMenu = GUI::Menu::create(screen);
-    fileMenu->addItem("Exit", [this](GUI::Event &ev) {
+    fileMenu->addAction("Exit", [this](GUI::Event &ev) {
         mainLoopQuit();
     });
     menuBar->addMenu("File", fileMenu);
+
+    auto editMenu = GUI::Menu::create(screen);
+    editMenu->addAction("Cut", [this](GUI::Event &ev) {
+    });
+    editMenu->addAction("Copy", [this](GUI::Event &ev) {
+    });
+    editMenu->addAction("Paste", [this](GUI::Event &ev) {
+    });
+    editMenu->addAction("Delete", [this](GUI::Event &ev) {
+    });
+
+    menuBar->addMenu("Edit", editMenu);
 
     // Create a label
 	auto label = GUI::Label::create(screen, "Hello World");

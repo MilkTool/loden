@@ -7,7 +7,7 @@ namespace GUI
 {
 
 Label::Label(const SystemWindowPtr &systemWindow)
-    : Widget(systemWindow)
+    : BaseType(systemWindow)
 {
     setForegroundColor(Colors::white());
     setBackgroundColor(Colors::transparent());

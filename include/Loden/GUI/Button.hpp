@@ -15,6 +15,7 @@ LODEN_DECLARE_CLASS(Button);
  */
 class LODEN_CORE_EXPORT Button: public Widget
 {
+    LODEN_WIDGET_TYPE(Button, Widget);
 public:
 	Button(const SystemWindowPtr &systemWindow);
 	~Button();
