@@ -30,7 +30,7 @@ bool Sample2::initialize()
     if (!screen)
         return false;
 	
-	auto button = GUI::Button::create("Don't click Me!", glm::vec2(100, 20), glm::vec2(60, 60));
+	auto button = GUI::Button::create(screen, "Don't click Me!", glm::vec2(100, 20), glm::vec2(60, 60));
     button->actionEvent += [=](GUI::ActionEvent &event) {
         button->setLabel("Ouch!");
     };

@@ -18,10 +18,10 @@ LODEN_DECLARE_CLASS(MenuBar);
 class LODEN_CORE_EXPORT MenuBar : public Widget
 {
 public:
-    MenuBar();
+    MenuBar(const SystemWindowPtr &systemWindow);
     ~MenuBar();
 
-    static MenuBarPtr create();
+    static MenuBarPtr create(const SystemWindowPtr &systemWindow);
 
     void addMenu(const std::string &text, const MenuPtr &menu);
 

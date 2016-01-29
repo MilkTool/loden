@@ -19,7 +19,7 @@ class LODEN_CORE_EXPORT ContainerWidget: public Widget
 {
 	LODEN_WIDGET_TYPE(ContainerWidget, Widget);
 public:
-	ContainerWidget();
+	ContainerWidget(const SystemWindowPtr &systemWindow);
 	~ContainerWidget();
 
 	size_t getNumberOfChilds();

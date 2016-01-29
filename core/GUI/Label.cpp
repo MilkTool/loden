@@ -6,7 +6,8 @@ namespace Loden
 namespace GUI
 {
 
-Label::Label()
+Label::Label(const SystemWindowPtr &systemWindow)
+    : Widget(systemWindow)
 {
     setForegroundColor(Colors::white());
     setBackgroundColor(Colors::transparent());
@@ -17,9 +18,9 @@ Label::~Label()
 {
 }
 
-LabelPtr Label::create(const std::string &text, const glm::vec2 &size, const glm::vec2 &position)
+LabelPtr Label::create(const SystemWindowPtr &systemWindow, const std::string &text, const glm::vec2 &size, const glm::vec2 &position)
 {
-    auto label = std::make_shared<Label>();
+    auto label = std::make_shared<Label>(systemWindow);
     label->setText(text);
     label->setPosition(position);
     label->setSize(size);

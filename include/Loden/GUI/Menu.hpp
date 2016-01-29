@@ -19,10 +19,10 @@ class LODEN_CORE_EXPORT Menu: public Widget
 public:
     typedef EventSocket<ActionEvent>::EventHandler ActionEventHandler;
 
-    Menu();
+    Menu(const SystemWindowPtr &systemWindow);
     ~Menu();
 
-    static MenuPtr create(SystemWindow *systemWindow);
+    static MenuPtr create(const SystemWindowPtr &systemWindow);
 
     void addItem(const std::string &text, const ActionEventHandler &action);
 

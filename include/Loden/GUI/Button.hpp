@@ -16,10 +16,10 @@ LODEN_DECLARE_CLASS(Button);
 class LODEN_CORE_EXPORT Button: public Widget
 {
 public:
-	Button();
+	Button(const SystemWindowPtr &systemWindow);
 	~Button();
 	
-	static ButtonPtr create(const std::string &label, const glm::vec2 &size, const glm::vec2 &position = glm::vec2());
+	static ButtonPtr create(const SystemWindowPtr &systemWindow, const std::string &label, const glm::vec2 &size, const glm::vec2 &position = glm::vec2());
 	
 	const std::string &getLabel() const;
 	void setLabel(const std::string &newLabel);

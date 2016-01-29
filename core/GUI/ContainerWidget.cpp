@@ -5,7 +5,8 @@ namespace Loden
 {
 namespace GUI
 {
-ContainerWidget::ContainerWidget()
+ContainerWidget::ContainerWidget(const SystemWindowPtr &systemWindow)
+    : Widget(systemWindow)
 {
     autoLayout = false;
 }

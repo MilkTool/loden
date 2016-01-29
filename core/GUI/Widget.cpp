@@ -10,7 +10,8 @@ namespace Loden
 namespace GUI
 {
 
-Widget::Widget()
+Widget::Widget(const SystemWindowPtr &systemWindow)
+    : systemWindow(systemWindow)
 {
 	hasKeyboardFocus_ = false;
 	hasMouseOver_ = false;
@@ -119,12 +120,14 @@ glm::vec2 Widget::computeUtf8TextSize(const std::string &text, int pointSize)
     return computeUtf8TextRectangle(text, pointSize).getSize();
 }
 
-SystemWindow *Widget::getSystemWindow()
+SystemWindowPtr Widget::getSystemWindow()
 {
-	auto theParent = getParent();
-	if(theParent)
-		return theParent->getSystemWindow();
-	return nullptr;
+	return systemWindow.lock();
+}
+
+void Widget::setSystemWindow(const SystemWindowPtr &newSystemWindow)
+{
+    systemWindow = newSystemWindow;
 }
 
 EnginePtr Widget::getEngine()

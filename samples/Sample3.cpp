@@ -34,22 +34,22 @@ bool Sample3::initialize()
         return false;
 
     // Create the menu bar
-    auto menuBar = GUI::MenuBar::create();
+    auto menuBar = GUI::MenuBar::create(screen);
     screen->addChild(menuBar);
 
     // Create the menu
-    auto fileMenu = GUI::Menu::create(screen.get());
+    auto fileMenu = GUI::Menu::create(screen);
     fileMenu->addItem("Exit", [this](GUI::Event &ev) {
         mainLoopQuit();
     });
     menuBar->addMenu("File", fileMenu);
 
     // Create a label
-	auto label = GUI::Label::create("Hello World");
+	auto label = GUI::Label::create(screen, "Hello World");
 	screen->addChild(label);
 
     // Create the status bar
-    auto statusBar = GUI::StatusBar::create();
+    auto statusBar = GUI::StatusBar::create(screen);
     screen->addChild(statusBar);
 
     // Create the layout

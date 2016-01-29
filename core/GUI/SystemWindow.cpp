@@ -10,6 +10,7 @@ namespace GUI
 {
 
 SystemWindow::SystemWindow()
+    : ContainerWidget(nullptr)
 {
 	handle = nullptr;
     frameCount = 3;
@@ -26,11 +27,6 @@ SystemWindow::~SystemWindow()
 bool SystemWindow::isSystemWindow() const
 {
 	return true;
-}
-
-SystemWindow *SystemWindow::getSystemWindow()
-{
-	return this;
 }
 
 EnginePtr SystemWindow::getEngine()
@@ -118,6 +114,7 @@ SystemWindowPtr SystemWindow::create(const EnginePtr &engine, const std::string 
 
     // Create the window.
 	auto window = SystemWindowPtr(new SystemWindow());
+    window->setSystemWindow(window);
 	window->setPosition(glm::vec2(0, 0));
 	window->setSize(glm::vec2(w, h));
 	window->handle = sdlWindow;

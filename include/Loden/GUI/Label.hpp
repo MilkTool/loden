@@ -16,10 +16,10 @@ LODEN_DECLARE_CLASS(Label);
 class LODEN_CORE_EXPORT Label : public Widget
 {
 public:
-    Label();
+    Label(const SystemWindowPtr &systemWindow);
     ~Label();
 
-    static LabelPtr create(const std::string &text, const glm::vec2 &size = glm::vec2(), const glm::vec2 &position = glm::vec2());
+    static LabelPtr create(const SystemWindowPtr &systemWindow, const std::string &text, const glm::vec2 &size = glm::vec2(), const glm::vec2 &position = glm::vec2());
 
     virtual glm::vec2 getMinimalSize();
 

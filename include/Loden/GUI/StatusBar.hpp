@@ -16,10 +16,10 @@ LODEN_DECLARE_CLASS(StatusBar);
 class LODEN_CORE_EXPORT StatusBar : public Widget
 {
 public:
-    StatusBar();
+    StatusBar(const SystemWindowPtr &systemWindow);
     ~StatusBar();
 
-    static StatusBarPtr create();
+    static StatusBarPtr create(const SystemWindowPtr &systemWindow);
 
     virtual glm::vec2 getMinimalSize();
 

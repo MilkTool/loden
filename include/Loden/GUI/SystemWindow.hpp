@@ -26,7 +26,6 @@ public:
 	static SystemWindowPtr create(const EnginePtr &engine, const std::string &title, int w, int h, int x = SDL_WINDOWPOS_CENTERED, int y = SDL_WINDOWPOS_CENTERED);
 
 	virtual bool isSystemWindow() const;
-	virtual SystemWindow *getSystemWindow();
     virtual EnginePtr getEngine();
 
 	virtual glm::vec2 getAbsolutePosition() const;

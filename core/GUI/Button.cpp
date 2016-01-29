@@ -6,7 +6,8 @@ namespace Loden
 namespace GUI
 {
 
-Button::Button()
+Button::Button(const SystemWindowPtr &systemWindow)
+    : Widget(systemWindow)
 {
 	isButtonDown_ = false;
 }
@@ -15,9 +16,9 @@ Button::~Button()
 {
 }
 
-ButtonPtr Button::create(const std::string &label, const glm::vec2 &size, const glm::vec2 &position)
+ButtonPtr Button::create(const SystemWindowPtr &systemWindow, const std::string &label, const glm::vec2 &size, const glm::vec2 &position)
 {
-	auto button = std::make_shared<Button> ();
+	auto button = std::make_shared<Button> (systemWindow);
 	button->setLabel(label);
 	button->setPosition(position);
 	button->setSize(size);

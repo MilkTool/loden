@@ -33,12 +33,14 @@ public: \
 class LODEN_CORE_EXPORT Widget : public std::enable_shared_from_this<Widget>
 {
 public:
-	Widget();
+	Widget(const SystemWindowPtr &systemWindow);
 	~Widget();
 	
 	virtual bool isSystemWindow() const;
-	virtual SystemWindow *getSystemWindow();
     virtual EnginePtr getEngine();
+
+    SystemWindowPtr getSystemWindow();
+    void setSystemWindow(const SystemWindowPtr &newSystemWindow);
 
 	virtual glm::vec2 getAbsolutePosition() const;
 
@@ -122,6 +124,7 @@ private:
 	glm::vec2 position;
 	glm::vec2 size;
 	glm::vec4 backgroundColor;
+    SystemWindowWeakPtr systemWindow;
 	ContainerWidgetWeakPtr parent;
 	
 	bool hasKeyboardFocus_;

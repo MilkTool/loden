@@ -6,7 +6,8 @@ namespace Loden
 namespace GUI
 {
 
-StatusBar::StatusBar()
+StatusBar::StatusBar(const SystemWindowPtr &systemWindow)
+    : Widget(systemWindow)
 {
 }
 
@@ -14,9 +15,9 @@ StatusBar::~StatusBar()
 {
 }
 
-StatusBarPtr StatusBar::create()
+StatusBarPtr StatusBar::create(const SystemWindowPtr &systemWindow)
 {
-    auto menuBar = std::make_shared<StatusBar>();
+    auto menuBar = std::make_shared<StatusBar>(systemWindow);
     return menuBar;
 }
 

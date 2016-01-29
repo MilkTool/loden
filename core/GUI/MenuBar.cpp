@@ -6,7 +6,8 @@ namespace Loden
 namespace GUI
 {
 
-MenuBar::MenuBar()
+MenuBar::MenuBar(const SystemWindowPtr &systemWindow)
+    : Widget(systemWindow)
 {
 }
 
@@ -14,9 +15,9 @@ MenuBar::~MenuBar()
 {
 }
 
-MenuBarPtr MenuBar::create()
+MenuBarPtr MenuBar::create(const SystemWindowPtr &systemWindow)
 {
-    auto menuBar = std::make_shared<MenuBar>();
+    auto menuBar = std::make_shared<MenuBar>(systemWindow);
     return menuBar;
 }
 
