@@ -198,6 +198,7 @@ AgpuCanvas::AgpuCanvas()
 	vertexCapacity = 0;
 	indexCapacity = 0;
     currentPipeline = nullptr;
+    coveringType = CT_Draw;
 
     nullPathProcessor.reset(new AgpuCanvasPathProcessor(this));
     currentPathProcessor = nullPathProcessor.get();
@@ -285,6 +286,7 @@ void AgpuCanvas::reset()
 	shapeType = ST_Unknown;
     currentPipeline = nullptr;
 	drawCommandsToAdd.clear();
+    coveringType = CT_Draw;
 
 	shapeType = ST_Unknown;
 	vertices.clear();
@@ -461,7 +463,19 @@ glm::vec2 AgpuCanvas::drawTextUtf16(const std::wstring &text, int pointSize, glm
 // Covering
 void AgpuCanvas::coverBox(const Rectangle &rectangle)
 {
-    beginShapeWithPipeline(ST_Triangle, coverColorPipeline.get());
+    switch (coveringType)
+    {
+    case CT_Draw:
+        beginShapeWithPipeline(ST_Triangle, coverColorPipeline.get());
+        break;
+    case CT_ClipPath:
+        beginShapeWithPipeline(ST_Triangle, coverColorPipeline.get());
+        break;
+    case CT_ClipPathPop:
+        beginShapeWithPipeline(ST_Triangle, coverColorPipeline.get());
+        break;
+    }
+    
     addVertex(Vertex(transformPosition(rectangle.getBottomLeft()), currentColor));
     addVertex(Vertex(transformPosition(rectangle.getBottomRight()), currentColor));
     addVertex(Vertex(transformPosition(rectangle.getTopRight()), currentColor));
@@ -489,6 +503,7 @@ void AgpuCanvas::beginFillPath(PathFillRule fillRule)
         currentPathProcessor = convexPathProcessor.get();
         break;
     }
+    coveringType = CT_Draw;
     currentPathProcessor->begin();
 }
 
@@ -496,6 +511,24 @@ void AgpuCanvas::endFillPath()
 {
     currentPathProcessor->end();
     currentPathProcessor = nullPathProcessor.get();
+}
+
+void AgpuCanvas::beginClipPath(PathFillRule fillRule)
+{
+    beginFillPath();
+    coveringType = CT_ClipPath;
+}
+
+void AgpuCanvas::endClipPath()
+{
+    currentPathProcessor->end();
+    currentPathProcessor = nullPathProcessor.get();
+    coveringType = CT_Draw;
+}
+
+void AgpuCanvas::popClipPath()
+{
+
 }
 
 void AgpuCanvas::closePath()

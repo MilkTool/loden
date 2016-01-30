@@ -69,6 +69,11 @@ public:
     virtual void beginStrokePath();
     virtual void endStrokePath();
 
+    // Clip paths
+    virtual void beginClipPath(PathFillRule fillRule = PathFillRule::EvenOdd);
+    virtual void endClipPath();
+    virtual void popClipPath();
+
 	virtual const glm::mat3 &getTransform() const;
 	virtual void setTransform(const glm::mat3 &newTransform);
 
@@ -95,6 +100,13 @@ private:
 		ST_Triangle
 	};
 
+    enum CoverType
+    {
+        CT_Draw = 0,
+        CT_ClipPath,
+        CT_ClipPathPop,
+    };
+
 	AgpuCanvas();
 
 	void beginConvexLines();
@@ -120,6 +132,7 @@ private:
 	int baseVertex;
 	ShapeType shapeType;
     agpu_pipeline_state *currentPipeline;
+    CoverType coveringType;
 		
 	agpu_ref<agpu_command_allocator> allocator;
 	agpu_ref<agpu_command_list> commandList;
@@ -164,6 +177,7 @@ private:
     std::unique_ptr<AgpuCanvasPathProcessor> convexPathProcessor;
     std::unique_ptr<AgpuCanvasPathProcessor> evenOddRulePathProcessor;
     std::unique_ptr<AgpuCanvasPathProcessor> nonZeroRulePathProcessor;
+    
 };
 
 } // End of namespace GUI

@@ -305,6 +305,11 @@ void Widget::handleMouseButtonUp(MouseButtonEvent &event)
 	mouseButtonUpEvent(event);
 }
 
+void Widget::handleTextInput(TextInputEvent &event)
+{
+    textInputEvent(event);
+}
+
 void Widget::handleMouseMotion(MouseMotionEvent &event)
 {
 	setMouseOverHere();

@@ -102,6 +102,7 @@ public:
 
 	virtual void handleKeyDown(KeyboardEvent &event);
 	virtual void handleKeyUp(KeyboardEvent &event);
+    virtual void handleTextInput(TextInputEvent &event);
 
 	virtual void handleGotFocus(FocusEvent &event);
 	virtual void handleLostFocus(FocusEvent &event);
@@ -123,6 +124,7 @@ public:
 
 	EventSocket<KeyboardEvent> keyDownEvent;
 	EventSocket<KeyboardEvent> keyUpEvent;
+    EventSocket<TextInputEvent> textInputEvent;
 	
 	EventSocket<MouseButtonEvent> mouseButtonDownEvent;
 	EventSocket<MouseButtonEvent> mouseButtonUpEvent;

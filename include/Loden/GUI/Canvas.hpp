@@ -61,6 +61,11 @@ public:
     virtual void beginStrokePath() = 0;
     virtual void endStrokePath() = 0;
 
+    // Clip paths
+    virtual void beginClipPath(PathFillRule fillRule = PathFillRule::EvenOdd) = 0;
+    virtual void endClipPath() = 0;
+    virtual void popClipPath() = 0;
+
 	virtual const glm::mat3 &getTransform() const = 0;
 	virtual void setTransform(const glm::mat3 &transform) = 0;
 
@@ -73,6 +78,28 @@ public:
 		f();
 		setTransform(oldTransform);
 	}
+
+    template<typename CP, typename FT>
+    void withClipPath(const CP &clipPath, const FT &f)
+    {
+        beginClipPath();
+        clipPath();
+        endClipPath();
+        f();
+        popClipPath();
+    }
+
+    template<typename FT>
+    void withClipRectangle(const Rectangle &rectangle, const FT &f)
+    {
+        withClipPath([&] {
+            moveTo(rectangle.getBottomLeft());
+            lineTo(rectangle.getBottomRight());
+            lineTo(rectangle.getTopRight());
+            lineTo(rectangle.getTopLeft());
+            closePath();
+        }, f);
+    }
 };
 
 } // Loden

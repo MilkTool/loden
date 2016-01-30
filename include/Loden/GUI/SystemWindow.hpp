@@ -43,6 +43,7 @@ public:
 
 	virtual void handleKeyDown(KeyboardEvent &event) override;
 	virtual void handleKeyUp(KeyboardEvent &event) override;
+    virtual void handleTextInput(TextInputEvent &event) override;
 
     void setTitle(const std::string &title);
 

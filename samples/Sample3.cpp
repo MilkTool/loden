@@ -2,6 +2,7 @@
 #include "Loden/GUI/MenuBar.hpp"
 #include "Loden/GUI/StatusBar.hpp"
 #include "Loden/GUI/Label.hpp"
+#include "Loden/GUI/TextInput.hpp"
 #include "Loden/GUI/DockingLayout.hpp"
 #include "Loden/Application.hpp"
 #include "Loden/Engine.hpp"
@@ -56,6 +57,10 @@ bool Sample3::initialize()
 
     menuBar->addMenu("Edit", editMenu);
 
+    // Create a text input
+    auto textInput = GUI::TextInput::create(screen);
+    screen->addChild(textInput);
+
     // Create a label
 	auto label = GUI::Label::create(screen, "Hello World");
 	screen->addChild(label);
@@ -67,6 +72,7 @@ bool Sample3::initialize()
     // Create the layout
     auto layout = std::make_shared<GUI::VerticalBoxLayout>();
     layout->addWidget(menuBar, 0, 0, GUI::CellLayoutFlags::Expand);
+    layout->addWidget(textInput, 0, 0, GUI::CellLayoutFlags::Expand);
     layout->addWidget(label, 1, 0, GUI::CellLayoutFlags::AlignCenter);
     layout->addWidget(statusBar, 0, 0, GUI::CellLayoutFlags::Expand);
     screen->setLayout(layout);

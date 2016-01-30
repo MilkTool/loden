@@ -296,6 +296,12 @@ void SystemWindow::pumpEvents()
 				handleKeyUp(ev);
 			}
 			break;
+        case SDL_TEXTINPUT:
+            {
+                TextInputEvent ev(event.text.text);
+                handleTextInput(ev);
+            }
+            break;
 		case SDL_MOUSEBUTTONDOWN:
 			{
 				auto &bev = event.button;
@@ -391,6 +397,13 @@ void SystemWindow::handleKeyUp(KeyboardEvent &event)
 	keyUpEvent(event);
 	if(!event.wasHandled() && focusedWidget && focusedWidget.get() != this)
 		focusedWidget->handleKeyUp(event);
+}
+
+void SystemWindow::handleTextInput(TextInputEvent &event)
+{
+    textInputEvent(event);
+    if (!event.wasHandled() && focusedWidget && focusedWidget.get() != this)
+        focusedWidget->handleTextInput(event);
 }
 
 void SystemWindow::setKeyboardFocusWidget(const WidgetPtr &newKeyboardFocus)

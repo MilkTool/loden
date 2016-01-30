@@ -20,6 +20,7 @@ LODEN_DECLARE_CLASS(Widget);
 LODEN_GUI_DECLARE_EVENT(Event);
 LODEN_GUI_DECLARE_EVENT(ParentChangedEvent);
 LODEN_GUI_DECLARE_EVENT(KeyboardEvent);
+LODEN_GUI_DECLARE_EVENT(TextInputEvent);
 LODEN_GUI_DECLARE_EVENT(MouseEvent);
 LODEN_GUI_DECLARE_EVENT(MouseButtonEvent);
 LODEN_GUI_DECLARE_EVENT(MouseMotionEvent);
@@ -86,6 +87,25 @@ public:
 private:
 	SDL_Keycode symbol;
 	bool isDown_;
+};
+
+/**
+* The text input event.
+*/
+class LODEN_CORE_EXPORT TextInputEvent : public Event
+{
+public:
+    TextInputEvent(const std::string &text)
+        : text(text) {}
+    ~TextInputEvent() {}
+
+    const std::string &getText() const
+    {
+        return text;
+    }
+
+private:
+    std::string text;
 };
 
 /**
