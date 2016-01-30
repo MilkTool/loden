@@ -13,6 +13,7 @@ LODEN_DECLARE_CLASS(FontManager);
 }
 
 LODEN_DECLARE_CLASS(Engine);
+LODEN_DECLARE_CLASS(Settings);
 LODEN_DECLARE_CLASS(PipelineStateManager);
 LODEN_DECLARE_CLASS(VirtualFileSystem);
 
@@ -30,20 +31,24 @@ public:
     bool initialize(int argc, const char **argv);
     void shutdown();
 
+    const SettingsPtr &getSettings() const;
+
     const agpu_device_ref &getAgpuDevice() const;
     const agpu_command_queue_ref &getGraphicsCommandQueue() const;
-    
+
     const PipelineStateManagerPtr &getPipelineStateManager() const;
     const GUI::FontManagerPtr &getFontManager() const;
 
 private:
     bool createDevice();
+    bool loadSettings(int argc, const char **argv);
     bool createPipelineStateManager();
     bool createFontManager();
 
     agpu_device_ref device;
     agpu_command_queue_ref graphicsCommandQueue;
 
+    SettingsPtr settings;
     PipelineStateManagerPtr pipelineStateManager;
     GUI::FontManagerPtr fontManager;
 };

@@ -247,8 +247,6 @@ void Widget::drawOn(Canvas *canvas)
 
 void Widget::drawContentOn(Canvas *canvas)
 {
-	canvas->setColor(getBackgroundColor());
-	canvas->drawFillRectangle(getLocalRectangle());
 }
 
 void Widget::handleKeyDown(KeyboardEvent &event)

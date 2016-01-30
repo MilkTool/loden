@@ -1,6 +1,7 @@
 #include "Loden/PipelineStateManager.hpp"
 #include "Loden/Printing.hpp"
 #include "Loden/Engine.hpp"
+#include "Loden/Settings.hpp"
 #include "Loden/FileSystem.hpp"
 #include <algorithm>
 #include <vector>
@@ -26,6 +27,7 @@ PipelineStateManager::PipelineStateManager(Engine *engine)
 	: engine(engine)
 {
     device = engine->getAgpuDevice();
+    buildSettingStates();
     buildParseTables();
     buildPipelineStateParsingActions();
 }
@@ -34,6 +36,18 @@ PipelineStateManager::~PipelineStateManager()
 {
 }
 
+void PipelineStateManager::buildSettingStates()
+{
+    std::string prefix = "settings.rendering.";
+
+    addPipelineStateTemplate(prefix + "sample-description", PipelineStateTemplate::create(true, "prefix", [&](const agpu_pipeline_builder_ref &builder) {
+        auto &settings = engine->getSettings();
+        auto sampleCount = settings->getIntValue("Rendering", "SampleCount", 1);
+        auto sampleQuality = settings->getIntValue("Rendering", "SampleQuality", 0);
+        builder->setSampleDescription(sampleCount, sampleQuality);
+        return true;
+    }));
+}
 
 void PipelineStateManager::buildParseTables()
 {
@@ -136,6 +150,32 @@ void PipelineStateManager::buildParseTables()
     }
 }
 
+template<typename FT>
+inline bool multipleStringValuesDo(rapidjson::Value &v, const FT &f)
+{
+    if (v.IsString())
+    {
+        return f(v.GetString());
+    }
+    else if (v.IsArray())
+    {
+        for (rapidjson::SizeType i = 0; i < v.Size(); ++i)
+        {
+            auto &sv = v[i];
+            if (!sv.IsString())
+                return false;
+
+            if (!f(sv.GetString()))
+                return false;
+        }
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 void PipelineStateManager::buildPipelineStateParsingActions()
 {
     pipelineStateParsingActions["abstract"] = [&](PipelineStateTemplate &stateTemplate, rapidjson::Value &value) {
@@ -147,23 +187,22 @@ void PipelineStateManager::buildPipelineStateParsingActions()
     };
 
     pipelineStateParsingActions["inherit-from"] = [&](PipelineStateTemplate &stateTemplate, rapidjson::Value &value) {
-        if (!value.IsString())
-            return false;
+        return multipleStringValuesDo(value, [&](const std::string &parentName) {
+            // Find parent.
+            auto parent = getPipelineStateTemplate(value.GetString());
+            if (!parent)
+                parent = getPipelineStateTemplate(stateTemplate.namePrefix + value.GetString());
 
-        // Find parent.
-        auto parent = getPipelineStateTemplate(value.GetString());
-        if(!parent)
-            parent = getPipelineStateTemplate(stateTemplate.namePrefix + value.GetString());
+            // Ensure the parent was found.
+            if (!parent)
+            {
+                printError("Failed to find pipeline state template '%s'\n", value.GetString());
+                return false;
+            }
 
-        // Ensure the parent was found.
-        if (!parent)
-        {
-            printError("Failed to find pipeline state template '%s'\n", value.GetString());
-            return false;
-        }
-
-        stateTemplate.parent = parent;
-        return true;
+            stateTemplate.parents.push_back(parent);
+            return true;
+        });
     };
 
     pipelineStateParsingActions["shader-signature"] = [&](PipelineStateTemplate &stateTemplate, rapidjson::Value &value) {

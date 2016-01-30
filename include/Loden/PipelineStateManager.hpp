@@ -44,9 +44,18 @@ public:
     {
     }
 
+    static PipelineStateTemplatePtr create(bool isAbstract, const std::string & namePrefix, const BuildAction &buildAction)
+    {
+        auto result = std::make_shared<PipelineStateTemplate>();
+        result->isAbstract = isAbstract;
+        result->namePrefix = namePrefix;
+        result->buildActions.push_back(buildAction);
+        return result;
+    }
+
     bool instantiateOn(const agpu_pipeline_builder_ref &builder)
     {
-        if (parent)
+        for (auto & parent : parents)
         {
             if (!parent->instantiateOn(builder))
                 return false;
@@ -68,7 +77,7 @@ public:
 
     bool isAbstract;
     std::string namePrefix;
-    PipelineStateTemplatePtr parent;
+    std::vector<PipelineStateTemplatePtr> parents;
     std::vector<BuildAction> buildActions;
 };
 
@@ -114,6 +123,7 @@ public:
 private:
     typedef std::function<bool (PipelineStateTemplate &, rapidjson::Value &)> PipelineStateTemplateParseAction;
 
+    void buildSettingStates();
     void buildParseTables();
     void buildPipelineStateParsingActions();
 

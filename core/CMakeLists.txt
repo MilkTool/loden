@@ -39,6 +39,7 @@ set(LodenCore_SRCS
 	Printing.cpp
 	PipelineStateManager.cpp
 	Structure.cpp
+	Settings.cpp
 	TextureFormats.cpp
 )
 

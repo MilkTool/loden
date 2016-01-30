@@ -1,6 +1,7 @@
 #include "Loden/Engine.hpp"
 #include "Loden/PipelineStateManager.hpp"
 #include "Loden/Printing.hpp"
+#include "Loden/Settings.hpp"
 #include "Loden/GUI/FontManager.hpp"
 
 namespace Loden
@@ -22,6 +23,9 @@ EnginePtr Engine::create()
 bool Engine::initialize(int argc, const char **argv)
 {
     if (!createDevice())
+        return false;
+
+    if (!loadSettings(argc, argv))
         return false;
 
     if (!createPipelineStateManager())
@@ -89,6 +93,18 @@ bool Engine::createDevice()
     return true;
 }
 
+bool Engine::loadSettings(int argc, const char **argv)
+{
+    settings = std::make_shared<Settings>();
+
+    //int sampleCount = 4;
+    //auto qualityLevels = device->getMultiSampleQualityLevels(sampleCount);
+    //settings->setIntValue("Rendering", "SampleCount", sampleCount);
+    //settings->setIntValue("Rendering", "SampleQuality", qualityLevels - 1);
+    
+    return true;
+}
+
 bool Engine::createPipelineStateManager()
 {
     // Create the pipeline state manager.
@@ -123,6 +139,11 @@ const agpu_device_ref &Engine::getAgpuDevice() const
 const agpu_command_queue_ref &Engine::getGraphicsCommandQueue() const
 {
     return graphicsCommandQueue;
+}
+
+const SettingsPtr &Engine::getSettings() const
+{
+    return settings;
 }
 
 const PipelineStateManagerPtr &Engine::getPipelineStateManager() const

@@ -50,6 +50,8 @@ public:
     void killPopUp(const WidgetPtr &popup, const WidgetPtr &popupGroup);
     virtual void killAllPopUps(const WidgetPtr &popupGroup) override;
 
+    bool hasMultisampling() const;
+
 public:
 	EventSocket<Event> quitEvent;
 
@@ -71,16 +73,20 @@ private:
 	agpu_buffer_ref transformationBuffer;
     uint8_t *transformationBlockData;
 
-	agpu_ref<agpu_command_allocator> commandAllocators[3];
-	agpu_ref<agpu_command_list> commandLists[3];
-    agpu_ref<agpu_fence> frameFences[3];
-    agpu_ref<agpu_shader_resource_binding> globalShaderBindings[3];
+    agpu_framebuffer_ref multisampleFramebuffers[3];
+    agpu_texture_ref multisampleColorbuffers[3];
+	agpu_command_allocator_ref commandAllocators[3];
+	agpu_command_list_ref commandLists[3];
+    agpu_fence_ref frameFences[3];
+    agpu_shader_resource_binding_ref globalShaderBindings[3];
     AgpuCanvasPtr screenCanvases[3];
     int frameCount;
     int frameIndex;
 
     std::set<WidgetPtr> popups;
     WidgetPtr currentPopUpGroup;
+    unsigned int sampleCount;
+    unsigned int sampleQuality;
 };
 
 } // End of namespace GUI

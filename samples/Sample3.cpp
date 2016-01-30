@@ -115,6 +115,6 @@ void Sample3::mainLoopRenderStep()
 void Sample3::updateFpsDisplay(float fps)
 {
     char buffer[256];
-    sprintf(buffer, "Sample 2 - %03.2f", fps);
+    sprintf(buffer, "Sample 3 - %03.2f", fps);
     screen->setTitle(buffer);
 }
