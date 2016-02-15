@@ -25,7 +25,7 @@ MenuPtr Menu::create(const SystemWindowPtr &systemWindow)
 void Menu::addItem(const MenuItemPtr &item)
 {
     items.push_back(item);
-    item->addedToMenu(shared_from_this());
+    item->addedToMenu(sharedFromThis());
 }
 
 void Menu::addMenu(const std::string &text, const MenuPtr &menu)

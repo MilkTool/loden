@@ -27,7 +27,7 @@ void ContainerWidget::addChild(const WidgetPtr& child)
 		oldParent->removeChild(child);
 		
 	children.push_back(child);
-	child->setParent(shared_from_this());
+	child->setParent(sharedFromThis());
 }
 
 void ContainerWidget::removeChild(const WidgetPtr& child)

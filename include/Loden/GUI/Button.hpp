@@ -13,11 +13,11 @@ LODEN_DECLARE_CLASS(Button);
 /**
  * Button widget
  */
-class LODEN_CORE_EXPORT Button: public Widget
+class LODEN_CORE_EXPORT Button: public ObjectSubclass<Button, Widget>
 {
-    LODEN_WIDGET_TYPE(Button, Widget);
+    LODEN_OBJECT_TYPE(Button);
 public:
-	Button(const SystemWindowPtr &systemWindow);
+	Button(const SystemWindowPtr &systemWindow = nullptr);
 	~Button();
 	
 	static ButtonPtr create(const SystemWindowPtr &systemWindow, const std::string &label, const glm::vec2 &size, const glm::vec2 &position = glm::vec2());

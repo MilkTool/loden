@@ -31,9 +31,11 @@ set(LodenCoreGUI_SRCS
 
 set(LodenCore_SRCS
 	Application.cpp
+	BinarySerializator.cpp
 	Engine.cpp
 	FileSystem.cpp
 	JSON.cpp
+	JSONSerializator.cpp
 	Matrices.cpp
 	Object.cpp
 	Printing.cpp

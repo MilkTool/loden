@@ -26,7 +26,7 @@ MenuBarPtr MenuBar::create(const SystemWindowPtr &systemWindow)
 void MenuBar::addItem(const MenuItemPtr &item)
 {
     items.push_back(item);
-    item->addedToMenuBar(shared_from_this());
+    item->addedToMenuBar(sharedFromThis());
 }
 
 void MenuBar::addMenu(const std::string &text, const MenuPtr &menu)
@@ -133,7 +133,7 @@ void MenuBar::activateMenuAtPosition(const glm::vec2 &position)
     if (subMenu)
     {
         subMenu->setPosition(getAbsolutePosition() + glm::vec2(itemPosition.x, getHeight()));
-        subMenu->popUp(shared_from_this());
+        subMenu->popUp(sharedFromThis());
     }
     else
     {

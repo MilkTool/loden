@@ -15,11 +15,11 @@ LODEN_DECLARE_CLASS(Menu);
 /**
 * Menu bar
 */
-class LODEN_CORE_EXPORT Menu: public Widget
+class LODEN_CORE_EXPORT Menu: public ObjectSubclass<Menu, Widget>
 {
-    LODEN_WIDGET_TYPE(Menu, Widget);
+    LODEN_OBJECT_TYPE(Menu);
 public:
-    Menu(const SystemWindowPtr &systemWindow);
+    Menu(const SystemWindowPtr &systemWindow = nullptr);
     ~Menu();
 
     static MenuPtr create(const SystemWindowPtr &systemWindow);

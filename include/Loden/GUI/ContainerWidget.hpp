@@ -15,11 +15,11 @@ LODEN_DECLARE_CLASS(Layout);
 /**
  * ContainerWidget class
  */
-class LODEN_CORE_EXPORT ContainerWidget: public Widget
+class LODEN_CORE_EXPORT ContainerWidget: public ObjectSubclass<ContainerWidget, Widget>
 {
-	LODEN_WIDGET_TYPE(ContainerWidget, Widget);
+    LODEN_OBJECT_TYPE(ContainerWidget);
 public:
-	ContainerWidget(const SystemWindowPtr &systemWindow);
+	ContainerWidget(const SystemWindowPtr &systemWindow = nullptr);
 	~ContainerWidget();
 
 	size_t getNumberOfChilds();

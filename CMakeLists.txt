@@ -101,6 +101,9 @@ add_subdirectory(thirdparty)
 # Build the core library
 add_subdirectory(core)
 
+# Build the level editor
+add_subdirectory(editor)
+
 # Build the samples
 add_subdirectory(samples)
 

@@ -17,6 +17,7 @@ public:
 	virtual int main(int argc, const char **argv);
 	
     const EnginePtr &getEngine() const;
+    virtual void mainLoopQuit();
 
 protected:
 	virtual bool parseCommandLine(int argc, const char **argv);
@@ -26,7 +27,6 @@ protected:
 	
 	virtual bool enterMainLoop(float updateStep);
 	virtual void pumpEvents();
-	virtual void mainLoopQuit();
 	virtual void mainLoopUpdateStep(float updateDelta);
 	virtual void mainLoopRenderStep();
     virtual void updateFpsDisplay(float fps);

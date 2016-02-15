@@ -51,8 +51,9 @@ private:
 /**
  * A font face
  */
-class LODEN_CORE_EXPORT FontFace : public Object
+class LODEN_CORE_EXPORT FontFace : public ObjectInterfaceSubclass<FontFace, Object>
 {
+    LODEN_OBJECT_TYPE(FontFace)
 public:
     virtual void release() = 0;
 

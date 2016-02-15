@@ -19,8 +19,9 @@ LODEN_DECLARE_CLASS(HorizontalBoxLayout);
 /**
 * Layout
 */
-class LODEN_CORE_EXPORT Layout: public Object
+class LODEN_CORE_EXPORT Layout: public ObjectAbstractSubclass<Layout, Object>
 {
+    LODEN_OBJECT_TYPE(Layout)
 public:
     Layout();
     ~Layout();
@@ -39,8 +40,9 @@ private:
 /**
 * Fill layout
 */
-class LODEN_CORE_EXPORT FillLayout : public Layout
+class LODEN_CORE_EXPORT FillLayout : public ObjectSubclass<FillLayout, Layout>
 {
+    LODEN_OBJECT_TYPE(FillLayout)
 public:
     FillLayout();
     ~FillLayout();
@@ -142,8 +144,9 @@ private:
 /**
 * Cell based layout
 */
-class LODEN_CORE_EXPORT CellLayout : public Layout
+class LODEN_CORE_EXPORT CellLayout : public ObjectAbstractSubclass<CellLayout, Layout>
 {
+    LODEN_OBJECT_TYPE(CellLayout)
 public:
     CellLayout();
     ~CellLayout();
@@ -176,8 +179,9 @@ protected:
 /**
 * Vertical box layout
 */
-class LODEN_CORE_EXPORT VerticalBoxLayout : public CellLayout
+class LODEN_CORE_EXPORT VerticalBoxLayout : public ObjectSubclass<VerticalBoxLayout, CellLayout>
 {
+    LODEN_OBJECT_TYPE(VerticalBoxLayout)
 public:
     VerticalBoxLayout();
     ~VerticalBoxLayout();
@@ -194,8 +198,9 @@ private:
 /**
 * Horizontal box layout
 */
-class LODEN_CORE_EXPORT HorizontalBoxLayout : public CellLayout
+class LODEN_CORE_EXPORT HorizontalBoxLayout : public ObjectSubclass<HorizontalBoxLayout, CellLayout>
 {
+    LODEN_OBJECT_TYPE(HorizontalBoxLayout)
 public:
     HorizontalBoxLayout();
     ~HorizontalBoxLayout();

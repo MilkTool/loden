@@ -32,8 +32,9 @@ class AgpuCanvasPathProcessor;
 /**
  * AGPU canvas
  */	
-class LODEN_CORE_EXPORT AgpuCanvas: public Canvas
+class LODEN_CORE_EXPORT AgpuCanvas: public ObjectAbstractSubclass<AgpuCanvas, Canvas>
 {
+    LODEN_OBJECT_TYPE(AgpuCanvas)
 public:
 	typedef AgpuCanvasVertex Vertex;
 	

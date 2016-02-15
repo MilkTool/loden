@@ -21,19 +21,15 @@ LODEN_DECLARE_CLASS(SystemWindow)
 LODEN_DECLARE_CLASS(Widget)
 LODEN_DECLARE_CLASS(Font)
 LODEN_DECLARE_CLASS(FontFace)
-
-#define LODEN_WIDGET_TYPE(widgetClass, baseClass) \
-public: \
-	typedef baseClass BaseType; \
-	std::shared_ptr<widgetClass> shared_from_this() { return std::static_pointer_cast<widgetClass> (BaseType::shared_from_this()); } \
 	 
 /**
  * Widget class
  */
-class LODEN_CORE_EXPORT Widget : public Object, public std::enable_shared_from_this<Widget>
+class LODEN_CORE_EXPORT Widget : public ObjectSubclass<Widget, Object>
 {
+    LODEN_OBJECT_TYPE(Widget)
 public:
-	Widget(const SystemWindowPtr &systemWindow);
+	Widget(const SystemWindowPtr &systemWindow = nullptr);
 	~Widget();
 	
 	virtual bool isSystemWindow() const;

@@ -38,7 +38,7 @@ bool Widget::hasMouseOver() const
 
 void Widget::captureMouse()
 {
-	getSystemWindow()->setMouseCaptureWidget(shared_from_this());
+	getSystemWindow()->setMouseCaptureWidget(sharedFromThis());
 }
 
 void Widget::releaseMouse()
@@ -48,12 +48,12 @@ void Widget::releaseMouse()
 
 void Widget::setFocusHere()
 {
-	getSystemWindow()->setKeyboardFocusWidget(shared_from_this());
+	getSystemWindow()->setKeyboardFocusWidget(sharedFromThis());
 }
 
 void Widget::setMouseOverHere()
 {
-	getSystemWindow()->setMouseFocusWidget(shared_from_this());
+	getSystemWindow()->setMouseFocusWidget(sharedFromThis());
 }
 
 glm::vec2 Widget::getAbsolutePosition() const
@@ -338,12 +338,12 @@ WidgetPtr Widget::getCurrentPopUpGroup()
 
 void Widget::popUp(const WidgetPtr &popupGroup)
 {
-    getSystemWindow()->activatePopUp(shared_from_this(), popupGroup);
+    getSystemWindow()->activatePopUp(sharedFromThis(), popupGroup);
 }
 
 void Widget::popKill(const WidgetPtr &popupGroup)
 {
-    getSystemWindow()->killPopUp(shared_from_this(), popupGroup);
+    getSystemWindow()->killPopUp(sharedFromThis(), popupGroup);
 }
 
 void Widget::killAllPopUps(const WidgetPtr &popupGroup)

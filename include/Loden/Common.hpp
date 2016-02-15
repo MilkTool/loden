@@ -26,7 +26,15 @@
 #define LODEN_DECLARE_CLASS(className) \
 	class className; \
 	LODEN_DECLARE_SMART_POINTERS(className)
+
+#define LODEN_DECLARE_INTERFACE(ifaceName) \
+	struct ifaceName; \
+	LODEN_DECLARE_SMART_POINTERS(ifaceName)
 	
+#define LODEN_OBJECT_TYPE(className) \
+public: \
+    static constexpr const char *ClassName = #className;
+
 #ifdef _MSC_VER
 #pragma warning(disable : 4100) // Unreferenced formal parameter.
 #pragma warning(disable : 4200) // Zero sized array in structure end.

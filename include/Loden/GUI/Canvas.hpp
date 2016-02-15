@@ -30,8 +30,9 @@ enum class PathFillRule
 /**
  * 2D Canvas rendering interface
  */
-class LODEN_CORE_EXPORT Canvas: public Object
+class LODEN_CORE_EXPORT Canvas: public ObjectInterfaceSubclass<Canvas, Object>
 {
+    LODEN_OBJECT_TYPE(Canvas)
 public:
 	virtual void setColor(const glm::vec4 &color) = 0;
 	

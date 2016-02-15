@@ -19,9 +19,9 @@ LODEN_DECLARE_CLASS(AgpuCanvas);
 /**
  * The system window.
  */
-class LODEN_CORE_EXPORT SystemWindow: public ContainerWidget
+class LODEN_CORE_EXPORT SystemWindow: public ObjectAbstractSubclass<SystemWindow, ContainerWidget>
 {
-    LODEN_WIDGET_TYPE(SystemWindow, ContainerWidget);
+    LODEN_OBJECT_TYPE(SystemWindow);
 public:
 	~SystemWindow();
 

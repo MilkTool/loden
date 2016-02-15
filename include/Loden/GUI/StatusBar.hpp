@@ -13,11 +13,11 @@ LODEN_DECLARE_CLASS(StatusBar);
 /**
 * Status bar
 */
-class LODEN_CORE_EXPORT StatusBar : public Widget
+class LODEN_CORE_EXPORT StatusBar : public ObjectSubclass<StatusBar, Widget>
 {
-    LODEN_WIDGET_TYPE(StatusBar, Widget);
+    LODEN_OBJECT_TYPE(StatusBar);
 public:
-    StatusBar(const SystemWindowPtr &systemWindow);
+    StatusBar(const SystemWindowPtr &systemWindow = nullptr);
     ~StatusBar();
 
     static StatusBarPtr create(const SystemWindowPtr &systemWindow);

@@ -16,8 +16,9 @@ LODEN_DECLARE_CLASS(MenuBar);
 /**
  * Menu item
  */
-class LODEN_CORE_EXPORT MenuItem: public Object
+class LODEN_CORE_EXPORT MenuItem: public ObjectSubclass<MenuItem, Object>
 {
+    LODEN_OBJECT_TYPE(MenuItem)
 public:
     static constexpr int TextSize = 14;
     static constexpr float BorderSize = 4;

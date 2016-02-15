@@ -14,11 +14,11 @@ LODEN_DECLARE_CLASS(TextInput);
 /**
 * Button widget
 */
-class LODEN_CORE_EXPORT TextInput : public Widget
+class LODEN_CORE_EXPORT TextInput : public ObjectSubclass<TextInput, Widget>
 {
-    LODEN_WIDGET_TYPE(TextInput, Widget);
+    LODEN_OBJECT_TYPE(TextInput);
 public:
-    TextInput(const SystemWindowPtr &systemWindow);
+    TextInput(const SystemWindowPtr &systemWindow = nullptr);
     ~TextInput();
 
     static TextInputPtr create(const SystemWindowPtr &systemWindow, const std::string &text = std::string(), const glm::vec2 &size = glm::vec2(), const glm::vec2 &position = glm::vec2());
