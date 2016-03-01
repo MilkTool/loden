@@ -15,7 +15,7 @@ namespace Image
 class ImageBuffer
 {
 public:
-    ImageBuffer(size_t width, size_t height, size_t pitch)
+    ImageBuffer(size_t width, size_t height, ptrdiff_t pitch)
         : width(width), height(height), pitch(pitch)
     {
         size = pitch*height;
@@ -37,7 +37,7 @@ public:
         return height;
     }
 
-    size_t getPitch() const
+    ptrdiff_t getPitch() const
     {
         return pitch;
     }
@@ -48,7 +48,7 @@ private:
     size_t size;
     size_t width;
     size_t height;
-    size_t pitch;
+    ptrdiff_t pitch;
 };
 
 /**
@@ -57,7 +57,7 @@ private:
 class ExternalImageBuffer : public ImageBuffer
 {
 public:
-    ExternalImageBuffer(size_t width, size_t height, size_t pitch, uint8_t *buffer)
+    ExternalImageBuffer(size_t width, size_t height, ptrdiff_t pitch, uint8_t *buffer)
         : ImageBuffer(width, height, pitch), buffer(buffer)
     {
     }
@@ -83,7 +83,7 @@ private:
 class LocalImageBuffer : public ImageBuffer
 {
 public:
-    LocalImageBuffer(size_t width, size_t height, size_t pitch)
+    LocalImageBuffer(size_t width, size_t height, ptrdiff_t pitch)
         : ImageBuffer(width, height, pitch)
     {
         buffer.reset(new uint8_t[getSize()]);
@@ -106,7 +106,7 @@ private:
 class DoubleImageBuffer : public ImageBuffer
 {
 public:
-    DoubleImageBuffer(size_t width, size_t height, size_t pitch)
+    DoubleImageBuffer(size_t width, size_t height, ptrdiff_t pitch)
         : ImageBuffer(width, height, pitch),
         buffer1(width, height, pitch),
         buffer2(width, height, pitch)
@@ -127,7 +127,7 @@ public:
 
     LocalImageBuffer *getBackBuffer()
     {
-        return frontBuffer;
+        return backBuffer;
     }
 
     void swap()

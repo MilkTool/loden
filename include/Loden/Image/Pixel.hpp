@@ -63,6 +63,16 @@ struct PixelRGBA : public PixelChannelCommon<CT>
             );
     }
 
+    void setVector(const ColorType &color)
+    {
+        setColor(color);
+    }
+
+    ColorType asVector() const
+    {
+        return asColor();
+    }
+
     ChannelType r, g, b, a;
 };
 
@@ -97,6 +107,16 @@ struct PixelR : public PixelChannelCommon<CT>
     ColorType asColor() const
     {
         return ColorType(decodeNormalizedChannel(r), 0, 0, 0);
+    }
+
+    void setVector(FloatType v)
+    {
+        r = encodeNormalizedChannel<ChannelType> (v);
+    }
+
+    FloatType asVector() const
+    {
+        return decodeNormalizedChannel(r);
     }
 
     ChannelType r;

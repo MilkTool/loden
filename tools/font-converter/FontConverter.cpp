@@ -34,21 +34,21 @@ static FT_Face  face;
 
 std::unique_ptr<LocalImageBuffer> sampleBuffer;
 std::unique_ptr<LocalImageBuffer> distanceTransformBuffer;
-std::unique_ptr<LocalImageBuffer> downsampleBuffers[2];
+std::unique_ptr<DoubleImageBuffer> downsampleBuffer;
 std::unique_ptr<LocalImageBuffer> resultBuffer;
 
 void printHelp()
 {
 }
 
-void dumpSampleBuffer()
+void dumpBuffer(ImageBuffer *buffer)
 {
     auto f = fopen("dump.data", "wb");
-    fwrite(sampleBuffer->get(), sampleBuffer->getSize(), 1, f);
+    fwrite(buffer->get(), buffer->getSize(), 1, f);
     fclose(f);
 }
 
-void convertGlyph(int glyphIndex)
+void convertGlyph(int glyphIndex, int resultRow, int resultColumn)
 {
     clearImageBuffer(sampleBuffer.get());
 
@@ -69,6 +69,12 @@ void convertGlyph(int glyphIndex)
     auto &bitmap = face->glyph->bitmap;
     auto width = bitmap.width;
     auto height = bitmap.rows;
+    if (width > sampleWidth || height > sampleHeight)
+    {
+        fprintf(stderr, "Waring: Failed to convert glyph %d.\n", glyphIndex);
+        return;
+    }
+
     auto destX = (sampleWidth - width) / 2;
     auto destY = (sampleHeight - height) / 2;
 
@@ -76,7 +82,13 @@ void convertGlyph(int glyphIndex)
     ExternalImageBuffer bitmapBuffer(bitmap.width, bitmap.rows, bitmap.pitch, bitmap.buffer);
     expandBitmap<PixelR8> (destX, destY, sampleBuffer.get(), &bitmapBuffer);
 
-    dumpSampleBuffer();
+    // Downsample
+    downsample<PixelR8> (downsampleBuffer.get(), sampleBuffer.get(), sampleScale);
+
+    // Copy to the result
+    int resultX = resultColumn * cellWidth;
+    int resultY = resultRow * cellHeight;
+    copyRectangle<PixelR8> (resultX, resultY, resultBuffer.get(), 0, 0, cellWidth, cellHeight, downsampleBuffer.get());
 }
 
 int main(int argc, const char *argv[])
@@ -158,15 +170,19 @@ int main(int argc, const char *argv[])
 
     sampleBuffer.reset(new LocalImageBuffer(sampleWidth, sampleHeight, sampleWidth));
     distanceTransformBuffer.reset(new LocalImageBuffer(sampleWidth, sampleHeight, sampleWidth));
-    downsampleBuffers[0].reset(new LocalImageBuffer(cellWidth, cellHeight, cellWidth));
-    downsampleBuffers[1].reset(new LocalImageBuffer(cellWidth, cellHeight, cellWidth));
+    downsampleBuffer.reset(new DoubleImageBuffer(sampleWidth, sampleHeight, sampleWidth));
     resultBuffer.reset(new LocalImageBuffer(outputWidth, outputHeight, outputWidth));
 
+    // Clear the result buffer.
+    clearImageBuffer(resultBuffer.get());
+
     // Convert the glyphs.
-    for (int i = 0; i < 1; ++i)
+    for (int i = 0; i < face->num_glyphs; ++i)
     {
-        convertGlyph(i);
+        convertGlyph(i, i / columns, i % columns);
     }
+
+    dumpBuffer(resultBuffer.get());
 
     FT_Done_Face(face);
     FT_Done_FreeType(ftLibrary);
