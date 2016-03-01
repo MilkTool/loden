@@ -33,6 +33,10 @@ set(LodenCoreGUI_SRCS
 	GUI/Window.cpp
 )
 
+set(LodenCoreImage_SRCS
+	Image/PngImage.cpp
+)
+
 set(LodenCore_SRCS
 	Application.cpp
 	BinarySerializator.cpp
@@ -53,9 +57,10 @@ source_group("Public Headers" FILES ${LodenCore_HEADERS})
 source_group("Public Headers\\GUI" FILES ${LodenCoreGUI_HEADERS})
 source_group("Public Headers\\Image" FILES ${LodenCoreImage_HEADERS})
 source_group("Source Files\\GUI" FILES ${LodenCoreGUI_SRCS})
+source_group("Source Files\\Image" FILES ${LodenCoreImage_SRCS})
 source_group("Source Files" FILES ${LodenCore_SRCS})
 
 add_definitions(-DBUILDING_LODEN_CORE)
-add_library(LodenCore SHARED ${LodenCore_SRCS} ${LodenCoreGUI_SRCS} ${LodenCore_HEADERS} ${LodenCoreGUI_HEADERS}  ${LodenCoreImage_HEADERS})
-target_link_libraries(LodenCore ${Loden_DEP_LIBS} freetype)
+add_library(LodenCore SHARED ${LodenCore_SRCS} ${LodenCoreGUI_SRCS} ${LodenCoreImage_SRCS} ${LodenCore_HEADERS} ${LodenCoreGUI_HEADERS} ${LodenCoreImage_HEADERS})
+target_link_libraries(LodenCore ${Loden_DEP_LIBS} freetype libpng zlib)
 set_target_properties(LodenCore PROPERTIES FOLDER "core")

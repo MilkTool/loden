@@ -4,6 +4,7 @@
 #include "Loden/Image/Drawing.hpp"
 #include "Loden/Image/Downsample.hpp"
 #include "Loden/Image/SignedDistanceFieldTransform.hpp"
+#include "Loden/Image/ReadWrite.hpp"
 
 #include <string>
 #include <string.h>
@@ -41,13 +42,6 @@ void printHelp()
 {
 }
 
-void dumpBuffer(ImageBuffer *buffer)
-{
-    auto f = fopen("dump.data", "wb");
-    fwrite(buffer->get(), buffer->getSize(), 1, f);
-    fclose(f);
-}
-
 void convertGlyph(int glyphIndex, int resultRow, int resultColumn)
 {
     clearImageBuffer(sampleBuffer.get());
@@ -79,8 +73,10 @@ void convertGlyph(int glyphIndex, int resultRow, int resultColumn)
     auto destY = (sampleHeight - height) / 2;
 
     // Convert the bitmap into single byte image.
-    ExternalImageBuffer bitmapBuffer(bitmap.width, bitmap.rows, bitmap.pitch, bitmap.buffer);
+    ExternalImageBuffer bitmapBuffer(bitmap.width, bitmap.rows, 1, bitmap.pitch, bitmap.buffer);
     expandBitmap<PixelR8> (destX, destY, sampleBuffer.get(), &bitmapBuffer);
+
+    saveImageAsPng("glyph.png", sampleBuffer.get());
 
     // Downsample
     downsample<PixelR8> (downsampleBuffer.get(), sampleBuffer.get(), sampleScale);
@@ -168,10 +164,10 @@ int main(int argc, const char *argv[])
     printf("Ouput grid size: %dx%d\n", columns, rows);
     printf("Ouput bitmap size: %dx%d\n", outputWidth, outputHeight);
 
-    sampleBuffer.reset(new LocalImageBuffer(sampleWidth, sampleHeight, sampleWidth));
-    distanceTransformBuffer.reset(new LocalImageBuffer(sampleWidth, sampleHeight, sampleWidth));
-    downsampleBuffer.reset(new DoubleImageBuffer(sampleWidth, sampleHeight, sampleWidth));
-    resultBuffer.reset(new LocalImageBuffer(outputWidth, outputHeight, outputWidth));
+    sampleBuffer.reset(new LocalImageBuffer(sampleWidth, sampleHeight, 8, sampleWidth));
+    distanceTransformBuffer.reset(new LocalImageBuffer(sampleWidth, sampleHeight, 8, sampleWidth));
+    downsampleBuffer.reset(new DoubleImageBuffer(sampleWidth, sampleHeight, 8, sampleWidth));
+    resultBuffer.reset(new LocalImageBuffer(outputWidth, outputHeight, 8, outputWidth));
 
     // Clear the result buffer.
     clearImageBuffer(resultBuffer.get());
@@ -182,7 +178,7 @@ int main(int argc, const char *argv[])
         convertGlyph(i, i / columns, i % columns);
     }
 
-    dumpBuffer(resultBuffer.get());
+    saveImageAsPng(outputName + ".png", resultBuffer.get());
 
     FT_Done_Face(face);
     FT_Done_FreeType(ftLibrary);

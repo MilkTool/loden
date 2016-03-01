@@ -15,8 +15,8 @@ namespace Image
 class ImageBuffer
 {
 public:
-    ImageBuffer(size_t width, size_t height, ptrdiff_t pitch)
-        : width(width), height(height), pitch(pitch)
+    ImageBuffer(size_t width, size_t height, uint32_t bpp, ptrdiff_t pitch)
+        : width(width), height(height), bpp(bpp), pitch(pitch)
     {
         size = pitch*height;
     }
@@ -42,6 +42,11 @@ public:
         return pitch;
     }
 
+    uint32_t getBitsPerPixel() const
+    {
+        return bpp;
+    }
+
     virtual uint8_t *get() = 0;
 
 private:
@@ -49,6 +54,7 @@ private:
     size_t width;
     size_t height;
     ptrdiff_t pitch;
+    uint32_t bpp;
 };
 
 /**
@@ -57,8 +63,8 @@ private:
 class ExternalImageBuffer : public ImageBuffer
 {
 public:
-    ExternalImageBuffer(size_t width, size_t height, ptrdiff_t pitch, uint8_t *buffer)
-        : ImageBuffer(width, height, pitch), buffer(buffer)
+    ExternalImageBuffer(size_t width, size_t height, uint32_t bpp, ptrdiff_t pitch, uint8_t *buffer)
+        : ImageBuffer(width, height, bpp, pitch), buffer(buffer)
     {
     }
 
@@ -83,8 +89,8 @@ private:
 class LocalImageBuffer : public ImageBuffer
 {
 public:
-    LocalImageBuffer(size_t width, size_t height, ptrdiff_t pitch)
-        : ImageBuffer(width, height, pitch)
+    LocalImageBuffer(size_t width, size_t height, uint32_t bpp, ptrdiff_t pitch)
+        : ImageBuffer(width, height, bpp, pitch)
     {
         buffer.reset(new uint8_t[getSize()]);
     }
@@ -106,10 +112,10 @@ private:
 class DoubleImageBuffer : public ImageBuffer
 {
 public:
-    DoubleImageBuffer(size_t width, size_t height, ptrdiff_t pitch)
-        : ImageBuffer(width, height, pitch),
-        buffer1(width, height, pitch),
-        buffer2(width, height, pitch)
+    DoubleImageBuffer(size_t width, size_t height, uint32_t bpp, ptrdiff_t pitch)
+        : ImageBuffer(width, height, bpp, pitch),
+        buffer1(width, height, bpp, pitch),
+        buffer2(width, height, bpp, pitch)
     {
         frontBuffer = &buffer1;
         backBuffer = &buffer2;
