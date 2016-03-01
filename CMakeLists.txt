@@ -98,6 +98,9 @@ include_directories(
 # Build third party libraries
 add_subdirectory(thirdparty)
 
+# Build the tools
+add_subdirectory(tools)
+
 # Build the core library
 add_subdirectory(core)
 

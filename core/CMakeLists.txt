@@ -6,6 +6,10 @@ FILE(GLOB LodenCoreGUI_HEADERS
 	"${PROJECT_SOURCE_DIR}/include/Loden/GUI/*.hpp"
 )
 
+FILE(GLOB LodenCoreImage_HEADERS
+	"${PROJECT_SOURCE_DIR}/include/Loden/Image/*.hpp"
+)
+
 set(LodenCoreGUI_SRCS
 	GUI/AgpuCanvas.cpp
 	GUI/Button.cpp
@@ -47,10 +51,10 @@ set(LodenCore_SRCS
 
 source_group("Public Headers" FILES ${LodenCore_HEADERS})
 source_group("Public Headers\\GUI" FILES ${LodenCoreGUI_HEADERS})
+source_group("Public Headers\\Image" FILES ${LodenCoreImage_HEADERS})
 source_group("Source Files\\GUI" FILES ${LodenCoreGUI_SRCS})
 source_group("Source Files" FILES ${LodenCore_SRCS})
 
-
 add_definitions(-DBUILDING_LODEN_CORE)
-add_library(LodenCore SHARED ${LodenCore_SRCS} ${LodenCoreGUI_SRCS} ${LodenCore_HEADERS} ${LodenCoreGUI_HEADERS})
+add_library(LodenCore SHARED ${LodenCore_SRCS} ${LodenCoreGUI_SRCS} ${LodenCore_HEADERS} ${LodenCoreGUI_HEADERS}  ${LodenCoreImage_HEADERS})
 target_link_libraries(LodenCore ${Loden_DEP_LIBS} freetype)

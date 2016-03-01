@@ -2,6 +2,7 @@
 #define LODEN_MATH_HPP
 
 #include "Loden/Common.hpp"
+#include <algorithm>
 #include <glm/vec2.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
@@ -29,7 +30,7 @@ T cubicBezier(const T &P1, const T &P2, const T &P3, const T &P4, const S alpha)
     S c2 = 3*alpha*ialpha*ialpha;
     S c3 = 3*alpha*alpha*ialpha;
     S c4 = alpha*alpha*alpha;
-    
+
     return c1*P1 + c2*P2 + c3*P3 + c4*P4;
 }
 
@@ -85,6 +86,31 @@ inline bool closeTo(const glm::vec3 &a, const glm::vec3 &b)
 inline bool closeTo(const glm::vec4 &a, const glm::vec4 &b)
 {
     return closeTo(a.x, b.x) && closeTo(a.y, b.y) && closeTo(a.z, b.z) && closeTo(a.w, b.w);
+}
+
+template<typename T>
+inline const T clamp(T min, T max, T value)
+{
+    return std::min(max, std::max(min, value));
+}
+
+inline int integerLog2(int v)
+{
+    int result = 0;
+    do
+    {
+        ++result;
+        v >>= 1;
+    } while (v != 0);
+    return result;
+}
+
+inline int sameOrNextPowerOfTwo(int v)
+{
+    auto log2 = integerLog2(v);
+    if (v == (1 << log2))
+        return v;
+    return 1 << (log2 + 1);
 }
 
 } // End of namesapce Loden
