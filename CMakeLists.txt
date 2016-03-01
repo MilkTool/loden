@@ -92,6 +92,8 @@ include_directories(
 "${PROJECT_SOURCE_DIR}/thirdparty/rapidxml/include"
 "${PROJECT_SOURCE_DIR}/thirdparty/freetype/include"
 "${PROJECT_SOURCE_DIR}/thirdparty/unittest-cpp"
+"${PROJECT_SOURCE_DIR}/thirdparty/zlib"
+"${PROJECT_SOURCE_DIR}/thirdparty/libpng"
 "${AGPU_INCLUDE_DIR}"
 )
 

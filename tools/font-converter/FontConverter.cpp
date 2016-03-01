@@ -177,7 +177,7 @@ int main(int argc, const char *argv[])
     clearImageBuffer(resultBuffer.get());
 
     // Convert the glyphs.
-    for (int i = 0; i < face->num_glyphs; ++i)
+    for (int i = 0; i < 1/*face->num_glyphs*/; ++i)
     {
         convertGlyph(i, i / columns, i % columns);
     }

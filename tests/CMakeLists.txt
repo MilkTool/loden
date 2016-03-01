@@ -7,3 +7,4 @@ set(Test_Sources
 
 add_executable(Tests ${Test_Sources})
 target_link_libraries(Tests LodenCore ${Loden_DEP_LIBS} UnitTest++)
+set_target_properties(Tests PROPERTIES FOLDER "test")
