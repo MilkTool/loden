@@ -171,6 +171,7 @@ private:
 
     // Bitmap text
     agpu_pipeline_state_ref textColorPipeline;
+    agpu_pipeline_state_ref textSdfColorPipeline;
 
     // Sampler
     agpu_shader_resource_binding_ref sampler;

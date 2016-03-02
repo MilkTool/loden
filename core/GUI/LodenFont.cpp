@@ -44,7 +44,7 @@ private:
 
     Engine *engine;
 
-    glm::vec2 cellSize;
+    float basePointSize;
     bool isSignedDistanceField;
     std::vector<LodenFontGlyphMetadata> glyphData;
     std::unordered_map<uint32_t, uint32_t> characterMap;
@@ -68,7 +68,7 @@ void LodenFontFace::release()
 
 float LodenFontFace::computeScaleFactor(int pointSize)
 {
-    return float(pointSize) / cellSize.y;
+    return float(pointSize) / basePointSize;
 }
 
 int LodenFontFace::getGlyphForCharacter(int character)
@@ -82,7 +82,8 @@ int LodenFontFace::getGlyphForCharacter(int character)
 Rectangle LodenFontFace::computeDestinationRectangle(LodenFontGlyphMetadata &glyph, float scaleFactor, const glm::vec2 &position)
 {
     glm::vec2 drawPosition = position;
-    return Rectangle(drawPosition, drawPosition + glyph.size * scaleFactor);
+    auto size = glyph.max - glyph.min;
+    return Rectangle(drawPosition, drawPosition + size * scaleFactor);
 }
 
 glm::vec2 LodenFontFace::drawNextCharacter(Canvas *canvas, int character, int previousCharacter, int pointSize, const glm::vec2 &position)
@@ -174,7 +175,7 @@ bool LodenFontFace::read(FILE *in, Image::ImageBuffer *image)
     if (memcmp(header.signature, LodenFontSignature, sizeof(header.signature)) != 0)
         return false;
 
-    cellSize = glm::vec2(header.cellWidth, header.cellHeight);
+    basePointSize = header.pointSize;
     isSignedDistanceField = (header.flags & LodenFontFlags::SignedDistanceField) != 0;
 
     // Read the glyph metadata.
@@ -211,7 +212,7 @@ bool LodenFontFace::read(FILE *in, Image::ImageBuffer *image)
     textureBinding->bindTexture(0, texture->getHandle().get(), 0, -1, 0.0);
 
     // Compute the texcoord scale factor
-    texcoordScale = glm::vec2(1.0f / (image->getWidth() - 1), 1.0f / (image->getHeight() - 1));
+    texcoordScale = glm::vec2(1.0f / image->getWidth(), 1.0f / image->getHeight());
     return true;
 }
 

@@ -251,6 +251,7 @@ AgpuCanvasPtr AgpuCanvas::create(const PipelineStateManagerPtr &stateManager)
     canvas->coverColorPipeline = stateManager->getPipelineState("canvas2d.polygon.cover.color");
 
     canvas->textColorPipeline = stateManager->getPipelineState("canvas2d.text.color");
+    canvas->textSdfColorPipeline = stateManager->getPipelineState("canvas2d.textsdf.color");
 
     agpu_sampler_description samplerDesc;
     memset(&samplerDesc, 0, sizeof(samplerDesc));
@@ -481,7 +482,10 @@ glm::vec2 AgpuCanvas::drawTextUtf16(const std::wstring &text, int pointSize, glm
 
 void AgpuCanvas::beginBitmapTextDrawing(void *binding, bool distanceField)
 {
-    beginShapeWithPipeline(ST_Triangle, textColorPipeline.get(), nullptr, (agpu_shader_resource_binding*) binding);
+    if(distanceField)
+        beginShapeWithPipeline(ST_Triangle, textSdfColorPipeline.get(), nullptr, (agpu_shader_resource_binding*)binding);
+    else
+        beginShapeWithPipeline(ST_Triangle, textColorPipeline.get(), nullptr, (agpu_shader_resource_binding*) binding);
 }
 
 void AgpuCanvas::withNewBaseVertex()

@@ -41,7 +41,7 @@ static int outputWidth;
 static int outputHeight;
 static int numberOfJobs = 8;
 static int failCount = 0;
-static bool distanceFieldFont = false;
+static bool distanceFieldFont = true;
 static std::vector<bool> glyphConvertionSuccess;
 
 static FT_Library ftLibrary;
@@ -242,8 +242,8 @@ void startGlyphConvertion(int glyphIndex, int resultRow, int resultColumn)
 
     // Set the glyph metadata
     auto &metadata = glyphMetadata[glyphIndex];
-    metadata.min = glm::vec2(destX/sampleScale + resultColumn*cellWidth, destY/sampleScale + resultRow*cellHeight);
-    metadata.max = metadata.min + glm::vec2((width + sampleScale  - 1) / sampleScale, (height + sampleScale  - 1) / sampleScale);
+    metadata.min = glm::vec2(floor(destX/sampleScale + resultColumn*cellWidth), floor(destY/sampleScale + resultRow*cellHeight));
+    metadata.max = metadata.min + glm::vec2(ceil((width + sampleScale  - 1) / sampleScale + 1), ceil((height + sampleScale) / sampleScale));
 
     // Compute the metrics scale factor
     auto metricsScaleFactor = 1.0f / (64 * sampleScale);
@@ -300,6 +300,8 @@ bool writeFontMetadata(const std::string &metadataName)
     header.numberOfCharMapEntries = (uint32_t)characterMap.size();
     header.cellWidth = cellWidth;
     header.cellHeight = cellHeight;
+    header.cellMargin = cellMargin;
+    header.pointSize = cellHeight - cellMargin * 2;
     if (distanceFieldFont)
         header.flags |= LodenFontFlags::SignedDistanceField;
     if (fwrite(&header, sizeof(header), 1, out.get()) != 1)
@@ -361,7 +363,7 @@ int main(int argc, const char *argv[])
     sampleWidth = cellWidth * sampleScale;
     sampleHeight = cellHeight * sampleScale;
     faceWidth = sampleWidth - cellMargin * sampleScale*2;
-    faceHeight= sampleHeight - cellMargin * sampleScale*2;
+    faceHeight = sampleHeight - cellMargin * sampleScale*2;
 
     auto error = FT_Init_FreeType(&ftLibrary);
     if (error)
@@ -391,7 +393,7 @@ int main(int argc, const char *argv[])
 
     // Get the number of glyphs.
     int numberOfGlyphs = face->num_glyphs;
-    printf("Number of avaialable glyphs: %d\n", numberOfGlyphs);
+    printf("Number of available glyphs: %d\n", numberOfGlyphs);
 
     // Compute the number of rows.
     rows = (numberOfGlyphs + columns - 1) / columns;
@@ -399,8 +401,8 @@ int main(int argc, const char *argv[])
 
     outputWidth = columns*cellWidth;
     outputHeight = rows*cellHeight;
-    printf("Ouput grid size: %dx%d\n", columns, rows);
-    printf("Ouput bitmap size: %dx%d\n", outputWidth, outputHeight);
+    printf("Output grid size: %dx%d\n", columns, rows);
+    printf("Output bitmap size: %dx%d\n", outputWidth, outputHeight);
 
     resultBuffer.reset(new LocalImageBuffer(outputWidth, outputHeight, 8, outputWidth));
 
