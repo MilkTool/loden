@@ -23,6 +23,8 @@ set(LodenCoreGUI_SRCS
 	GUI/FreeTypeFont.hpp
 	GUI/Label.cpp
 	GUI/Layout.cpp
+	GUI/LodenFont.cpp
+	GUI/LodenFont.hpp
 	GUI/Menu.cpp
 	GUI/MenuBar.cpp
 	GUI/MenuItem.cpp
@@ -50,7 +52,9 @@ set(LodenCore_SRCS
 	PipelineStateManager.cpp
 	Structure.cpp
 	Settings.cpp
+	Texture.cpp
 	TextureFormats.cpp
+	TextureManager.cpp
 )
 
 source_group("Public Headers" FILES ${LodenCore_HEADERS})

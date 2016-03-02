@@ -1,6 +1,7 @@
 #include "FreeTypeFont.hpp"
 #include <glm/mat3x3.hpp>
 #include "Loden/Printing.hpp"
+#include "Loden/FileSystem.hpp"
 #include "Loden/GUI/Canvas.hpp"
 #include FT_OUTLINE_H
 
@@ -323,6 +324,11 @@ bool FreeTypeFontLoader::initialize()
 void FreeTypeFontLoader::shutdown()
 {
     FT_Done_FreeType(library);
+}
+
+bool FreeTypeFontLoader::canLoadFaceFromFile(const std::string &fileName)
+{
+    return extensionOfPath(fileName) == ".ttf";
 }
 
 FontFacePtr FreeTypeFontLoader::loadFaceFromFile(const std::string &fileName)

@@ -76,6 +76,14 @@ LODEN_CORE_EXPORT std::string basename(const std::string &path)
     return path.substr(endDir + 1);
 }
 
+LODEN_CORE_EXPORT std::string removeExtension(const std::string &path)
+{
+    auto pos = path.rfind('.');
+    if (pos == std::string::npos)
+        return path;
+    return path.substr(0, pos);
+}
+
 LODEN_CORE_EXPORT std::string extensionOfPath(const std::string &path)
 {
     auto pos = path.rfind('.');

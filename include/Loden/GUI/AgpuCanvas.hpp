@@ -21,7 +21,9 @@ struct AgpuCanvasVertex
 	AgpuCanvasVertex() {}
 	AgpuCanvasVertex(const glm::vec2 &position, const glm::vec4 &color)
 		: position(position), color(color) {}
-	
+    AgpuCanvasVertex(const glm::vec2 &position, const glm::vec2 &texcoord, const glm::vec4 &color)
+        : position(position), texcoord(texcoord), color(color) {}
+
 	glm::vec2 position;
 	glm::vec2 texcoord;
 	glm::vec4 color;
@@ -56,6 +58,11 @@ public:
     // Text drawing
     virtual glm::vec2 drawText(const std::string &text, int pointSize, glm::vec2 position);
     virtual glm::vec2 drawTextUtf16(const std::wstring &text, int pointSize, glm::vec2 position) ;
+
+    // Bitmap text drawing
+    virtual void beginBitmapTextDrawing(void *binding, bool distanceField);
+    virtual void drawBitmapCharacter(const Rectangle &destRectangle, Rectangle &sourceRectangle);
+    virtual void endBitmapTextDrawing();
 
     // Fill paths.
     virtual void beginFillPath(PathFillRule fillRule = PathFillRule::EvenOdd);
@@ -112,7 +119,8 @@ private:
 
 	void beginConvexLines();
 	void beginConvexTriangles();
-    void beginShapeWithPipeline(ShapeType newShapeType, agpu_pipeline_state *pipeline);
+    void beginShapeWithPipeline(ShapeType newShapeType, agpu_pipeline_state *pipeline, agpu_shader_resource_binding *textureBinding=nullptr, agpu_shader_resource_binding *fontBinding=nullptr);
+    void withNewBaseVertex();
 
 	void endSubmesh();
 	void addVertex(const AgpuCanvasVertex &vertex);
@@ -134,6 +142,8 @@ private:
 	ShapeType shapeType;
     agpu_pipeline_state *currentPipeline;
     CoverType coveringType;
+    agpu_shader_resource_binding *currentTextureBinding;
+    agpu_shader_resource_binding *currentFontBinding;
 		
 	agpu_ref<agpu_command_allocator> allocator;
 	agpu_ref<agpu_command_list> commandList;
@@ -158,6 +168,12 @@ private:
 
     // Path filling.
     agpu_pipeline_state_ref triangleStencilClearAndFillPipeline;
+
+    // Bitmap text
+    agpu_pipeline_state_ref textColorPipeline;
+
+    // Sampler
+    agpu_shader_resource_binding_ref sampler;
 
 	std::vector<AgpuCanvasVertex> vertices;
 	std::vector<int> indices;

@@ -1,16 +1,28 @@
 #ifndef LODEN_FONT_MANAGER_HPP
 #define LODEN_FONT_MANAGER_HPP
 
-#include "Loden/Common.hpp"
+#include "Loden/Object.hpp"
 #include "Loden/GUI/Font.hpp"
 #include "Loden/Engine.hpp"
+#include <vector>
 
 namespace Loden
 {
 namespace GUI
 {
 LODEN_DECLARE_CLASS(FontManager);
-LODEN_DECLARE_CLASS(FreeTypeFontLoader);
+LODEN_DECLARE_INTERFACE(FontLoader);
+
+struct LODEN_CORE_EXPORT FontLoader: public ObjectInterfaceSubclass<FontLoader, Object>
+{
+    LODEN_OBJECT_TYPE(FontLoader);
+
+    virtual bool initialize() = 0;
+    virtual void shutdown() = 0;
+
+    virtual bool canLoadFaceFromFile(const std::string &fileName) = 0;
+    virtual FontFacePtr loadFaceFromFile(const std::string &fileName) = 0;
+};
 
 /**
  * Font manager
@@ -35,9 +47,10 @@ public:
 private:
     typedef std::map<std::string, FontPtr> Fonts;
     bool loadFontsFromFile(const std::string &fontsDescriptionFileName);
+    FontFacePtr loadFaceFromFile(const std::string &fileName);
 
     Engine *engine;
-    FreeTypeFontLoaderPtr fontLoader;
+    std::vector<FontLoaderPtr> fontLoaders;
 
     FontPtr defaultFont;
     FontPtr defaultSerifFont;

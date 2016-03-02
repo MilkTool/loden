@@ -2,6 +2,7 @@
 #include "Loden/JSON.hpp"
 #include "Loden/FileSystem.hpp"
 #include "FreeTypeFont.hpp"
+#include "LodenFont.hpp"
 
 namespace Loden
 {
@@ -19,9 +20,13 @@ FontManager::~FontManager()
 
 bool FontManager::initialize()
 {
-    fontLoader = std::make_shared<FreeTypeFontLoader>(engine);
-    if (!fontLoader->initialize())
-        fontLoader.reset();
+    FontLoaderPtr fontLoader = std::make_shared<FreeTypeFontLoader>(engine);
+    if (fontLoader->initialize())
+        fontLoaders.push_back(fontLoader);
+
+    fontLoader = std::make_shared<LodenFontLoader>(engine);
+    if (fontLoader->initialize())
+        fontLoaders.push_back(fontLoader);
 
     loadFontsFromFile("core-assets/fonts/fonts.json");
 
@@ -86,7 +91,7 @@ bool FontManager::loadFontsFromFile(const std::string &fontsDescriptionFileName)
                 if (!faceFileName.IsString())
                     return false;
 
-                auto face = fontLoader->loadFaceFromFile(joinPath(basePath, faceFileName.GetString()));
+                auto face = loadFaceFromFile(joinPath(basePath, faceFileName.GetString()));
                 if (face)
                     font->addFace(faceName, face);
             }
@@ -112,13 +117,26 @@ bool FontManager::loadFontsFromFile(const std::string &fontsDescriptionFileName)
     return true;
 }
 
+FontFacePtr FontManager::loadFaceFromFile(const std::string &fileName)
+{
+    for (auto &loader : fontLoaders)
+    {
+        if (loader->canLoadFaceFromFile(fileName))
+            return loader->loadFaceFromFile(fileName);
+    }
+
+    return nullptr;
+}
+
 void FontManager::shutdown()
 {
     for (auto &font : fonts)
         font.second->release();
     fonts.clear();
-    if (fontLoader)
-        fontLoader->shutdown();
+
+    for(auto &loader : fontLoaders)
+        loader->shutdown();
+    fontLoaders.clear();
 }
 
 void FontManager::addFont(const std::string &name, const FontPtr &font)

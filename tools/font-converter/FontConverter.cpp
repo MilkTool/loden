@@ -7,6 +7,10 @@
 #include "Loden/Image/SignedDistanceFieldTransform.hpp"
 #include "Loden/Image/ReadWrite.hpp"
 
+#include "Loden/GUI/LodenFontFormat.hpp"
+
+#include "Loden/Stdio.hpp"
+
 #include <thread>
 #include <mutex>
 #include <queue>
@@ -18,6 +22,7 @@
 #include FT_FREETYPE_H
 
 using namespace Loden;
+using namespace Loden::GUI;
 using namespace Loden::Image;
 
 static std::string inputFileName;
@@ -36,15 +41,20 @@ static int outputWidth;
 static int outputHeight;
 static int numberOfJobs = 8;
 static int failCount = 0;
+static bool distanceFieldFont = false;
+static std::vector<bool> glyphConvertionSuccess;
 
 static FT_Library ftLibrary;
 static FT_Face  face;
 
 std::unique_ptr<LocalImageBuffer> resultBuffer;
+std::vector<LodenFontCharMapEntry> characterMap;
 
 void printHelp()
 {
 }
+
+std::vector<LodenFontGlyphMetadata> glyphMetadata;
 
 class GlyphConverter;
 std::queue<GlyphConverter*> converterWaitingQueue;
@@ -150,13 +160,21 @@ void GlyphConverter::converterThread()
 
 void GlyphConverter::convert()
 {
-    // Compute the distance field map.
-    clearImageBuffer(distanceTransformBuffer.get());
-    computeSignedDistanceField<PixelR8s> (distanceTransformBuffer.get(), sampleBuffer.get(), (float)sampleScale);
+    if (distanceFieldFont)
+    {
+        // Compute the distance field map.
+        clearImageBuffer(distanceTransformBuffer.get());
+        computeSignedDistanceField<PixelR8s>(distanceTransformBuffer.get(), sampleBuffer.get(), (float)sampleScale);
 
-    // Downsample
-    downsample<PixelR8s> (downsampleBuffer.get(), distanceTransformBuffer.get(), sampleScale);
-    //downsample<PixelR8>(downsampleBuffer.get(), sampleBuffer.get(), sampleScale);
+        // Downsample
+        downsample<PixelR8s>(downsampleBuffer.get(), distanceTransformBuffer.get(), sampleScale);
+
+    }
+    else
+    {
+        // Just downsample.
+        downsample<PixelR8>(downsampleBuffer.get(), sampleBuffer.get(), sampleScale);
+    }
 
     // Copy to the result
     int resultX = resultColumn * cellWidth;
@@ -218,6 +236,85 @@ void startGlyphConvertion(int glyphIndex, int resultRow, int resultColumn)
         ExternalImageBuffer bitmapBuffer(bitmap.width, bitmap.rows, 1, bitmap.pitch, bitmap.buffer);
         expandBitmap<PixelR8>(destX, destY, sampleBuffer, &bitmapBuffer);
     });
+
+    // Mark the success.
+    glyphConvertionSuccess[glyphIndex] = true;
+
+    // Set the glyph metadata
+    auto &metadata = glyphMetadata[glyphIndex];
+    metadata.min = glm::vec2(destX/sampleScale + resultColumn*cellWidth, destY/sampleScale + resultRow*cellHeight);
+    metadata.max = metadata.min + glm::vec2((width + sampleScale  - 1) / sampleScale, (height + sampleScale  - 1) / sampleScale);
+
+    // Compute the metrics scale factor
+    auto metricsScaleFactor = 1.0f / (64 * sampleScale);
+    
+    // Set the metrics
+    auto &metrics = face->glyph->metrics;
+    metadata.advance = glm::vec2(metrics.horiAdvance, metrics.vertAdvance)*metricsScaleFactor;
+    metadata.size = glm::vec2(metrics.width, metrics.height)*metricsScaleFactor;
+    metadata.horizontalBearing = glm::vec2(metrics.horiBearingX, metrics.horiBearingY)*metricsScaleFactor;
+    metadata.verticalBearing = glm::vec2(metrics.vertBearingX, metrics.vertBearingY)*metricsScaleFactor;
+
+}
+
+template<typename FT>
+void characterMapDo(const FT &f)
+{
+    FT_ULong charCode;
+    FT_UInt glyphIndex;
+
+    charCode = FT_Get_First_Char(face, &glyphIndex);
+    while (glyphIndex != 0)
+    {
+        f(charCode, glyphIndex);
+        charCode = FT_Get_Next_Char(face, charCode, &glyphIndex);
+    }
+}
+
+void extractCharacterMap()
+{
+    characterMapDo([](int charCode, int glyphIndex) {
+        // Ignore characters that could not be converted.
+        if (!glyphConvertionSuccess[glyphIndex])
+            return;
+
+        LodenFontCharMapEntry entry;
+        entry.character = charCode;
+        entry.glyph = glyphIndex;
+        characterMap.push_back(entry);
+    });
+}
+
+bool writeFontMetadata(const std::string &metadataName)
+{
+    // Write the file.
+    OutputStdFile out;
+    if (!out.open(metadataName, true))
+        return false;
+
+    // Write the header
+    LodenFontHeader header;
+    memset(&header, 0, sizeof(header));
+    memcpy(header.signature, LodenFontSignature, sizeof(header.signature));
+    header.numberOfGlyphs = (uint32_t)glyphMetadata.size();
+    header.numberOfCharMapEntries = (uint32_t)characterMap.size();
+    header.cellWidth = cellWidth;
+    header.cellHeight = cellHeight;
+    if (distanceFieldFont)
+        header.flags |= LodenFontFlags::SignedDistanceField;
+    if (fwrite(&header, sizeof(header), 1, out.get()) != 1)
+        return false;
+
+    // Write the glyph metadata
+    if (fwrite(&glyphMetadata[0], sizeof(LodenFontGlyphMetadata), glyphMetadata.size(), out.get()) != glyphMetadata.size())
+        return false;
+
+    // Write the character table
+    if (fwrite(&characterMap[0], sizeof(LodenFontCharMapEntry), characterMap.size(), out.get()) != characterMap.size())
+        return false;
+
+    out.commit();
+    return true;
 }
 
 int main(int argc, const char *argv[])
@@ -240,6 +337,14 @@ int main(int argc, const char *argv[])
         {
             printHelp();
             return 0;
+        }
+        else if (!strcmp(argv[i], "-sdf"))
+        {
+            distanceFieldFont = true;
+        }
+        else if (!strcmp(argv[i], "-bitmap"))
+        {
+            distanceFieldFont = false;
         }
         else if(argv[i][0] != '-')
         {
@@ -308,6 +413,8 @@ int main(int argc, const char *argv[])
         converter.start();
 
     // Start converting the glyphs.
+    glyphConvertionSuccess.resize(face->num_glyphs);
+    glyphMetadata.resize(face->num_glyphs);
     for (int i = 0; i < face->num_glyphs; ++i)
     {
         printf("Converting glyph %05d / %05d\r", i, (int)face->num_glyphs);
@@ -315,13 +422,17 @@ int main(int argc, const char *argv[])
     }
 
     if (failCount)
-        printf("Failed to conver %d glyphs\n", failCount);
+        printf("Failed to convert %d glyphs\n", failCount);
+
+    // Extract the character map.
+    extractCharacterMap();
 
     // Wait for the converters to end
     for (auto &converter : converters)
         converter.shutdown();
 
     saveImageAsPng(outputName + ".png", resultBuffer.get());
+    writeFontMetadata(outputName + ".lodenfnt");
 
     FT_Done_Face(face);
     FT_Done_FreeType(ftLibrary);

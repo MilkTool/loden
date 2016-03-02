@@ -24,6 +24,11 @@ LODEN_CORE_EXPORT std::string dirname(const std::string &path);
 LODEN_CORE_EXPORT std::string basename(const std::string &path);
 
 /**
+* Removes the extesion portion of the path
+*/
+LODEN_CORE_EXPORT std::string removeExtension(const std::string &path);
+
+/**
 * Extracts the extension portion of the path.
 */
 LODEN_CORE_EXPORT std::string extensionOfPath(const std::string &path);

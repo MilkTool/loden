@@ -49,6 +49,11 @@ public:
     virtual glm::vec2 drawText(const std::string &text, int pointSize, glm::vec2 position) = 0;
     virtual glm::vec2 drawTextUtf16(const std::wstring &text, int pointSize, glm::vec2 position) = 0;
 
+    // Bitmap text drawing
+    virtual void beginBitmapTextDrawing(void *binding, bool distanceField) = 0;
+    virtual void drawBitmapCharacter(const Rectangle &destRectangle, Rectangle &sourceRectangle) = 0;
+    virtual void endBitmapTextDrawing() = 0;
+
     // Fill paths.
     virtual void beginFillPath(PathFillRule fillRule = PathFillRule::EvenOdd) = 0;
     virtual void closePath() = 0;

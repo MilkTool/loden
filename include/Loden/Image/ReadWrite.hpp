@@ -9,6 +9,8 @@ namespace Loden
 namespace Image
 {
 
+LODEN_CORE_EXPORT ImageBufferPtr loadImageFromPng(const std::string &fileName);
+
 LODEN_CORE_EXPORT bool saveImageAsPng(const std::string &fileName, ImageBuffer *imageBuffer);
 
 } // End of namespace Image

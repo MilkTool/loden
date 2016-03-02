@@ -8,6 +8,46 @@ namespace Loden
 {
 
 /**
+* Input C standard library file, it can be commited.
+*/
+class InputStdFile
+{
+public:
+    InputStdFile()
+        : handle(nullptr)
+    {
+    }
+
+    ~InputStdFile()
+    {
+        if (handle)
+            close();
+    }
+
+    bool open(const std::string &fileName, bool binary = true)
+    {
+        assert(!handle);
+        this->handle = fopen(fileName.c_str(), binary ? "rb" : "r");
+        return handle != nullptr;
+    }
+
+    void close()
+    {
+        if(handle)
+            fclose(handle);
+        handle = nullptr;
+    }
+
+    FILE *get()
+    {
+        return handle;
+    }
+
+private:
+    FILE *handle;
+};
+
+/**
  * Output C standard library file, it can be commited.
  */
 class OutputStdFile

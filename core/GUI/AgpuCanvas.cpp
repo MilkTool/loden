@@ -198,6 +198,8 @@ AgpuCanvas::AgpuCanvas()
 	vertexCapacity = 0;
 	indexCapacity = 0;
     currentPipeline = nullptr;
+    currentTextureBinding = nullptr;
+    currentFontBinding = nullptr;
     coveringType = CT_Draw;
 
     nullPathProcessor.reset(new AgpuCanvasPathProcessor(this));
@@ -247,6 +249,20 @@ AgpuCanvasPtr AgpuCanvas::create(const PipelineStateManagerPtr &stateManager)
     canvas->stencilNonZeroPipeline = stateManager->getPipelineState("canvas2d.polygon.stencil.non-zero");
     canvas->stencilEvenOddPipeline = stateManager->getPipelineState("canvas2d.polygon.stencil.even-odd");
     canvas->coverColorPipeline = stateManager->getPipelineState("canvas2d.polygon.cover.color");
+
+    canvas->textColorPipeline = stateManager->getPipelineState("canvas2d.text.color");
+
+    agpu_sampler_description samplerDesc;
+    memset(&samplerDesc, 0, sizeof(samplerDesc));
+    samplerDesc.filter = AGPU_FILTER_MIN_LINEAR_MAG_LINEAR_MIPMAP_NEAREST;
+    samplerDesc.address_u = AGPU_TEXTURE_ADDRESS_MODE_WRAP;
+    samplerDesc.address_v = AGPU_TEXTURE_ADDRESS_MODE_WRAP;
+    samplerDesc.address_w = AGPU_TEXTURE_ADDRESS_MODE_WRAP;
+    samplerDesc.max_lod = 10000.0;
+    canvas->sampler = canvas->shaderSignature->createShaderResourceBinding(3);
+    canvas->sampler->createSampler(0, &samplerDesc);
+    canvas->sampler->createSampler(1, &samplerDesc);
+
 	return canvas;
 }
 
@@ -285,6 +301,8 @@ void AgpuCanvas::reset()
 	startIndex = 0;
 	shapeType = ST_Unknown;
     currentPipeline = nullptr;
+    currentTextureBinding = nullptr;
+    currentFontBinding = nullptr;
 	drawCommandsToAdd.clear();
     coveringType = CT_Draw;
 
@@ -323,6 +341,7 @@ void AgpuCanvas::close()
 
     // Set the shader signature.
     commandList->setShaderSignature(shaderSignature.get());
+    commandList->useShaderResources(sampler.get());
 
 	// Store the commands in the command list.
 	commandList->useVertexBinding(vertexBufferBinding.get());
@@ -460,6 +479,35 @@ glm::vec2 AgpuCanvas::drawTextUtf16(const std::wstring &text, int pointSize, glm
     return fontFace->drawUtf16(this, text, pointSize, position);
 }
 
+void AgpuCanvas::beginBitmapTextDrawing(void *binding, bool distanceField)
+{
+    beginShapeWithPipeline(ST_Triangle, textColorPipeline.get(), nullptr, (agpu_shader_resource_binding*) binding);
+}
+
+void AgpuCanvas::withNewBaseVertex()
+{
+    baseVertex = (agpu_uint)vertices.size();
+}
+
+void AgpuCanvas::drawBitmapCharacter(const Rectangle &destRectangle, Rectangle &sourceRectangle)
+{
+    withNewBaseVertex();
+    addVertex(Vertex(transformPosition(destRectangle.getBottomLeft()), sourceRectangle.getBottomLeft(), currentColor));
+    addVertex(Vertex(transformPosition(destRectangle.getBottomRight()), sourceRectangle.getBottomRight(), currentColor));
+    addVertex(Vertex(transformPosition(destRectangle.getTopRight()), sourceRectangle.getTopRight(), currentColor));
+    addVertex(Vertex(transformPosition(destRectangle.getTopLeft()), sourceRectangle.getTopLeft(), currentColor));
+    addIndex(0);
+    addIndex(1);
+    addIndex(2);
+    addIndex(2);
+    addIndex(3);
+    addIndex(0);
+}
+
+void AgpuCanvas::endBitmapTextDrawing()
+{
+}
+
 // Covering
 void AgpuCanvas::coverBox(const Rectangle &rectangle)
 {
@@ -579,10 +627,12 @@ void AgpuCanvas::beginConvexTriangles()
     beginShapeWithPipeline(ST_Triangle, convexColorTrianglePipeline.get());
 }
 
-void AgpuCanvas::beginShapeWithPipeline(ShapeType newShapeType, agpu_pipeline_state *pipeline)
+void AgpuCanvas::beginShapeWithPipeline(ShapeType newShapeType, agpu_pipeline_state *pipeline, agpu_shader_resource_binding *textureBinding, agpu_shader_resource_binding *fontBinding)
 {
     if ((shapeType != newShapeType && shapeType != ST_Unknown) ||
-        (pipeline != currentPipeline && currentPipeline != nullptr))
+        (pipeline != currentPipeline && currentPipeline != nullptr) ||
+        (currentTextureBinding != textureBinding && textureBinding != nullptr) ||
+        (currentFontBinding != fontBinding && fontBinding != nullptr))
         endSubmesh();
 
     if (currentPipeline != pipeline)
@@ -591,6 +641,22 @@ void AgpuCanvas::beginShapeWithPipeline(ShapeType newShapeType, agpu_pipeline_st
             commandList->usePipelineState(pipeline);
         });
         currentPipeline = pipeline;
+    }
+
+    if (currentTextureBinding != textureBinding && textureBinding != nullptr)
+    {
+        drawCommandsToAdd.push_back([=] {
+            commandList->useShaderResources(textureBinding);
+        });
+        currentTextureBinding = textureBinding;
+    }
+
+    if (currentFontBinding != fontBinding && fontBinding != nullptr)
+    {
+        drawCommandsToAdd.push_back([=] {
+            commandList->useShaderResources(fontBinding);
+        });
+        currentFontBinding = fontBinding;
     }
 
     if (shapeType != newShapeType)

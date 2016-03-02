@@ -9,6 +9,8 @@ namespace Loden
 {
 namespace Image
 {
+LODEN_DECLARE_CLASS(ImageBuffer);
+
 /**
  * Image buffer
  */
@@ -40,6 +42,11 @@ public:
     ptrdiff_t getPitch() const
     {
         return pitch;
+    }
+
+    ptrdiff_t getSlicePitch() const
+    {
+        return pitch*height;
     }
 
     uint32_t getBitsPerPixel() const
