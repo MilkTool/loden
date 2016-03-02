@@ -20,6 +20,11 @@ struct PixelChannelCommon
 
     static constexpr CT ChannelBlackValue = ChannelSpecialValues<ChannelType>::BlackValue;
     static constexpr CT ChannelWhiteValue = ChannelSpecialValues<ChannelType>::WhiteValue;
+
+    static CT saturateChannel(FloatType value)
+    {
+        return SaturateChannel<ChannelType>::apply(value);
+    }
 };
 
 template<typename CT>

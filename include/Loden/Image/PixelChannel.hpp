@@ -218,6 +218,63 @@ struct ChannelSpecialValues<double>
     static constexpr double WhiteValue = 1.0;
 };
 
+template<typename T>
+struct SaturateChannel;
+
+template<>
+struct SaturateChannel<uint8_t>
+{
+    static uint8_t apply(float v)
+    {
+        return (uint8_t)clamp<float>(0, UINT8_MAX, v);
+    }
+};
+
+template<>
+struct SaturateChannel<uint16_t>
+{
+    static uint16_t apply(float v)
+    {
+        return (uint16_t)clamp<float>(0, UINT16_MAX, v);
+    }
+};
+
+template<>
+struct SaturateChannel<uint32_t>
+{
+    static uint32_t apply(double v)
+    {
+        return (uint32_t)clamp<double>(0, UINT32_MAX, v);
+    }
+};
+
+template<>
+struct SaturateChannel<int8_t>
+{
+    static int8_t apply(float v)
+    {
+        return (int8_t) clamp<float>(-INT8_MAX, INT8_MAX, v);
+    }
+};
+
+template<>
+struct SaturateChannel<int16_t>
+{
+    static int16_t apply(float v)
+    {
+        return (int16_t)clamp<float>(-INT16_MAX, INT16_MAX, v);
+    }
+};
+
+template<>
+struct SaturateChannel<int32_t>
+{
+    static int32_t apply(double v)
+    {
+        return (int32_t)clamp<double>(-INT32_MAX, INT32_MAX, v);
+    }
+};
+
 } // End of namespace Image
 } // End of namespace Loden
 

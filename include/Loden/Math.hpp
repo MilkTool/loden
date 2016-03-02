@@ -102,14 +102,15 @@ inline int integerLog2(int v)
         ++result;
         v >>= 1;
     } while (v != 0);
-    return result;
+
+    return result-1;
 }
 
 inline int sameOrNextPowerOfTwo(int v)
 {
     auto log2 = integerLog2(v);
-    if (v == (1 << log2))
-        return v;
+    if (v <= (1 << log2))
+        return (1 << log2);
     return 1 << (log2 + 1);
 }
 
