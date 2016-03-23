@@ -121,7 +121,7 @@ SystemWindowPtr SystemWindow::create(const EnginePtr &engine, const std::string 
     swapChainCreateInfo.depth_stencil_format = true/*sampleCount == 1*/ ? AGPU_TEXTURE_FORMAT_D24_UNORM_S8_UINT : AGPU_TEXTURE_FORMAT_UNKNOWN;
     swapChainCreateInfo.width = w;
     swapChainCreateInfo.height = h;
-    swapChainCreateInfo.doublebuffer = 1;
+    swapChainCreateInfo.buffer_count = 3;
 
     // Create the swap chain.
     agpu_ref<agpu_swap_chain> swapChain = device->createSwapChain(engine->getGraphicsCommandQueue().get(), &swapChainCreateInfo);
@@ -193,7 +193,10 @@ bool SystemWindow::initialize()
     {
         if (hasMultisampling())
         {
-            multisampleFramebuffers[i] = device->createFrameBuffer(getWidth(), getHeight(), 1, true, true);
+            agpu_texture_view_description colorViewDesc;
+            agpu_texture_view_description depthStencilViewDesc;
+            agpu_texture_ref depthStencilBuffer;
+
             {
                 agpu_texture_description desc;
                 memset(&desc, 0, sizeof(desc));
@@ -210,9 +213,9 @@ bool SystemWindow::initialize()
                 if (!multisampleColorbuffers[i])
                     return false;
 
-                multisampleFramebuffers[i]->attachColorBuffer(0, multisampleColorbuffers[i].get());
+                multisampleColorbuffers[i]->getFullViewDescription(&colorViewDesc);
             }
-            
+
             {
                 agpu_texture_description desc;
                 memset(&desc, 0, sizeof(desc));
@@ -221,20 +224,21 @@ bool SystemWindow::initialize()
                 desc.height = screenHeight;
                 desc.depthOrArraySize = 1;
                 desc.format = AGPU_TEXTURE_FORMAT_D24_UNORM_S8_UINT;
-                desc.flags = agpu_texture_flags(AGPU_TEXTURE_FLAG_DEPTH_STENCIL | AGPU_TEXTURE_FLAG_RENDERBUFFER_ONLY);
+                desc.flags = agpu_texture_flags(AGPU_TEXTURE_FLAG_DEPTH | AGPU_TEXTURE_FLAG_STENCIL | AGPU_TEXTURE_FLAG_RENDERBUFFER_ONLY);
                 desc.miplevels = 1;
                 desc.sample_count = sampleCount;
                 desc.sample_quality = sampleQuality;
-                agpu_texture_ref depthStencilBuffer = device->createTexture(&desc);
+                depthStencilBuffer = device->createTexture(&desc);
                 if (!depthStencilBuffer)
                     return false;
 
-                multisampleFramebuffers[i]->attachDepthStencilBuffer(depthStencilBuffer.get());
+                depthStencilBuffer->getFullViewDescription(&depthStencilViewDesc);
             }
-            
+
+            multisampleFramebuffers[i] = device->createFrameBuffer(getWidth(), getHeight(), 1, &colorViewDesc, &depthStencilViewDesc);
         }
 
-        commandAllocators[i] = device->createCommandAllocator(AGPU_COMMAND_LIST_TYPE_DIRECT);
+        commandAllocators[i] = device->createCommandAllocator(AGPU_COMMAND_LIST_TYPE_DIRECT, engine->getGraphicsCommandQueue().get());
         if(!commandAllocators[i])
         {
             printError("Failed to create a command allocator.\n");
@@ -465,9 +469,9 @@ void SystemWindow::renderScreen()
 	commandList->reset(commandAllocator.get(), nullptr);
     commandList->setShaderSignature(shaderSignature.get());
     if (hasMultisampling())
-        commandList->beginFrame(multisampleFramebuffers[frameIndex].get());
+        commandList->beginFrame(multisampleFramebuffers[frameIndex].get(), false);
     else
-        commandList->beginFrame(backBuffer.get());
+        commandList->beginFrame(backBuffer.get(), false);
 
     // Set the viewport
     commandList->setViewport(0, 0, screenWidth, screenHeight);

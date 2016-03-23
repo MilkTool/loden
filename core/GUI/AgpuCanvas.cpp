@@ -225,7 +225,7 @@ AgpuCanvasPtr AgpuCanvas::create(const PipelineStateManagerPtr &stateManager)
 		return nullptr;
 
 	// Create the command list allocator.
-	auto allocator = device->createCommandAllocator(AGPU_COMMAND_LIST_TYPE_BUNDLE);
+	auto allocator = device->createCommandAllocator(AGPU_COMMAND_LIST_TYPE_BUNDLE, stateManager->getEngine()->getGraphicsCommandQueue().get());
 	if(!allocator)
 		return nullptr;
 

@@ -99,7 +99,7 @@ const TextureFormatDescription TextureFormatDescription::Descriptions[] = {
     ColorFormatDef(BC5_UNORM),
     ColorFormatDef(BC5_SNORM),
     ColorFormatDef(B5G6R5_UNORM),
-    ColorFormatDef(B5G6R5A1_UNORM),
+    ColorFormatDef(B5G5R5A1_UNORM),
     ColorFormatDef(B8G8R8A8_UNORM),
     ColorFormatDef(B8G8R8X8_UNORM),
     ColorFormatDef(B8G8R8A8_TYPELESS),

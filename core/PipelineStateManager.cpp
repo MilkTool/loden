@@ -94,10 +94,16 @@ void PipelineStateManager::buildParseTables()
     }
 
     // Primitive type name map.
-    primitiveTypeNameMap["point"] = AGPU_PRIMITIVE_TYPE_POINT;
-    primitiveTypeNameMap["line"] = AGPU_PRIMITIVE_TYPE_LINE;
-    primitiveTypeNameMap["triangle"] = AGPU_PRIMITIVE_TYPE_TRIANGLE;
-    primitiveTypeNameMap["patch"] = AGPU_PRIMITIVE_TYPE_PATCH;
+    primitiveTopologyNameMap["points"] = AGPU_POINTS;
+    primitiveTopologyNameMap["lines"] = AGPU_LINES;
+    primitiveTopologyNameMap["lines-adjacency"] = AGPU_LINES_ADJACENCY;
+    primitiveTopologyNameMap["line-strip"] = AGPU_LINE_STRIP;
+    primitiveTopologyNameMap["line-strip-adjacency"] = AGPU_LINE_STRIP_ADJACENCY;
+    primitiveTopologyNameMap["triangles"] = AGPU_TRIANGLES;
+    primitiveTopologyNameMap["triangles-adjacency"] = AGPU_TRIANGLES_ADJACENCY;
+    primitiveTopologyNameMap["triangle-strip"] = AGPU_TRIANGLE_STRIP;
+    primitiveTopologyNameMap["triangle-strip-adjacency"] = AGPU_TRIANGLE_STRIP_ADJACENCY;
+    primitiveTopologyNameMap["patches"] = AGPU_PATCHES;
 
     // Blending factor
     blendingFactorNameMap["zero"] = AGPU_BLENDING_ZERO;
@@ -472,8 +478,8 @@ void PipelineStateManager::buildPipelineStateParsingActions()
         if (!value.IsString())
             return false;
 
-        auto primitiveTypeIt = primitiveTypeNameMap.find(value.GetString());
-        if (primitiveTypeIt == primitiveTypeNameMap.end())
+        auto primitiveTypeIt = primitiveTopologyNameMap.find(value.GetString());
+        if (primitiveTypeIt == primitiveTopologyNameMap.end())
         {
             printError("Invalid primitive type '%s'\n", value.GetString());
             return false;
@@ -784,6 +790,7 @@ bool PipelineStateManager::loadVertexLayoutsFromFile(const std::string &filename
         }
 
         std::vector<agpu_vertex_attrib_description> layoutAttributes;
+        std::vector<agpu_size> bufferStrides;
         auto bufferCount = bufferArray.Size();
         for (size_t i = 0; i < bufferCount; ++i)
         {
@@ -801,6 +808,9 @@ bool PipelineStateManager::loadVertexLayoutsFromFile(const std::string &filename
                 printError("Expected unknown structure '%s' required by vertex layout '%s'.\n", structureName, name);
                 return false;
             }
+
+            // Add the stride.
+            bufferStrides.push_back(structure->size);
 
             // Add all the attributes of the structure.
             for (auto &field : structure->fields)
@@ -823,7 +833,7 @@ bool PipelineStateManager::loadVertexLayoutsFromFile(const std::string &filename
 
         // Create the vertex layout.
         agpu_vertex_layout_ref vertexLayout = device->createVertexLayout();
-        vertexLayout->addVertexAttributeBindings(bufferCount, layoutAttributes.size(), &layoutAttributes[0]);
+        vertexLayout->addVertexAttributeBindings(bufferCount, &bufferStrides[0], layoutAttributes.size(), &layoutAttributes[0]);
         addVertexLayout(name, vertexLayout);
     }
     return true;

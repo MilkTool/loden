@@ -149,7 +149,7 @@ private:
     // Pipeline state parsing table.s
     std::map<std::string, PipelineStateTemplateParseAction> pipelineStateParsingActions;
     std::map<std::string, PipelineStateTemplatePtr> pipelineStateTemplates;
-    std::map<std::string, agpu_primitive_type> primitiveTypeNameMap;
+    std::map<std::string, agpu_primitive_topology> primitiveTopologyNameMap;
     std::map<std::string, const TextureFormatDescription*> textureFormatNameMap;
     std::map<std::string, agpu_stencil_operation> stencilOperationNameMap;
     std::map<std::string, agpu_compare_function> compareFunctionNameMap;
