@@ -2,7 +2,7 @@
 #define LODEN_TEXTURE_FORMATS_HPP
 
 #include "Loden/Common.hpp"
-#include "Agpu/agpu.hpp"
+#include "AGPU/agpu.hpp"
 
 namespace Loden
 {

@@ -14,6 +14,7 @@
 #include <thread>
 #include <mutex>
 #include <queue>
+#include <condition_variable>
 
 #include <string>
 #include <string.h>
@@ -247,7 +248,7 @@ void startGlyphConvertion(int glyphIndex, int resultRow, int resultColumn)
 
     // Compute the metrics scale factor
     auto metricsScaleFactor = 1.0f / (64 * sampleScale);
-    
+
     // Set the metrics
     auto &metrics = face->glyph->metrics;
     metadata.advance = glm::vec2(metrics.horiAdvance, metrics.vertAdvance)*metricsScaleFactor;

@@ -8,6 +8,9 @@ namespace Loden
 namespace GUI
 {
 
+const int MenuItem::TextSize = 14;
+const float MenuItem::BorderSize = 4;
+
 MenuItem::MenuItem()
 {
     isHighlighted_ = false;

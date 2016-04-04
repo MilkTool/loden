@@ -1,4 +1,5 @@
 #include "Loden/Texture.hpp"
+#include <string.h>
 
 namespace Loden
 {

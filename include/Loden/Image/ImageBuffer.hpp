@@ -60,8 +60,8 @@ private:
     size_t size;
     size_t width;
     size_t height;
-    ptrdiff_t pitch;
     uint32_t bpp;
+    ptrdiff_t pitch;
 };
 
 /**
@@ -78,7 +78,7 @@ public:
     ~ExternalImageBuffer()
     {
     }
-    
+
     virtual uint8_t *get() override
     {
         return buffer;

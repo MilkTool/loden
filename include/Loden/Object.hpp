@@ -12,7 +12,7 @@ LODEN_DECLARE_CLASS(ObjectClassFactory);
 template<typename T, typename U>
 std::shared_ptr<T> querySharedInterface(const std::shared_ptr<U> &ptr)
 {
-    auto queried = ptr->queryInterface<T>();
+    auto queried = ptr->template queryInterface<T> ();
     if (queried)
         return std::shared_ptr<T>(ptr, queried);
     return nullptr;
@@ -224,7 +224,7 @@ template<typename ST, typename Interface, typename... Rest>
 class ObjectImplementInterfaces<ST, Interface, Rest...>: public virtual Interface, public ObjectImplementInterfaces<ST, Rest...>
 {
 private:
-    typedef public ObjectImplementInterfaces<ST, Rest...> RestImplement;
+    typedef ObjectImplementInterfaces<ST, Rest...> RestImplement;
 
 public:
     virtual void *queryInterfacePointer(const ObjectClassFactory *clazz)
@@ -269,7 +269,7 @@ public:
         return this;
     }
 
-    virtual void *queryInterfacePointer(const ObjectClassFactory *clazz) override 
+    virtual void *queryInterfacePointer(const ObjectClassFactory *clazz) override
     {
         if(clazz == ST::ClassFactory)
             return reinterpret_cast<void*> (static_cast<ST*> (this));

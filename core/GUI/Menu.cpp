@@ -145,4 +145,3 @@ MenuItemPtr Menu::getItemAtPosition(const glm::vec2 &position, int *itemIndex, g
 
 } // End of namespace GUI
 } // End of namespace Loden
-

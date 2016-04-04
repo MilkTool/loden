@@ -31,6 +31,12 @@ template<typename CT>
 struct PixelRGBA : public PixelChannelCommon<CT>
 {
     typedef PixelRGBA<CT> SelfType;
+    typedef PixelChannelCommon<CT> BaseType;
+    typedef typename BaseType::ChannelType ChannelType;
+    typedef typename BaseType::ColorType ColorType;
+    typedef typename BaseType::FloatType FloatType;
+    using BaseType::ChannelBlackValue;
+    using BaseType::ChannelWhiteValue;
 
     PixelRGBA(ChannelType r=0, ChannelType g=0, ChannelType b=0, ChannelType a=0)
         : r(r), g(g), b(b), a(a) {}
@@ -64,7 +70,7 @@ struct PixelRGBA : public PixelChannelCommon<CT>
                 decodeNormalizedChannel(r),
                 decodeNormalizedChannel(g),
                 decodeNormalizedChannel(b),
-                decodeNormalizedChannel(a),
+                decodeNormalizedChannel(a)
             );
     }
 
@@ -85,6 +91,12 @@ template<typename CT>
 struct PixelR : public PixelChannelCommon<CT>
 {
     typedef PixelR<CT> SelfType;
+    typedef PixelChannelCommon<CT> BaseType;
+    typedef typename BaseType::ChannelType ChannelType;
+    typedef typename BaseType::ColorType ColorType;
+    typedef typename BaseType::FloatType FloatType;
+    using BaseType::ChannelBlackValue;
+    using BaseType::ChannelWhiteValue;
 
     PixelR(ChannelType r = 0)
         : r(r) {}
@@ -131,6 +143,12 @@ template<typename CT>
 struct PixelRG : public PixelChannelCommon<CT>
 {
     typedef PixelRG<CT> SelfType;
+    typedef PixelChannelCommon<CT> BaseType;
+    typedef typename BaseType::ChannelType ChannelType;
+    typedef typename BaseType::ColorType ColorType;
+    typedef typename BaseType::FloatType FloatType;
+    using BaseType::ChannelBlackValue;
+    using BaseType::ChannelWhiteValue;
 
     PixelRG(ChannelType r = 0, ChannelType g = 0)
         : r(r), g(g) {}
@@ -159,7 +177,7 @@ struct PixelRG : public PixelChannelCommon<CT>
     ColorType asColor() const
     {
         return ColorType(
-            decodeNormalizedChannel(r), 
+            decodeNormalizedChannel(r),
             decodeNormalizedChannel(g),
             0,
             0);

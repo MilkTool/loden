@@ -4,7 +4,7 @@
 #include "Loden/Object.hpp"
 #include "Loden/Engine.hpp"
 #include "Loden/Image/ImageBuffer.hpp"
-#include "Agpu/agpu.hpp"
+#include "AGPU/agpu.hpp"
 
 namespace Loden
 {

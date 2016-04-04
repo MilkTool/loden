@@ -20,15 +20,15 @@ class LODEN_CORE_EXPORT MenuItem: public ObjectSubclass<MenuItem, Object>
 {
     LODEN_OBJECT_TYPE(MenuItem)
 public:
-    static constexpr int TextSize = 14;
-    static constexpr float BorderSize = 4;
+    static const int TextSize;
+    static const float BorderSize;
 
     MenuItem();
     ~MenuItem();
 
     static MenuItemPtr createMenuItem(const std::string &text, const MenuPtr &menu);
     static MenuItemPtr createActionItem(const std::string &text, const ActionEventHandler &action);
-    
+
     const std::string &getText() const;
     void setText(const std::string &newText);
 

@@ -2,6 +2,7 @@
 #define LODEN_IMAGE_DRAWING_HPP
 
 #include "Loden/Image/ImageBuffer.hpp"
+#include <string.h>
 
 namespace Loden
 {
@@ -35,7 +36,7 @@ void expandBitmap(int destX, int destY, ImageBuffer *dest, ImageBuffer *bitmap)
                 else
                     dst[dstX] = black;
             }
-                
+
         }
 
         srcRow += copyPitch;

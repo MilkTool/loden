@@ -336,14 +336,14 @@ struct WriteValueDispatch<std::shared_ptr<T>>
 {
     static void apply(Serializator *self, const std::shared_ptr<T> &object)
     {
-        self->writeObject(value);
+        self->writeObject(object);
     }
 };
 
 template<typename T>
 struct WriteValueDispatch<std::vector<T>>
 {
-    static void apply(Deserializator *self, const std::vector<T> &array)
+    static void apply(Serializator *self, const std::vector<T> &array)
     {
         self->writeArray(array);
     }
@@ -352,7 +352,7 @@ struct WriteValueDispatch<std::vector<T>>
 template<typename T>
 struct WriteValueDispatch<std::map<std::string, T>>
 {
-    static void apply(Deserializator *self, const std::map<std::string, T> &map)
+    static void apply(Serializator *self, const std::map<std::string, T> &map)
     {
         self->writeStringMap(map);
     }
@@ -361,7 +361,7 @@ struct WriteValueDispatch<std::map<std::string, T>>
 template<typename T>
 struct WriteValueDispatch<std::unordered_map<std::string, T>>
 {
-    static void apply(Deserializator *self, const std::map<std::string, T> &map)
+    static void apply(Serializator *self, const std::map<std::string, T> &map)
     {
         self->writeStringUnorderedMap(map);
     }
@@ -370,7 +370,7 @@ struct WriteValueDispatch<std::unordered_map<std::string, T>>
 template<typename K, typename V>
 struct WriteValueDispatch<std::map<K, V>>
 {
-    static void apply(Deserializator *self, const std::map<K, V> &map)
+    static void apply(Serializator *self, const std::map<K, V> &map)
     {
         self->writeMap(map);
     }
@@ -379,7 +379,7 @@ struct WriteValueDispatch<std::map<K, V>>
 template<typename K, typename V>
 struct WriteValueDispatch<std::unordered_map<K, V>>
 {
-    static void apply(Deserializator *self, const std::unordered_map<K, V> &map)
+    static void apply(Serializator *self, const std::unordered_map<K, V> &map)
     {
         self->writeUnorderedMap(map);
     }
@@ -493,7 +493,7 @@ struct ReadValueDispatch<std::shared_ptr<T>>
     static void apply(Deserializator *self, std::shared_ptr<T> &object)
     {
         SerializablePtr serializable;
-        self->readObject(name, serializable);
+        self->readObject(serializable);
         if (serializable)
         {
             object = querySharedInterface<T>(serializable);
