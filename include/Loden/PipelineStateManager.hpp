@@ -34,13 +34,13 @@ public:
 /**
  * Pipeline state template.
  */
-class PipelineStateTemplate
+class PipelineStateTemplate : public std::enable_shared_from_this<PipelineStateTemplate>
 {
 public:
     typedef std::function<bool(const agpu_pipeline_builder_ref &builder) > BuildAction;
 
     PipelineStateTemplate()
-        : isAbstract(false)
+        : isAbstract(false), hasBeenInstantiated(false)
     {
     }
 
@@ -76,7 +76,9 @@ public:
     }
 
     bool isAbstract;
+    bool hasBeenInstantiated;
     std::string namePrefix;
+    std::string fullName;
     std::vector<PipelineStateTemplatePtr> parents;
     std::vector<BuildAction> buildActions;
 };
@@ -98,7 +100,7 @@ public:
     bool loadVertexLayoutsFromFile(const std::string &filename);
     bool loadShadersFromFile(const std::string &filename, const std::string &namePrefix = std::string());
     bool loadPipelineStatesFromFile(const std::string &filename, const std::string &namePrefix = std::string());
-    
+
 	const agpu_device_ref &getDevice() const;
 
     void addStructure(const std::string &name, const StructurePtr &structure);

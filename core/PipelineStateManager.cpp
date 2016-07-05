@@ -65,10 +65,13 @@ void PipelineStateManager::buildParseTables()
     }
 
     // Some dictionaries for parsing data.
-    shaderBindingTypeNameMap["cbv"] = AGPU_SHADER_BINDING_TYPE_CBV;
-    shaderBindingTypeNameMap["srv"] = AGPU_SHADER_BINDING_TYPE_SRV;
+    shaderBindingTypeNameMap["uniform-buffer"] = AGPU_SHADER_BINDING_TYPE_UNIFORM_BUFFER;
+    shaderBindingTypeNameMap["storage-buffer"] = AGPU_SHADER_BINDING_TYPE_STORAGE_BUFFER;
+    shaderBindingTypeNameMap["uniform-texel-buffer"] = AGPU_SHADER_BINDING_TYPE_UNIFORM_TEXEL_BUFFER;
+    shaderBindingTypeNameMap["storage-texel-buffer"] = AGPU_SHADER_BINDING_TYPE_STORAGE_TEXEL_BUFFER;
+    shaderBindingTypeNameMap["sampled-image"] = AGPU_SHADER_BINDING_TYPE_SAMPLED_IMAGE;
+    shaderBindingTypeNameMap["storage-image"] = AGPU_SHADER_BINDING_TYPE_STORAGE_IMAGE;
     shaderBindingTypeNameMap["sampler"] = AGPU_SHADER_BINDING_TYPE_SAMPLER;
-    shaderBindingTypeNameMap["uav"] = AGPU_SHADER_BINDING_TYPE_UAV;
 
     // Shader type name.
     shaderTypeNameMap["vertex"] = AGPU_VERTEX_SHADER;
@@ -195,9 +198,9 @@ void PipelineStateManager::buildPipelineStateParsingActions()
     pipelineStateParsingActions["inherit-from"] = [&](PipelineStateTemplate &stateTemplate, rapidjson::Value &value) {
         return multipleStringValuesDo(value, [&](const std::string &parentName) {
             // Find parent.
-            auto parent = getPipelineStateTemplate(value.GetString());
+            auto parent = getPipelineStateTemplate(parentName);
             if (!parent)
-                parent = getPipelineStateTemplate(stateTemplate.namePrefix + value.GetString());
+                parent = getPipelineStateTemplate(stateTemplate.namePrefix + parentName);
 
             // Ensure the parent was found.
             if (!parent)
@@ -207,6 +210,31 @@ void PipelineStateManager::buildPipelineStateParsingActions()
             }
 
             stateTemplate.parents.push_back(parent);
+            return true;
+        });
+    };
+
+    pipelineStateParsingActions["mixin-variants"] = [&](PipelineStateTemplate &stateTemplate, rapidjson::Value &value) {
+        return multipleStringValuesDo(value, [&](const std::string &parentName) {
+            // Find parent.
+            auto parent = getPipelineStateTemplate(parentName);
+            if (!parent)
+                parent = getPipelineStateTemplate(stateTemplate.namePrefix + parentName);
+
+            // Ensure the parent was found.
+            if (!parent)
+            {
+                printError("Failed to find pipeline state template '%s'\n", value.GetString());
+                return false;
+            }
+
+            // Create the template with the variant.
+            auto newTemplate = std::make_shared<PipelineStateTemplate> ();
+            newTemplate->namePrefix = stateTemplate.namePrefix;
+            newTemplate->fullName = stateTemplate.fullName + "." + parentName;
+            newTemplate->parents.push_back(stateTemplate.shared_from_this());
+            newTemplate->parents.push_back(parent);
+            pipelineStateTemplates[newTemplate->fullName] = newTemplate;
             return true;
         });
     };
@@ -290,7 +318,7 @@ void PipelineStateManager::buildPipelineStateParsingActions()
         std::vector<agpu_texture_format> formats(count);
         for (int i = 0; i < count; ++i)
         {
-            auto formatIt = textureFormatNameMap.find(value.GetString());
+            auto formatIt = textureFormatNameMap.find(value[i].GetString());
             if (formatIt == textureFormatNameMap.end())
             {
                 printError("Failed to texture format %s\n", value.GetString());
@@ -430,7 +458,7 @@ void PipelineStateManager::buildPipelineStateParsingActions()
         auto depthFailOp = stencilOperationNameMap[value["depth-fail"].GetString()];
         auto stencilDepthPassOp = stencilOperationNameMap[value["stencil-depth-pass"].GetString()];
         auto function = compareFunctionNameMap[value["function"].GetString()];
-        
+
         stateTemplate.addAction([=](const agpu_pipeline_builder_ref &builder) {
             builder->setStencilFrontFace(stencilFailOp, depthFailOp, stencilDepthPassOp, function);
             builder->setStencilBackFace(stencilFailOp, depthFailOp, stencilDepthPassOp, function);
@@ -465,7 +493,7 @@ void PipelineStateManager::buildPipelineStateParsingActions()
         auto depthFailOp = stencilOperationNameMap[value["depth-fail"].GetString()];
         auto stencilDepthPassOp = stencilOperationNameMap[value["stencil-depth-pass"].GetString()];
         auto function = compareFunctionNameMap[value["function"].GetString()];
-        
+
         stateTemplate.addAction([=](const agpu_pipeline_builder_ref &builder) {
             builder->setStencilBackFace(stencilFailOp, depthFailOp, stencilDepthPassOp, function);
             return true;
@@ -493,6 +521,7 @@ void PipelineStateManager::buildPipelineStateParsingActions()
 
         return true;
     };
+
 }
 
 bool PipelineStateManager::initialize()
@@ -598,20 +627,6 @@ bool PipelineStateManager::loadShaderSignaturesFromFile(const std::string &filen
                 continue;
             }
 
-            // Get the binding type.
-            auto &bindingTypeValue = element["binding-type"];
-            if (!bindingTypeValue.IsString())
-                continue;
-
-            // Parse the binding type.
-            auto bindingTypeIt = shaderBindingTypeNameMap.find(bindingTypeValue.GetString());
-            if (bindingTypeIt == shaderBindingTypeNameMap.end())
-            {
-                printError("Invalid shader binding type '%s' in shader signature named '%s'", bindingTypeValue.GetString(), name);
-                continue;
-            }
-            auto bindingType = bindingTypeIt->second;
-
             // Get the max number of bindings
             auto &maxBindingsValue = element["max-bindings"];
             if (!maxBindingsValue.IsInt())
@@ -621,16 +636,56 @@ bool PipelineStateManager::loadShaderSignaturesFromFile(const std::string &filen
             // Add the signature element according to its type.
             if (!strcmp(type, "bank"))
             {
-                // Get the binding point count
-                auto &bindingPointValue = element["binding-points"];
-                if (!bindingPointValue.IsInt())
+                signatureBuilder->beginBindingBank(maxBindings);
+                auto &bankElementsValue = element["elements"];
+                if(!bankElementsValue.IsArray())
                     continue;
-                auto bindingPointCount = bindingPointValue.GetInt();
 
-                signatureBuilder->addBindingBank(bindingType, bindingPointCount, maxBindings);
+                for(size_t i = 0; i < bankElementsValue.Size(); ++i)
+                {
+                    auto &bankElementValue = bankElementsValue[i];
+                    if(!bankElementValue.IsObject() || !bankElementValue.HasMember("type") || !bankElementValue.HasMember("points"))
+                        continue;
+
+                    // Get the binding type.
+                    auto &bindingTypeValue = bankElementValue["type"];
+                    if (!bindingTypeValue.IsString())
+                        continue;
+
+                    // Parse the binding type.
+                    auto bindingTypeIt = shaderBindingTypeNameMap.find(bindingTypeValue.GetString());
+                    if (bindingTypeIt == shaderBindingTypeNameMap.end())
+                    {
+                        printError("Invalid shader binding type '%s' in shader signature named '%s'", bindingTypeValue.GetString(), name);
+                        continue;
+                    }
+                    auto bindingType = bindingTypeIt->second;
+
+                    // Get the binding point count
+                    auto &bindingPointValue = bankElementValue["points"];
+                    if (!bindingPointValue.IsInt())
+                        continue;
+
+                    auto bindingPointCount = bindingPointValue.GetInt();
+                    signatureBuilder->addBindingBankElement(bindingType, bindingPointCount);
+                }
             }
             else if (!strcmp(type, "element"))
             {
+                // Get the binding type.
+                auto &bindingTypeValue = element["binding-type"];
+                if (!bindingTypeValue.IsString())
+                    continue;
+
+                // Parse the binding type.
+                auto bindingTypeIt = shaderBindingTypeNameMap.find(bindingTypeValue.GetString());
+                if (bindingTypeIt == shaderBindingTypeNameMap.end())
+                {
+                    printError("Invalid shader binding type '%s' in shader signature named '%s'", bindingTypeValue.GetString(), name);
+                    continue;
+                }
+                auto bindingType = bindingTypeIt->second;
+
                 signatureBuilder->addBindingElement(bindingType, maxBindings);
             }
             else
@@ -708,12 +763,12 @@ bool PipelineStateManager::loadStructuresFromFile(const std::string &filename)
             if (!fieldValue.IsObject())
                 continue;
 
-            if (!fieldValue.HasMember("type") || !fieldValue.HasMember("name"))
+            if (!fieldValue.HasMember("format") || !fieldValue.HasMember("name"))
                 continue;
 
-            auto &typeValue = fieldValue["type"];
+            auto &formatValue = fieldValue["format"];
             auto &nameValue = fieldValue["name"];
-            if (!nameValue.IsString() || !typeValue.IsString())
+            if (!nameValue.IsString() || !formatValue.IsString())
                 continue;
 
             auto binding = -1;
@@ -724,17 +779,34 @@ bool PipelineStateManager::loadStructuresFromFile(const std::string &filename)
                     binding = bindingValue.GetInt();
             }
 
-            // Parse the field type
-            auto typeIt = structureFieldTypeMap.find(typeValue.GetString());
+            // Parse the format type
+            StructureFieldTypeDescription type;
+            StructureFieldType typeId;
+
+            auto typeIt = structureFieldTypeMap.find(formatValue.GetString());
             if (typeIt == structureFieldTypeMap.end())
             {
-                printf("Unsupported type '%s' for structure field.", typeValue.GetString());
-                return false;
+                auto formatIt = textureFormatNameMap.find(formatValue.GetString());
+                if(formatIt == textureFormatNameMap.end())
+                {
+                    printError("Unsupported type '%s' for structure field.\n", formatValue.GetString());
+                    return false;
+                }
+
+                auto formatDesc = formatIt->second;
+                memset(&type, 0, sizeof(type));
+                type.format = formatDesc->format;
+                type.size = formatDesc->size;
+                type.alignment = 1; // TODO: Use a proper packed alignment
+                typeId = StructureFieldType::Float4;
+            }
+            else
+            {
+                typeId = typeIt->second;
+                type = StructureFieldTypeDescription::Descriptions[(int)typeId];
             }
 
             // Align the attribute offset.
-            auto typeId = typeIt->second;
-            auto &type = StructureFieldTypeDescription::Descriptions[(int)typeId];
             size_t alignmentMask = type.alignment - 1;
             structure->size = (structure->size + alignmentMask) & ~alignmentMask;
             structure->alignment = std::max(structure->alignment, (size_t)type.alignment);
@@ -742,6 +814,7 @@ bool PipelineStateManager::loadStructuresFromFile(const std::string &filename)
             // Set the field data.
             StructureField field;
             field.type = typeId;
+            field.format = type.format;
             field.name = name;
             field.binding = binding;
             field.offset = structure->size;
@@ -775,7 +848,7 @@ bool PipelineStateManager::loadVertexLayoutsFromFile(const std::string &filename
         auto &layoutData = it->value;
         assert(layoutData.IsObject());
 
-        
+
         if (!layoutData.HasMember("buffers"))
         {
             printError("Missing buffers count in vertex layout specification.\n");
@@ -820,13 +893,10 @@ bool PipelineStateManager::loadVertexLayoutsFromFile(const std::string &filename
                 agpu_vertex_attrib_description attribute;
                 attribute.buffer = (agpu_uint)i;
                 attribute.binding = field.binding;
-                attribute.type = type.type;
-                attribute.components = type.components;
                 attribute.rows = type.rows;
-                attribute.normalized = type.normalized;
                 attribute.divisor = 0; // TODO: Fetch a divisor from some place.
                 attribute.offset = field.offset;
-                attribute.internal_format = AGPU_TEXTURE_FORMAT_UNKNOWN;
+                attribute.format = field.format;
                 layoutAttributes.push_back(attribute);
             }
         }
@@ -855,51 +925,52 @@ bool PipelineStateManager::loadShadersFromFile(const std::string &filename, cons
         {
             // Fetch the shader implementation data.
             auto &shaderRawName = it->name;
-            auto &shaderImplementations = it->value;
-            if (!shaderImplementations.IsObject())
+            auto &shaderStages = it->value;
+            if (!shaderStages.IsObject())
                 continue;
 
             // Build the full shader name.
             auto shaderName = namePrefix + shaderRawName.GetString();
 
-            // Find a shader implementation.
-            bool shaderFound = false;
-            for (auto &shaderLanguageTypeName : shaderLanguageSearchOrder)
+            // Compile the shader stages
+            ShaderSet shaderSet;
+            for (auto stageIt = shaderStages.MemberBegin(); stageIt != shaderStages.MemberEnd(); ++stageIt)
             {
-                auto language = shaderLanguageTypeName.first;
-                auto &languageName = shaderLanguageTypeName.second;
-                if (!shaderImplementations.HasMember(languageName.c_str()))
+                auto &stageNameValue = stageIt->name;
+                auto &stageImplementationsValue = stageIt->value;
+                if (!stageImplementationsValue.IsObject())
                     continue;
 
-                auto &implementation = shaderImplementations[languageName.c_str()];
-                if (!implementation.IsObject())
-                    continue;
-
-                // Compile the shader stagets
-                shaderFound = true;
-                ShaderSet shaderSet;
-                for (auto stageIt = implementation.MemberBegin(); stageIt != implementation.MemberEnd(); ++stageIt)
+                // Get the stage type.
+                auto typeIt = shaderTypeNameMap.find(stageNameValue.GetString());
+                if (typeIt == shaderTypeNameMap.end())
                 {
-                    auto &stageNameValue = stageIt->name;
-                    auto &stageValue = stageIt->value;
-                    if (!stageValue.IsString())
+                    printError("Unsupported shader stage of type '%s' for %s\n", stageNameValue.GetString(), shaderName.c_str());
+                    return false;
+                }
+
+                auto type = typeIt->second;
+
+                // Find a shader implementation.
+                bool shaderFound = false;
+                for (auto &shaderLanguageTypeName : shaderLanguageSearchOrder)
+                {
+                    auto language = shaderLanguageTypeName.first;
+                    auto &languageName = shaderLanguageTypeName.second;
+                    if (!stageImplementationsValue.HasMember(languageName.c_str()))
                         continue;
 
-                    // Get the shader type.
-                    auto typeIt = shaderTypeNameMap.find(stageNameValue.GetString());
-                    if (typeIt == shaderTypeNameMap.end())
-                    {
-                        printError("Unsupported shader stage of type '%s' for %s\n", stageNameValue.GetString(), shaderName.c_str());
-                        return false;
-                    }
+                    auto &implementation = stageImplementationsValue[languageName.c_str()];
+                    if (!implementation.IsString())
+                        continue;
 
-                    auto type = typeIt->second;
+                    shaderFound = true;
 
                     // Create the shader stage filename
-                    auto stageFileName = joinPath(basePath, stageValue.GetString());
+                    auto implementationFileName = joinPath(basePath, implementation.GetString());
 
                     // Compile/load the shader stage.
-                    auto stage = compileShaderFromFile(stageFileName, language, type);
+                    auto stage = compileShaderFromFile(implementationFileName, language, type);
                     if (!stage)
                         return false;
 
@@ -907,16 +978,16 @@ bool PipelineStateManager::loadShadersFromFile(const std::string &filename, cons
                     shaderSet.addStage(stage);
                 }
 
-                // Store the shader set.
-                addShaderSet(shaderName, shaderSet);
+                // Ensure that a shader was found
+                if (!shaderFound)
+                {
+                    printError("Failed to find a suitable shader implementation for '%s' stage %s\n", shaderName.c_str(), stageNameValue.GetString());
+                    return false;
+                }
             }
 
-            // Ensure that a shader was found
-            if (!shaderFound)
-            {
-                printError("Failed to find a suitable shader implementation for '%s'\n", shaderName.c_str());
-                return false;
-            }
+            // Store the shader set.
+            addShaderSet(shaderName, shaderSet);
         }
     }
 
@@ -967,6 +1038,7 @@ bool PipelineStateManager::loadPipelineStatesFromFile(const std::string &filenam
             // Create the state template
             auto stateTemplate = std::make_shared<PipelineStateTemplate> ();
             stateTemplate->namePrefix = namePrefix;
+            stateTemplate->fullName = stateName;
 
             // Parse the template elements.
             for (auto elementIt = rawData.MemberBegin(); elementIt != rawData.MemberEnd(); ++elementIt)
@@ -991,28 +1063,31 @@ bool PipelineStateManager::loadPipelineStatesFromFile(const std::string &filenam
 
             // Store the pipeline state template.
             addPipelineStateTemplate(stateName, stateTemplate);
-
-            // Instantiate the state template.
-            if (!stateTemplate->isAbstract)
-            {
-                agpu_pipeline_builder_ref builder = device->createPipelineBuilder();
-                if (!stateTemplate->instantiateOn(builder))
-                {
-                    printError("Failed to instantiate pipeline state %s\n", stateName.c_str());
-                    return false;
-                }
-
-                agpu_pipeline_state_ref state = builder->build();
-                if (!state)
-                {
-                    printError("Failed to build pipeline state %s\n", stateName.c_str());
-                    return false;
-                }
-
-                addPipelineState(stateName, state);
-            }
         }
+    }
 
+    for(auto &kv : pipelineStateTemplates)
+    {
+        auto &stateTemplate = kv.second;
+        if (!stateTemplate->isAbstract && !stateTemplate->hasBeenInstantiated)
+        {
+            stateTemplate->hasBeenInstantiated = true;
+            agpu_pipeline_builder_ref builder = device->createPipelineBuilder();
+            if (!stateTemplate->instantiateOn(builder))
+            {
+                printError("Failed to instantiate pipeline state %s\n", stateTemplate->fullName.c_str());
+                return false;
+            }
+
+            agpu_pipeline_state_ref state = builder->build();
+            if (!state)
+            {
+                printError("Failed to build pipeline state %s\n", stateTemplate->fullName.c_str());
+                return false;
+            }
+
+            addPipelineState(stateTemplate->fullName, state);
+        }
     }
 
     // Load the sub-groups

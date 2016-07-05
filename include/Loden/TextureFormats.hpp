@@ -17,6 +17,8 @@ struct LODEN_CORE_EXPORT TextureFormatDescription
     bool hasColor;
     bool hasDepth;
     bool hasStencil;
+    agpu_size size;
+    agpu_size alignment;
     static const TextureFormatDescription Descriptions[];
 };
 

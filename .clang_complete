@@ -1,0 +1,6 @@
+-I.
+-I../abstract-gpu/include
+-Iinclude
+-Ithirdparty/rapidjson/include
+-Ithirdparty/rapidxml
+-Ithirdparty/glm

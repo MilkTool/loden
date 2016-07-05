@@ -201,6 +201,7 @@ AgpuCanvas::AgpuCanvas()
     currentTextureBinding = nullptr;
     currentFontBinding = nullptr;
     coveringType = CT_Draw;
+    usingBundle = false;
 
     nullPathProcessor.reset(new AgpuCanvasPathProcessor(this));
     currentPathProcessor = nullPathProcessor.get();
@@ -216,7 +217,7 @@ AgpuCanvas::~AgpuCanvas()
 {
 }
 
-AgpuCanvasPtr AgpuCanvas::create(const PipelineStateManagerPtr &stateManager)
+AgpuCanvasPtr AgpuCanvas::create(const PipelineStateManagerPtr &stateManager, bool usingBundle)
 {
 	auto &device = stateManager->getDevice();
 
@@ -230,28 +231,44 @@ AgpuCanvasPtr AgpuCanvas::create(const PipelineStateManagerPtr &stateManager)
 		return nullptr;
 
 	// Create the command list.
-	auto commandList = device->createCommandList(AGPU_COMMAND_LIST_TYPE_BUNDLE, allocator, nullptr);
-	if(!commandList)
-		return nullptr;
-	commandList->close();
+    agpu_command_list_ref bundleCommandList;
+    if(usingBundle)
+    {
+    	bundleCommandList = device->createCommandList(AGPU_COMMAND_LIST_TYPE_BUNDLE, allocator, nullptr);
+    	if(!bundleCommandList)
+    		return nullptr;
+    	bundleCommandList->close();
+    }
 
 	// Create the canvas object.
 	auto canvas = AgpuCanvasPtr(new AgpuCanvas());
+    canvas->usingBundle = usingBundle;
 	canvas->stateManager = stateManager;
 	canvas->device = device;
 	canvas->allocator = allocator;
-	canvas->commandList = commandList;
+	canvas->bundleCommandList = bundleCommandList;
 	canvas->vertexBufferBinding = device->createVertexBinding(layout.get());
     canvas->shaderSignature = stateManager->getShaderSignature("GUI");
-	canvas->convexColorLinePipeline = stateManager->getPipelineState("canvas2d.polygon.convex.color.line");
-	canvas->convexColorTrianglePipeline = stateManager->getPipelineState("canvas2d.polygon.convex.color.triangle");
+	canvas->convexColorLinePipeline = stateManager->getPipelineState("canvas2d.polygon.convex.color.lines.blend.over");
+    assert(canvas->convexColorLinePipeline);
+
+	canvas->convexColorTrianglePipeline = stateManager->getPipelineState("canvas2d.polygon.convex.color.triangles.blend.over");
+    assert(canvas->convexColorTrianglePipeline);
 
     canvas->stencilNonZeroPipeline = stateManager->getPipelineState("canvas2d.polygon.stencil.non-zero");
+    assert(canvas->stencilNonZeroPipeline);
+
     canvas->stencilEvenOddPipeline = stateManager->getPipelineState("canvas2d.polygon.stencil.even-odd");
+    assert(canvas->stencilEvenOddPipeline);
+
     canvas->coverColorPipeline = stateManager->getPipelineState("canvas2d.polygon.cover.color");
+    assert(canvas->coverColorPipeline);
 
     canvas->textColorPipeline = stateManager->getPipelineState("canvas2d.text.color");
+    assert(canvas->textColorPipeline);
+
     canvas->textSdfColorPipeline = stateManager->getPipelineState("canvas2d.textsdf.color");
+    assert(canvas->textSdfColorPipeline);
 
     agpu_sampler_description samplerDesc;
     memset(&samplerDesc, 0, sizeof(samplerDesc));
@@ -311,8 +328,6 @@ void AgpuCanvas::reset()
 	vertices.clear();
 	indices.clear();
 	allocator->reset();
-	commandList->reset(allocator.get(), nullptr);
-    commandList->setStencilReference(0);
     currentPathProcessor = nullPathProcessor.get();
 
     // Use the default font face.
@@ -327,10 +342,7 @@ void AgpuCanvas::reset()
 void AgpuCanvas::close()
 {
 	if(vertices.empty() || indices.empty())
-	{
-		commandList->close();
-		return;
-	}
+	   return;
 	endSubmesh();
 
 	if(vertexCapacity < vertices.size())
@@ -341,6 +353,18 @@ void AgpuCanvas::close()
 	indexBuffer->uploadBufferData(0, indices.size()*sizeof(int), &indices[0]);
 
     // Set the shader signature.
+    if(usingBundle)
+    {
+        bundleCommandList->reset(allocator.get(), nullptr);
+        bundleCommandList->setStencilReference(0);
+
+        emitCommandsInto(bundleCommandList);
+        bundleCommandList->close();
+    }
+}
+
+void AgpuCanvas::emitCommandsInto(agpu_command_list_ref &commandList)
+{
     commandList->setShaderSignature(shaderSignature.get());
     commandList->useShaderResources(sampler.get());
 
@@ -348,14 +372,12 @@ void AgpuCanvas::close()
 	commandList->useVertexBinding(vertexBufferBinding.get());
 	commandList->useIndexBuffer(indexBuffer.get());
 	for(auto &command : drawCommandsToAdd)
-		command();
-
-	commandList->close();
+		command(commandList);
 }
 
 const agpu_ref<agpu_command_list> &AgpuCanvas::getCommandBundle()
 {
-	return commandList;
+	return bundleCommandList;
 }
 
 void AgpuCanvas::setColor(const glm::vec4 &color)
@@ -527,7 +549,7 @@ void AgpuCanvas::coverBox(const Rectangle &rectangle)
         beginShapeWithPipeline(ST_Triangle, coverColorPipeline.get());
         break;
     }
-    
+
     addVertex(Vertex(transformPosition(rectangle.getBottomLeft()), currentColor));
     addVertex(Vertex(transformPosition(rectangle.getBottomRight()), currentColor));
     addVertex(Vertex(transformPosition(rectangle.getTopRight()), currentColor));
@@ -641,7 +663,7 @@ void AgpuCanvas::beginShapeWithPipeline(ShapeType newShapeType, agpu_pipeline_st
 
     if (currentPipeline != pipeline)
     {
-        drawCommandsToAdd.push_back([=] {
+        drawCommandsToAdd.push_back([=] (agpu_command_list_ref &commandList) {
             commandList->usePipelineState(pipeline);
         });
         currentPipeline = pipeline;
@@ -649,7 +671,7 @@ void AgpuCanvas::beginShapeWithPipeline(ShapeType newShapeType, agpu_pipeline_st
 
     if (currentTextureBinding != textureBinding && textureBinding != nullptr)
     {
-        drawCommandsToAdd.push_back([=] {
+        drawCommandsToAdd.push_back([=] (agpu_command_list_ref &commandList) {
             commandList->useShaderResources(textureBinding);
         });
         currentTextureBinding = textureBinding;
@@ -657,29 +679,10 @@ void AgpuCanvas::beginShapeWithPipeline(ShapeType newShapeType, agpu_pipeline_st
 
     if (currentFontBinding != fontBinding && fontBinding != nullptr)
     {
-        drawCommandsToAdd.push_back([=] {
+        drawCommandsToAdd.push_back([=] (agpu_command_list_ref &commandList) {
             commandList->useShaderResources(fontBinding);
         });
         currentFontBinding = fontBinding;
-    }
-
-    if (shapeType != newShapeType)
-    {
-        agpu_primitive_topology topology;
-        switch (newShapeType)
-        {
-        case ST_Line:
-            topology = AGPU_LINES;
-            break;
-        case ST_Triangle:
-            topology = AGPU_TRIANGLES;
-            break;
-        default:
-            abort();
-        }
-        drawCommandsToAdd.push_back([=] {
-            commandList->setPrimitiveTopology(topology);
-        });
     }
 
     shapeType = newShapeType;
@@ -693,7 +696,7 @@ void AgpuCanvas::endSubmesh()
 	if(!count)
 		return;
 
-	drawCommandsToAdd.push_back([=]{
+	drawCommandsToAdd.push_back([=] (agpu_command_list_ref &commandList) {
 		commandList->drawElements(count, 1, start, 0, 0);
 	});
 	startIndex = (int)indices.size();
@@ -786,7 +789,7 @@ void AgpuSoftwareTessellationPathProcessor::cubicTo(const glm::vec2 &control, co
         auto m4 = midpoint(m1, m2);
         auto m5 = midpoint(m2, m3);
         auto m6 = midpoint(m4, m5);
-        
+
         cubicTo(m1, m4, m6);
         cubicTo(m2, m5, point);
     }

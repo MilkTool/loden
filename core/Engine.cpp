@@ -87,7 +87,7 @@ bool Engine::createDevice()
     if (!graphicsCommandQueue)
     {
         printError("Failed to get the default AGPU command queue\n");
-        return nullptr;
+        return false;
     }
 
     return true;
@@ -101,7 +101,7 @@ bool Engine::loadSettings(int argc, const char **argv)
     //auto qualityLevels = device->getMultiSampleQualityLevels(sampleCount);
     //settings->setIntValue("Rendering", "SampleCount", sampleCount);
     //settings->setIntValue("Rendering", "SampleQuality", qualityLevels - 1);
-    
+
     return true;
 }
 

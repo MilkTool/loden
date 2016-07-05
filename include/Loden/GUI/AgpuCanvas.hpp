@@ -33,19 +33,19 @@ class AgpuCanvasPathProcessor;
 
 /**
  * AGPU canvas
- */	
+ */
 class LODEN_CORE_EXPORT AgpuCanvas: public ObjectAbstractSubclass<AgpuCanvas, Canvas>
 {
     LODEN_OBJECT_TYPE(AgpuCanvas)
 public:
 	typedef AgpuCanvasVertex Vertex;
-	
+
 	~AgpuCanvas();
-	
-	static AgpuCanvasPtr create(const PipelineStateManagerPtr &stateManager);
-	
+
+	static AgpuCanvasPtr create(const PipelineStateManagerPtr &stateManager, bool usingBundle);
+
 	virtual void setColor(const glm::vec4 &color);
-	
+
 	virtual void drawLine(const glm::vec2 &p1, const glm::vec2 &p2);
 	virtual void drawTriangle(const glm::vec2 &p1, const glm::vec2 &p2, const glm::vec2 &p3);
 	virtual void drawRectangle(const Rectangle &rectangle);
@@ -87,20 +87,22 @@ public:
 
 	void reset();
 	void close();
+    void emitCommandsInto(agpu_command_list_ref &commandList);
+
 	const agpu_ref<agpu_command_list> &getCommandBundle();
-	
+
 private:
 	glm::vec2 transformPosition(const glm::vec2 &pos)
 	{
 		auto v3 = transform * glm::vec3(pos, 1.0);
 		return glm::vec2(v3.x, v3.y);
 	}
-	
+
     void coverBox(const Rectangle &rectangle);
 
 	void createVertexBuffer();
 	void createIndexBuffer();
-	
+
 	enum ShapeType
 	{
 		ST_Unknown = -1,
@@ -144,18 +146,19 @@ private:
     CoverType coveringType;
     agpu_shader_resource_binding *currentTextureBinding;
     agpu_shader_resource_binding *currentFontBinding;
-		
+
 	agpu_ref<agpu_command_allocator> allocator;
-	agpu_ref<agpu_command_list> commandList;
-	
+	agpu_ref<agpu_command_list> bundleCommandList;
+
 	PipelineStateManagerPtr stateManager;
+    bool usingBundle;
 	agpu_device_ref device;
 	agpu_buffer_ref vertexBuffer;
 	agpu_vertex_binding_ref vertexBufferBinding;
-	
+
 	agpu_buffer_ref indexBuffer;
     agpu_shader_signature_ref shaderSignature;
-    
+
     agpu_pipeline_state_ref stencilNonZeroPipeline;
     agpu_pipeline_state_ref stencilEvenOddPipeline;
     agpu_pipeline_state_ref coverColorPipeline;
@@ -178,7 +181,7 @@ private:
 
 	std::vector<AgpuCanvasVertex> vertices;
 	std::vector<int> indices;
-	std::vector<std::function<void ()> > drawCommandsToAdd;
+	std::vector<std::function<void (agpu_command_list_ref &commandList)> > drawCommandsToAdd;
 
     // Path processing strategies.
     friend class AgpuCanvasPathProcessor;
@@ -195,7 +198,7 @@ private:
     std::unique_ptr<AgpuCanvasPathProcessor> convexPathProcessor;
     std::unique_ptr<AgpuCanvasPathProcessor> evenOddRulePathProcessor;
     std::unique_ptr<AgpuCanvasPathProcessor> nonZeroRulePathProcessor;
-    
+
 };
 
 } // End of namespace GUI

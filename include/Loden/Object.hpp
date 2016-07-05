@@ -77,17 +77,17 @@ public:
     {
     }
 
-    const char *getName() const
+    virtual const char *getName() const override
     {
         return name;
     }
 
-    virtual bool isAbstract() const
+    virtual bool isAbstract() const override
     {
         return true;
     }
 
-    virtual bool isInterface() const
+    virtual bool isInterface() const override
     {
         return true;
     }
@@ -124,17 +124,17 @@ public:
     {
     }
 
-    const char *getName() const
+    virtual const char *getName() const override
     {
         return name;
     }
 
-    virtual bool isAbstract() const
+    virtual bool isAbstract() const override
     {
         return true;
     }
 
-    virtual bool isInterface() const
+    virtual bool isInterface() const override
     {
         return false;
     }
@@ -171,17 +171,17 @@ public:
     {
     }
 
-    const char *getName() const
+    virtual const char *getName() const override
     {
         return name;
     }
 
-    virtual bool isAbstract() const
+    virtual bool isAbstract() const override
     {
         return false;
     }
 
-    virtual bool isInterface() const
+    virtual bool isInterface() const override
     {
         return false;
     }

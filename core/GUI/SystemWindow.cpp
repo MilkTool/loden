@@ -27,6 +27,7 @@ SystemWindow::SystemWindow()
 
     sampleCount = 1;
     sampleQuality = 0;
+    hasInvertedY = false;
 }
 
 SystemWindow::~SystemWindow()
@@ -143,6 +144,7 @@ SystemWindowPtr SystemWindow::create(const EnginePtr &engine, const std::string 
     window->commandQueue = engine->getGraphicsCommandQueue();
     window->sampleCount = sampleCount;
     window->sampleQuality = sampleQuality;
+    window->hasInvertedY = device->hasTopLeftNdcOrigin();
 
     if(!window->initialize())
         return nullptr;
@@ -184,6 +186,27 @@ bool SystemWindow::initialize()
         return false;
     }
 
+    // Color attachment
+    agpu_renderpass_color_attachment_description colorAttachment;
+    memset(&colorAttachment, 0, sizeof(colorAttachment));
+    colorAttachment.format = AGPU_TEXTURE_FORMAT_B8G8R8A8_UNORM;
+    colorAttachment.begin_action = AGPU_ATTACHMENT_CLEAR;
+    colorAttachment.end_action = AGPU_ATTACHMENT_KEEP;
+
+    // Depth stencil
+    agpu_renderpass_depth_stencil_description depthStencil;
+    memset(&depthStencil, 0, sizeof(depthStencil));
+    depthStencil.format = AGPU_TEXTURE_FORMAT_D24_UNORM_S8_UINT;
+    depthStencil.begin_action = AGPU_ATTACHMENT_CLEAR;
+    depthStencil.end_action = AGPU_ATTACHMENT_KEEP;
+    depthStencil.clear_value.depth = 1.0;
+
+    agpu_renderpass_description renderpassDescription;
+    memset(&renderpassDescription, 0, sizeof(renderpassDescription));
+    renderpassDescription.color_attachment_count = 1;
+    renderpassDescription.color_attachments = &colorAttachment;
+    renderpassDescription.depth_stencil_attachment = &depthStencil;
+
     // Create the command lists and allocators
     frameCount = 3;
     frameIndex = 0;
@@ -204,7 +227,7 @@ bool SystemWindow::initialize()
                 desc.width = screenWidth;
                 desc.height = screenHeight;
                 desc.depthOrArraySize = 1;
-                desc.format = AGPU_TEXTURE_FORMAT_R8G8B8A8_UNORM;
+                desc.format = AGPU_TEXTURE_FORMAT_B8G8R8A8_UNORM;
                 desc.flags = agpu_texture_flags(AGPU_TEXTURE_FLAG_RENDER_TARGET | AGPU_TEXTURE_FLAG_RENDERBUFFER_ONLY);
                 desc.miplevels = 1;
                 desc.sample_count = sampleCount;
@@ -238,6 +261,8 @@ bool SystemWindow::initialize()
             multisampleFramebuffers[i] = device->createFrameBuffer(getWidth(), getHeight(), 1, &colorViewDesc, &depthStencilViewDesc);
         }
 
+        renderpasses[i] = device->createRenderPass(&renderpassDescription);
+
         commandAllocators[i] = device->createCommandAllocator(AGPU_COMMAND_LIST_TYPE_DIRECT, engine->getGraphicsCommandQueue().get());
         if(!commandAllocators[i])
         {
@@ -261,7 +286,7 @@ bool SystemWindow::initialize()
             return false;
         }
 
-        screenCanvases[i] = AgpuCanvas::create(pipelineStateManager);
+        screenCanvases[i] = AgpuCanvas::create(pipelineStateManager, false);
         if(!screenCanvases[i])
         {
             printError("Failed to create the screen canvas.\n");
@@ -372,7 +397,7 @@ void SystemWindow::handleMouseButtonDown(MouseButtonEvent &event)
             if (popups.find(child) == popups.end() && child != currentPopUpGroup && !child->getAbsoluteRectangle().containsPoint(event.getPosition()))
                 killAllPopUps(currentPopUpGroup);
         }
-        
+
 
         auto newEvent = event.translatedBy(-child->getPosition());
         child->handleMouseButtonDown(newEvent);
@@ -446,6 +471,7 @@ void SystemWindow::renderScreen()
     auto& commandAllocator = commandAllocators[frameIndex];
     auto& commandList = commandLists[frameIndex];
     auto& screenCanvas = screenCanvases[frameIndex];
+    auto& renderpass = renderpasses[frameIndex];
 
     // Ensure the frame data is not pending.
     frameFences[frameIndex]->waitOnClient();
@@ -459,7 +485,7 @@ void SystemWindow::renderScreen()
     auto transformationBlock = reinterpret_cast<TransformationBlock*> (transformationBlockData + TransformationBlock_AlignedSize*frameIndex);
 	int screenWidth = (int)ceil(getWidth());
 	int screenHeight = (int)ceil(getHeight());
-    transformationBlock->projectionMatrix = orthographicMatrix(0.0f, (float)screenWidth, (float)screenHeight, 0.0f, -2.0f, 2.0f);
+    transformationBlock->projectionMatrix = orthographicMatrix(0.0f, (float)screenWidth, (float)screenHeight, 0.0f, -2.0f, 2.0f, hasInvertedY);
     transformationBlock->modelMatrix = glm::mat4();
     transformationBlock->viewMatrix = glm::mat4();
 
@@ -469,26 +495,22 @@ void SystemWindow::renderScreen()
 	commandList->reset(commandAllocator.get(), nullptr);
     commandList->setShaderSignature(shaderSignature.get());
     if (hasMultisampling())
-        commandList->beginFrame(multisampleFramebuffers[frameIndex].get(), false);
+        commandList->beginRenderPass(renderpass.get(), multisampleFramebuffers[frameIndex].get(), false);
     else
-        commandList->beginFrame(backBuffer.get(), false);
+        commandList->beginRenderPass(renderpass.get(), backBuffer.get(), false);
 
     // Set the viewport
     commandList->setViewport(0, 0, screenWidth, screenHeight);
     commandList->setScissor(0, 0, screenWidth, screenHeight);
-    commandList->setClearColor(0, 0, 0, 0);
-    commandList->setClearDepth(1);
-    commandList->setClearStencil(0);
-    commandList->clear(AGPU_COLOR_BUFFER_BIT | AGPU_DEPTH_BUFFER_BIT | AGPU_STENCIL_BUFFER_BIT);
 
 	// Use the transformation block.
 	commandList->useShaderResources(globalShaderBindings[frameIndex].get());
 
 	// Execute the screen canvas bundle.
-	commandList->executeBundle(screenCanvas->getCommandBundle().get());
+    screenCanvas->emitCommandsInto(commandList);
 
     // Finish the command list
-	commandList->endFrame();
+	commandList->endRenderPass();
 
     // Resolve the multi sampling
     if (hasMultisampling())

@@ -17,51 +17,31 @@ LODEN_DECLARE_CLASS(Structure);
 enum class StructureFieldType
 {
     Float = 0,
-    Vec2,
-    Vec3,
-    Vec4,
+    Float2,
+    Float3,
+    Float4,
 
     Int,
-    IVec2,
-    IVec3,
-    IVec4,
+    Int2,
+    Int3,
+    Int4,
 
     UInt,
-    UIVec2,
-    UIVec3,
-    UIVec4,
+    UInt2,
+    UInt3,
+    UInt4,
 
     Short,
-    SVec2,
-    SVec4,
+    Short2,
+    Short4,
 
     UShort,
-    USVec2,
-    USVec4,
-
-    NShort,
-    NSVec2,
-    NSVec4,
-
-    NUShort,
-    NUSVec2,
-    NUSVec4,
+    UShort2,
+    UShort4,
 
     Byte,
-    BVec2,
-    BVec4,
-
-    UByte,
-    UBVec2,
-    UBVec4,
-
-    NByte,
-    NBVec2,
-    NBVec4,
-
-    NUByte,
-    NUBVec2,
-    NUBVec4,
+    Byte2,
+    Byte4,
 
     Count
 };
@@ -89,6 +69,7 @@ public:
     agpu_bool normalized;
     agpu_uint size;
     agpu_uint alignment;
+    agpu_texture_format format;
 
     static const StructureFieldTypeDescription Descriptions[(int)StructureFieldType::Count];
 };
@@ -100,6 +81,7 @@ class LODEN_CORE_EXPORT StructureField
 {
 public:
     StructureFieldType type;
+    agpu_texture_format format;
     std::string name;
     int binding;
     size_t offset;
@@ -112,6 +94,7 @@ class LODEN_CORE_EXPORT Structure
 {
 public:
     StructureType type;
+    agpu_texture_format format;
     size_t size;
     size_t alignment;
     std::vector<StructureField> fields;

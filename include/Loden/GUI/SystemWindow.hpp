@@ -74,6 +74,7 @@ private:
 	agpu_buffer_ref transformationBuffer;
     uint8_t *transformationBlockData;
 
+    agpu_renderpass_ref renderpasses[3];
     agpu_framebuffer_ref multisampleFramebuffers[3];
     agpu_texture_ref multisampleColorbuffers[3];
 	agpu_command_allocator_ref commandAllocators[3];
@@ -88,6 +89,7 @@ private:
     WidgetPtr currentPopUpGroup;
     unsigned int sampleCount;
     unsigned int sampleQuality;
+    bool hasInvertedY;
 };
 
 } // End of namespace GUI
