@@ -2,6 +2,7 @@
 #define LODEN_IMAGE_DOWNSAMPLE_HPP
 
 #include "Loden/Image/ImageBuffer.hpp"
+#include <glm/glm.hpp>
 
 namespace Loden
 {
@@ -65,6 +66,29 @@ void downsample(DoubleImageBuffer *dest, ImageBuffer *source, int factor)
         factor /= 2;
         width /= 2;
         height /= 2;
+    }
+}
+
+template<typename PixelType>
+void linearScale(ImageBuffer *dest, int destWidth, int destHeight, ImageBuffer *source, int sourceWidth, int sourceHeight)
+{
+    auto destPitch = dest->getPitch();
+    auto destRow = dest->get();
+
+    glm::vec2 destFactor = glm::vec2(1.0 / (destWidth - 1), 1.0 / (destHeight - 1));
+
+    ImageSampler sourceSampler(source, sourceWidth, sourceHeight);
+
+    for(int dy = 0; dy < destHeight; ++dy, destRow += destPitch)
+    {
+        auto dst = reinterpret_cast<PixelType*> (destRow);
+
+        for(int dx = 0; dx < destWidth; ++dx)
+        {
+            auto coord = destFactor * glm::vec2(dx, dy);
+            auto value = sourceSampler.bilinearAt<PixelType> (coord);
+            dst[dx].setVector(value);
+        }
     }
 }
 

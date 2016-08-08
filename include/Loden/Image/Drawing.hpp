@@ -62,6 +62,30 @@ void copyRectangle(int destX, int destY, ImageBuffer *dest, int sourceX, int sou
     }
 }
 
+template<typename DestPixelType, typename SourcePixelType>
+void signedToUnsignedPixels(ImageBuffer *dest, ImageBuffer *source)
+{
+    auto width = dest->getWidth();
+    auto height = dest->getHeight();
+
+    auto destPitch = dest->getPitch();
+    auto destRow = dest->get();
+
+    auto sourcePitch = source->getPitch();
+    auto sourceRow = source->get();
+
+    for (int y = 0; y < height; ++y)
+    {
+        auto source = reinterpret_cast<SourcePixelType*> (sourceRow);
+        auto dest = reinterpret_cast<DestPixelType*> (destRow);
+        for(int x = 0; x < width; ++x)
+            dest[x].setVector(source[x].asVector()*0.5 + 0.5);
+
+        sourceRow += sourcePitch;
+        destRow += destPitch;
+    }
+}
+
 inline void clearImageBuffer(ImageBuffer *imageBuffer)
 {
     memset(imageBuffer->get(), 0, imageBuffer->getSize());

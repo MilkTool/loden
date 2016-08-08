@@ -4,6 +4,7 @@
 #include "Loden/Object.hpp"
 #include "Loden/Image/Pixel.hpp"
 #include <algorithm>
+#include <glm/glm.hpp>
 
 namespace Loden
 {
@@ -152,6 +153,80 @@ private:
     LocalImageBuffer buffer1, buffer2;
     LocalImageBuffer *frontBuffer;
     LocalImageBuffer *backBuffer;
+};
+
+class ImageSampler
+{
+public:
+    ImageSampler(ImageBuffer *buffer)
+        : data(buffer->get()), pitch(buffer->getPitch()), width(buffer->getWidth() - 1), height(buffer->getHeight() - 1)
+    {
+    }
+
+    ImageSampler(ImageBuffer *buffer, int width, int height)
+        : data(buffer->get()), pitch(buffer->getPitch()), width(width - 1), height(height - 1)
+    {
+    }
+
+    template<typename PixelType>
+    PixelType &at(int x, int y)
+    {
+        return *reinterpret_cast<PixelType*> (data + pitch*y + x);
+    }
+
+    template<typename PixelType>
+    PixelType &at(const glm::ivec2 &coord)
+    {
+        return at<PixelType> (clampX(coord.x), clampY(coord.y));
+    }
+
+    template<typename PixelType>
+    PixelType &at(const glm::vec2 &coord)
+    {
+        return at<PixelType> (glm::ivec2(noormalizedToPixels(coord)));
+    }
+
+    template<typename PixelType>
+    PixelType &atPixel(const glm::vec2 &coord)
+    {
+        return at<PixelType> (glm::ivec2(coord));
+    }
+
+    template<typename PixelType>
+    auto bilinearAt(const glm::vec2 &coord) -> decltype(PixelType().asVector())
+    {
+        auto centerCoord = noormalizedToPixels(coord);
+        auto bottomLeftCoord = glm::floor(centerCoord);
+        auto topRightCoord = glm::ceil(centerCoord);
+        auto bottomLeft = atPixel<PixelType> (bottomLeftCoord).asVector();
+        auto bottomRight = atPixel<PixelType> (glm::vec2(topRightCoord.x, bottomLeftCoord.y)).asVector();
+        auto topRight = atPixel<PixelType> (topRightCoord).asVector();
+        auto topLeft = atPixel<PixelType> (glm::vec2(bottomLeftCoord.x, topRightCoord.y)).asVector();
+        auto fractCoord = centerCoord - bottomLeftCoord;
+        auto top = glm::mix(topLeft, topRight, fractCoord.x);
+        auto bottom = glm::mix(bottomLeft, bottomRight, fractCoord.x);
+        return glm::mix(bottom, top, fractCoord.y);
+    }
+
+    glm::vec2 noormalizedToPixels(const glm::vec2 &coord)
+    {
+        return coord * glm::vec2(width, height);
+    }
+
+    int clampX(int coord) const
+    {
+        return std::max(0, std::min(coord, width));
+    }
+
+    int clampY(int coord) const
+    {
+        return std::max(0, std::min(coord, height));
+    }
+private:
+    uint8_t *data;
+    ptrdiff_t pitch;
+    int width;
+    int height;
 };
 
 } // End of namespace Image

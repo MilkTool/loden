@@ -4,3 +4,4 @@
 -Ithirdparty/rapidjson/include
 -Ithirdparty/rapidxml
 -Ithirdparty/glm
+-I/usr/include/freetype2
