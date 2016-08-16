@@ -288,7 +288,7 @@ void startGlyphConvertion(int glyphIndex)
     metadata.max = glm::vec2(downSampledFace->glyph->bitmap.width, downSampledFace->glyph->bitmap.rows);
 
     // Compute the metrics scale factor
-    auto metricsScaleFactor = 1.0f / (64 * sampleScale);
+    auto metricsScaleFactor = 1.0f / 64.0f;
 
     // Set the metrics
     auto &metrics = downSampledFace->glyph->metrics;
@@ -340,6 +340,7 @@ bool writeFontMetadata(const std::string &metadataName)
     header.numberOfGlyphs = (uint32_t)glyphMetadata.size();
     header.numberOfCharMapEntries = (uint32_t)characterMap.size();
     header.pointSize = pointSize;
+    header.cellMargin = margin;
     if (distanceFieldFont)
         header.flags |= LodenFontFlags::SignedDistanceField;
     if (fwrite(&header, sizeof(header), 1, out.get()) != 1)
@@ -500,7 +501,7 @@ int main(int argc, const char *argv[])
 
     // Clear the result buffer.
     resultBuffer.reset(new LocalImageBuffer(atlasWidth, atlasHeight, 8, atlasWidth));
-    clearImageBuffer(resultBuffer.get());
+    clearImageBuffer(resultBuffer.get(), unsignedValues ? 0 : -128);
 
     // Copy the glyphs into the result buffer.
     for (int i = 0; i < numberOfGlyphs; ++i)

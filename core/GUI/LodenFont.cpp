@@ -38,6 +38,7 @@ private:
     float computeScaleFactor(int pointSize);
     int getGlyphForCharacter(int character);
 
+    Rectangle computeSourceRectangle(LodenFontGlyphMetadata &glyph, float scaleFactor);
     Rectangle computeDestinationRectangle(LodenFontGlyphMetadata &glyph, float scaleFactor, const glm::vec2 &position);
     glm::vec2 drawNextCharacter(Canvas *canvas, int character, int previousCharacter, int pointSize, const glm::vec2 &position);
     glm::vec2 appendCharacterBoundingBox(int character, int previousCharacter, int pointSize, const glm::vec2 &position, Rectangle &accumulatedBoundingBox);
@@ -51,6 +52,7 @@ private:
     TexturePtr texture;
     agpu_shader_resource_binding_ref textureBinding;
     glm::vec2 texcoordScale;
+    float marginSize;
 };
 
 LodenFontFace::LodenFontFace(Engine *engine)
@@ -79,20 +81,26 @@ int LodenFontFace::getGlyphForCharacter(int character)
     return 0;
 }
 
+Rectangle LodenFontFace::computeSourceRectangle(LodenFontGlyphMetadata &glyph, float scaleFactor)
+{
+    return Rectangle((glyph.min - marginSize)*texcoordScale, (glyph.max + marginSize)*texcoordScale);
+}
+
 Rectangle LodenFontFace::computeDestinationRectangle(LodenFontGlyphMetadata &glyph, float scaleFactor, const glm::vec2 &position)
 {
-    glm::vec2 drawPosition = position;
-    auto size = glyph.max - glyph.min;
-    return Rectangle(drawPosition, drawPosition + size * scaleFactor);
+    glm::vec2 drawPosition = position + glm::vec2(glyph.horizontalBearing.x - marginSize, -glyph.horizontalBearing.y - marginSize) *scaleFactor;
+    auto size = (glyph.max - glyph.min + marginSize*2)*scaleFactor;
+    return Rectangle(drawPosition, drawPosition + size);
 }
 
 glm::vec2 LodenFontFace::drawNextCharacter(Canvas *canvas, int character, int previousCharacter, int pointSize, const glm::vec2 &position)
 {
     auto &glyph = glyphData[getGlyphForCharacter(character)];
-    
-    auto scaleFactor = computeScaleFactor(pointSize);
 
-    Rectangle source(glyph.min*texcoordScale, glyph.max*texcoordScale);
+    auto scaleFactor = computeScaleFactor(pointSize);
+    //printf("Scale factor: %f\n", scaleFactor);
+
+    Rectangle source = computeSourceRectangle(glyph, scaleFactor);
     Rectangle dest = computeDestinationRectangle(glyph, scaleFactor, position);
 
     // Draw the character
@@ -124,6 +132,7 @@ glm::vec2 LodenFontFace::drawUtf8(Canvas *canvas, const std::string &text, int p
 {
     // TODO: Decode the UTF-8 character
     auto currentPosition = position;
+    //printf("Draw text %s\n", text.c_str());
     canvas->beginBitmapTextDrawing(textureBinding.get(), isSignedDistanceField);
     int previousCharacter = -1;
     for (size_t i = 0; i < text.size(); ++i)
@@ -177,6 +186,7 @@ bool LodenFontFace::read(FILE *in, Image::ImageBuffer *image)
 
     basePointSize = header.pointSize;
     isSignedDistanceField = (header.flags & LodenFontFlags::SignedDistanceField) != 0;
+    marginSize = std::max(0, int(header.cellMargin) - 1);
 
     // Read the glyph metadata.
     glyphData.resize(header.numberOfGlyphs);

@@ -86,9 +86,9 @@ void signedToUnsignedPixels(ImageBuffer *dest, ImageBuffer *source)
     }
 }
 
-inline void clearImageBuffer(ImageBuffer *imageBuffer)
+inline void clearImageBuffer(ImageBuffer *imageBuffer, int clearValue = 0)
 {
-    memset(imageBuffer->get(), 0, imageBuffer->getSize());
+    memset(imageBuffer->get(), clearValue, imageBuffer->getSize());
 }
 
 } // End of namespace Image

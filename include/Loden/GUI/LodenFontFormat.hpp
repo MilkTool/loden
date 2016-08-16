@@ -24,8 +24,6 @@ struct LodenFontHeader
     uint8_t signature[8];
     uint32_t numberOfGlyphs;
     uint32_t numberOfCharMapEntries;
-    uint32_t cellWidth;
-    uint32_t cellHeight;
     uint32_t cellMargin;
     float pointSize;
     uint32_t flags;
